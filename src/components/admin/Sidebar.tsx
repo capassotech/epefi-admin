@@ -6,7 +6,7 @@ import {
   BookOpen,
   Users,
   Calendar,
-  Search,
+  // Search,
   Plus,
   User,
   LogOut
@@ -52,7 +52,7 @@ export function AdminSidebar() {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-24 rounded-lg flex items-center justify-center">
-              <img src="/logo.png" alt="INEE Logo" className="w-24" />
+              <img src="/logo.png" alt="EPEFI Logo" className="w-24" />
             </div>
           </Link>
         </div>
@@ -80,7 +80,6 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="p-4 border-t border-gray-200 space-y-2">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
@@ -106,7 +105,6 @@ export function AdminSidebar() {
         )}
       </div>
 
-      {/* Collapse Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3 top-20 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow"
