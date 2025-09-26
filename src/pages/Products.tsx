@@ -3,10 +3,11 @@ import { ProductCard } from '@/components/product/ProductCard';
 import { ProductList } from '@/components/product/ProductList';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { useNavigate } from 'react-router-dom';
-import { FormacionesAPI } from "@/lib/api";
+import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
 import { mockProducts } from '@/data/mockData';
 import { type Course } from '@/types/types';
+import { Loader2 } from 'lucide-react';
 
 export default function Products() {
   const navigate = useNavigate();
@@ -15,59 +16,53 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
-  // const [loading, setLoading] = useState(true);
-  // const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // 🔥 Estados para el modal de confirmación
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Cargar formaciones desde backend
   useEffect(() => {
     setFormaciones(mockProducts);
-    // const fetchFormaciones = async () => {
-    //   try {
-    //     const res = await FormacionesAPI.getAll();
-    //     const data = Array.isArray(res) ? res : res?.data || [];
-    //     setFormaciones(data);
-    //     setFilteredProducts(data);
-    //   } catch (err) {
-    //     console.error("Error al cargar formaciones:", err);
-    //     setError('No se pudieron cargar las formaciones');
-    //     setFormaciones([]);
-    //     setFilteredProducts([]); 
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchFormaciones();
+    const fetchFormaciones = async () => {
+      try {
+        const res = await CoursesAPI.getAll();
+        const data = Array.isArray(res) ? res : res?.data || [];
+        setFormaciones(data);
+        setFilteredProducts(data);
+      } catch (err) {
+        console.error("Error al cargar formaciones:", err);
+        setError('No se pudieron cargar las formaciones');
+        setFormaciones([]);
+        setFilteredProducts([]); 
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFormaciones();
   }, []);
 
-  // 🚨 Abre el modal de confirmación
   const handleDeleteClick = (id: string) => {
     setConfirmDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
-  // ✅ Confirma y ejecuta la eliminación
   const handleConfirmDelete = async () => {
     if (!confirmDeleteId) return;
 
     try {
-      await FormacionesAPI.delete(confirmDeleteId);
+      await CoursesAPI.delete(confirmDeleteId);
 
       setFormaciones(prev => prev.filter(f => f.id !== confirmDeleteId));
       setFilteredProducts(prev => prev.filter(f => f.id !== confirmDeleteId));
     } catch (err) {
       console.error("Error al eliminar formación:", err);
-      // Aquí podrías mostrar un toast si lo deseas
     } finally {
       setIsDeleteModalOpen(false);
       setConfirmDeleteId(null);
     }
   };
 
-  // ❌ Cancela la eliminación
   const handleCancelDelete = () => {
     setIsDeleteModalOpen(false);
     setConfirmDeleteId(null);
@@ -107,11 +102,9 @@ export default function Products() {
           filtered.sort((a, b) => b.precio - a.precio);
           break;
         case 'students':
-          // Los cursos no tienen propiedad de estudiantes directamente
           filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
           break;
         case 'date':
-          // Los cursos no tienen fecha de creación por ahora
           filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
           break;
       }
@@ -135,17 +128,17 @@ export default function Products() {
     ],
   };
 
-  // if (loading) {
-  //   return (
-  //     <div className='h-screen flex justify-center items-center'>
-  //       <Loader2 className="animate-spin w-10 h-10 text-gray-600" />
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className='h-screen flex justify-center items-center'>
+        <Loader2 className="animate-spin w-10 h-10 text-gray-600" />
+      </div>
+    );
+  }
 
-  // if (error) {
-  //   return <p className="text-center text-red-600 py-6">{error}</p>;
-  // }
+  if (error) {
+    return <p className="text-center text-red-600 py-6">{error}</p>;
+  }
 
   return (
     <div className="space-y-6">
@@ -221,7 +214,6 @@ export default function Products() {
         </div>
       )}
 
-      {/* 🚨 Renderizamos tu componente ConfirmDeleteModal — ¡CORREGIDO! */}
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}  

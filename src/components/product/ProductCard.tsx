@@ -1,6 +1,5 @@
-
-import { Course } from '@/types/types';
-import { Calendar, Users, Clock, BookOpen } from 'lucide-react';
+import { type Course } from '@/types/types';
+import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
@@ -30,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <div className="aspect-video bg-gray-200 overflow-hidden">
         <img
-          src={product.image}
+          src={product.image ?? product.image ?? '/placeholder.svg'}
           alt={product.titulo}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

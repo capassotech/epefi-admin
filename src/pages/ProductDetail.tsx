@@ -1,7 +1,6 @@
 // src/pages/ProductDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FormacionesAPI } from '@/lib/api'; // ✅ Solo importamos FormacionesAPI
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PencilIcon } from 'lucide-react';
@@ -15,6 +14,7 @@ import {
   Users,
   Image as ImageIcon,
 } from 'lucide-react';
+import { CoursesAPI } from '@/service/courses';
 
 interface Formacion {
   id: string;
@@ -34,13 +34,11 @@ interface Formacion {
   updatedAt?: string;
 }
 
-// 👇 Define la interfaz para los módulos
 interface Modulo {
   id: string;
   nombre: string;
   descripcion?: string;
   duracion?: number;
-  // añade otros campos según tu API
 }
 
 const ProductDetail = () => {
@@ -61,15 +59,13 @@ const ProductDetail = () => {
 
     const fetchData = async () => {
       try {
-        const data = await FormacionesAPI.getById(id);
+        const data = await CoursesAPI.getById(id);
         setFormacion(data);
 
-        // 👇 Si hay módulos, cargarlos
         if (data.id_modulos && data.id_modulos.length > 0) {
           setLoadingModulos(true);
           try {
-            // ✅ Usamos FormacionesAPI, NO ModulosAPI
-            const modulosData = await FormacionesAPI.getModulesByIds(data.id_modulos);
+            const modulosData = await CoursesAPI.getModulesByIds(data.id_modulos);
             setModulos(modulosData);
           } catch (moduloError) {
             console.error("⚠️ Error al cargar módulos:", moduloError);
@@ -79,8 +75,6 @@ const ProductDetail = () => {
         }
       } catch (error: any) {
         console.error("❌ Error al cargar formación:", error);
-        console.error("Status:", error.response?.status);
-        console.error("Response:", error.response?.data);
         setError(error.message || 'Error al cargar la formación');
       } finally {
         setLoading(false);

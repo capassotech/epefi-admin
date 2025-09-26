@@ -1,17 +1,17 @@
 // components/product/ProductList.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import ConfirmDeleteModal from './ConfirmDeleteModal';
-import { FormacionesAPI } from "@/lib/api";
+// import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
 
-import { Course } from '@/types/types';
+import { type Course } from '@/types/types';
+import { CoursesAPI } from '@/service/courses';
 
 interface ProductListProps {
   products: Course[];
-  onDelete?: (id: string) => void; // 👈 Función que el padre provee para eliminar y actualizar estado
+  onDelete?: (id: string) => void;
 }
 
 export const ProductList = ({ products, onDelete }: ProductListProps) => {
@@ -22,12 +22,11 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
 
   const closeToast = () => setToast(null);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (onDelete) {
-      // Si el padre provee onDelete, lo usamos directamente (sin modal)
       onDelete(id);
+      await confirmDelete();
     } else {
-      // Si no, mostramos modal de confirmación
       setSelectedId(id);
     }
   };
@@ -39,18 +38,13 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
 
     try {
       if (onDelete) {
-        await onDelete(selectedId); // 👈 El padre elimina de su estado → React actualiza la UI automáticamente
+        await onDelete(selectedId); 
       } else {
-        // Fallback: si no hay onDelete, llamamos a la API directamente
-        // ⚠️ Pero como no podemos actualizar el estado aquí, no verás el cambio hasta recargar (evítalo en producción)
-        await FormacionesAPI.delete(selectedId);
-        // Opcional: podrías emitir un evento o usar un contexto global, pero lo ideal es usar onDelete
+        await CoursesAPI.delete(selectedId);
       }
 
-      // Mostramos éxito
       setToast({ message: 'Formación eliminada con éxito', type: 'success' });
 
-      // Cerramos modal
       setSelectedId(null);
     } catch (err) {
       setToast({ message: 'Error al eliminar la formación', type: 'error' });
@@ -81,10 +75,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
               >
                 {/* Imagen */}
                 <img
-                  src={f.image || '/placeholder.svg'}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/placeholder.svg';
-                  }}
+                  src={f.image ?? f.image ?? '/placeholder.svg'}
                   className="w-24 h-24 object-cover rounded-md border"
                   alt={f.titulo}
                 />
@@ -136,7 +127,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                         return;
                       }
 
-                      navigate(`/admin/formaciones/editar/${encodeURIComponent(id)}`);
+                      navigate(`/products/${encodeURIComponent(id)}/edit`);
                     }}
                   >
                     Editar
@@ -171,31 +162,31 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
 };
 
 // Helpers
-const formatPilar = (pilar: string) => {
-  const map: Record<string, string> = {
-    'consultoria-estrategica': 'Consultoría Estratégica',
-    liderazgo: 'Liderazgo',
-    emprendimiento: 'Emprendimiento',
-  };
-  return map[pilar] || pilar;
-};
+// const formatPilar = (pilar: string) => {
+//   const map: Record<string, string> = {
+//     'consultoria-estrategica': 'Consultoría Estratégica',
+//     liderazgo: 'Liderazgo',
+//     emprendimiento: 'Emprendimiento',
+//   };
+//   return map[pilar] || pilar;
+// };
 
-const formatNivel = (nivel: string) => {
-  const map: Record<string, string> = {
-    principiante: 'Inicial',
-    intermedio: 'Intermedio',
-    avanzado: 'Avanzado',
-  };
-  return map[nivel] || nivel;
-};
+// const formatNivel = (nivel: string) => {
+//   const map: Record<string, string> = {
+//     principiante: 'Inicial',
+//     intermedio: 'Intermedio',
+//     avanzado: 'Avanzado',
+//   };
+//   return map[nivel] || nivel;
+// };
 
-const formatModalidad = (modalidad: string) => {
-  const map: Record<string, string> = {
-    presencial: 'Presencial',
-    virtual: 'Virtual',
-    hibrida: 'Híbrida',
-  };
-  return map[modalidad] || modalidad;
-};
+// const formatModalidad = (modalidad: string) => {
+//   const map: Record<string, string> = {
+//     presencial: 'Presencial',
+//     virtual: 'Virtual',
+//     hibrida: 'Híbrida',
+//   };
+//   return map[modalidad] || modalidad;
+// };
 
 export default ProductList;

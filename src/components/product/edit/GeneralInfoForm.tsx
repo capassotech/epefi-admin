@@ -24,6 +24,8 @@ interface Professor {
   photo_url: string;
 }
 
+const API_URL = process.env.VITE_API_URL || "http://localhost:3000";
+
 const GeneralInfoForm = ({ control }: any) => {
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ const GeneralInfoForm = ({ control }: any) => {
       setLoading(true);
       try {
         const response = await fetch(
-          "https://inee-backend.onrender.com/api/profesores"
+          `${API_URL}/api/profesores`
         );
         if (response.ok) {
           const data = await response.json();

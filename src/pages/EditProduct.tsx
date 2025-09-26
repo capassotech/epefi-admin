@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
-import { FormacionesAPI } from "@/lib/api";
+import { CoursesAPI } from "@/service/courses";
 import {
   productFormSchema,
   type ProductFormData,
@@ -32,6 +32,8 @@ import {
 
 import GeneralInfoForm from "@/components/product/edit/GeneralInfoForm";
 import FeaturesForm from "@/components/product/edit/FeaturesForm";
+
+
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ export default function EditProduct() {
     const loadFormacion = async () => {
       try {
         setLoading(true);
-        const data = await FormacionesAPI.getById(id);
+        const data = await CoursesAPI.getById(id);
 
         setCreatedCourseId(id);
         setCourseCreated(true);
@@ -94,7 +96,7 @@ export default function EditProduct() {
           setModules(data.modulos);
         } else if (data.id_modulos && Array.isArray(data.id_modulos)) {
           const modulosPromises = data.id_modulos.map((moduleId: string) =>
-            FormacionesAPI.getModuleById(moduleId).catch(err => {
+            CoursesAPI.getModuleById(moduleId).catch(err => {
               console.warn(`Módulo no encontrado: ${moduleId}`);
               return null;
             })
@@ -134,7 +136,7 @@ export default function EditProduct() {
     };
 
     try {
-      await FormacionesAPI.update(id, payload);
+      await CoursesAPI.update(id, payload);
       toast.success("Formación actualizada correctamente");
       navigate("/products");
     } catch (err: any) {
@@ -165,7 +167,7 @@ export default function EditProduct() {
         })),
       };
 
-      const response = await FormacionesAPI.createModule(payload);
+      const response = await CoursesAPI.createModule(payload);
       setModules((prev) => [...prev, { id: response.id, ...payload }]);
       toast.success("Módulo agregado exitosamente");
     } catch (err: any) {
@@ -329,7 +331,6 @@ export default function EditProduct() {
   );
 }
 
-// Tipos para el formulario de módulo
 interface ContenidoForm {
   titulo: string;
   descripcion: string;
@@ -346,7 +347,6 @@ interface ModuloForm {
   contenido: ContenidoForm[];
 }
 
-// Componente para formulario de contenido individual
 function ContenidoFormRow({
   index,
   content,
@@ -500,7 +500,6 @@ function ContenidoFormRow({
   );
 }
 
-// Componente principal de Módulos — ¡AHORA CON EDICIÓN Y setModules!
 function ModulesTab({
   courseId,
   modules,

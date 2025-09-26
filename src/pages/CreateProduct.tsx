@@ -23,18 +23,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-
-import { FormacionesAPI } from "@/lib/api";
 import {
   productFormSchema,
   type ProductFormData,
 } from "@/schemas/product-schema";
+import { CoursesAPI } from "@/service/courses";
 
 // Form components
 import GeneralInfoForm from "@/components/product/edit/GeneralInfoForm";
-import CourseInfoForm from "@/components/product/edit/CourseInfoForm";
 import FeaturesForm from "@/components/product/edit/FeaturesForm";
-import PricingForm from "@/components/product/edit/PricingForm";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
@@ -42,12 +39,10 @@ export default function CreateProduct() {
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Estados para el flujo de creación
   const [courseCreated, setCourseCreated] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [modules, setModules] = useState<any[]>([]);
 
-  // 🔥 NUEVO: Flag para evitar crear curso más de una vez por sesión
   const [courseAlreadyCreatedInSession, setCourseAlreadyCreatedInSession] = useState(false);
 
   const form = useForm<ProductFormData>({
@@ -68,20 +63,19 @@ export default function CreateProduct() {
     mode: "onChange",
   });
 
-  // Cargar datos si es edición
   useEffect(() => {
     if (!id) {
       setCourseCreated(false);
       setCreatedCourseId(null);
       setModules([]);
       setCurrentTab(0);
-      setCourseAlreadyCreatedInSession(false); // Reiniciar flag también
+      setCourseAlreadyCreatedInSession(false); 
     }
 
     if (id) {
       const loadFormacion = async () => {
         try {
-          const data = await FormacionesAPI.getById(id);
+          const data = await CoursesAPI.getById(id);
           setCourseCreated(true);
           setCreatedCourseId(id);
 
@@ -131,11 +125,11 @@ export default function CreateProduct() {
 
     try {
       if (id) {
-        await FormacionesAPI.update(id, payload);
+        await CoursesAPI.update(id, payload);
         toast.success("Formación actualizada correctamente");
         navigate("/products");
       } else {
-        const response = await FormacionesAPI.create(payload);
+        const response = await CoursesAPI.create(payload);
         const newCourseId = String(response.id);
         setCreatedCourseId(newCourseId);
         setCourseCreated(true);
@@ -175,7 +169,7 @@ export default function CreateProduct() {
         })),
       };
 
-      const response = await FormacionesAPI.createModule(payload);
+      const response = await CoursesAPI.createModule(payload);
 
       setModules((prev) => [...prev, { id: response.id, ...payload }]);
       toast.success("Módulo agregado exitosamente");
@@ -193,7 +187,7 @@ export default function CreateProduct() {
     setLoading(true);
     try {
       const moduleIds = modules.map((m) => m.id);
-      await FormacionesAPI.update(createdCourseId, { id_modulos: moduleIds });
+      await CoursesAPI.update(createdCourseId, { id_modulos: moduleIds });
       toast.success("Curso completado exitosamente");
       navigate("/products");
     } catch (err) {
@@ -203,26 +197,20 @@ export default function CreateProduct() {
     }
   };
 
-  // Tabs
   const tabs = [
     { id: "general", label: "Información General", component: GeneralInfoForm },
     { id: "features", label: "Características", component: FeaturesForm },
     { id: "modules", label: "Módulos", component: ModulesTab },
   ];
 
-  // const CurrentComponent = tabs[currentTab]?.component;
+  const CurrentComponent = tabs[currentTab]?.component;
 
-  const handleNext = () => {
-    if (currentTab < tabs.length - 1) setCurrentTab(currentTab + 1);
-  };
+  const handleNext = () => { if (currentTab < tabs.length - 1) setCurrentTab(currentTab + 1) };
 
-  const handleBack = () => {
-    if (currentTab > 0) setCurrentTab(currentTab - 1);
-  };
+  const handleBack = () => { if (currentTab > 0) setCurrentTab(currentTab - 1) };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4">
-      {/* Header */}
       <div className="flex items-center space-x-4">
         <Link to="/products">
           <Button
@@ -292,8 +280,7 @@ export default function CreateProduct() {
           <Card>
             <CardContent className="p-6">
               {currentTab < 2 ? (
-                <div> <h1>CurrentComponent</h1> </div>
-                // CurrentComponent && <CurrentComponent control={form.control} />
+                CurrentComponent && <CurrentComponent control={form.control} />
               ) : (
                 <ModulesTab
                   courseId={createdCourseId}
@@ -383,7 +370,6 @@ interface ModuloForm {
   contenido: ContenidoForm[];
 }
 
-// Componente para formulario de contenido individual
 function ContenidoFormRow({
   index,
   content,
@@ -537,7 +523,6 @@ function ContenidoFormRow({
   );
 }
 
-// Componente principal actualizado (SIN useEffect innecesario)
 function ModulesTab({
   courseId,
   modules,
@@ -549,8 +534,6 @@ function ModulesTab({
   onCreateModule: (moduleData: any) => Promise<void>;
   loading: boolean;
 }) {
-  // ✅ useEffect eliminado — no era necesario y causaba problemas
-
   const [showForm, setShowForm] = useState(false);
   const [moduleForm, setModuleForm] = useState<ModuloForm>({
     titulo: "",

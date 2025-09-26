@@ -49,10 +49,9 @@ export function AdminSidebar() {
       {/* Header */}
       <div className="flex items-center h-16 px-4 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-4">
             <div className="w-24 rounded-lg flex items-center justify-center">
-              <img src="/logo.png" alt="EPEFI Logo" className="w-24" />
+              <img src="/logoNegro.png" alt="EPEFI Logo" className="w-24" />
             </div>
           </Link>
         </div>
@@ -85,12 +84,12 @@ export function AdminSidebar() {
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
             <User className="w-4 h-4 text-gray-600" />
           </div>
-          {/* {!isCollapsed && (
+          {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.nombre} {user?.apellido}</p>
-              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">Admin EPEFI Oficial</p>
+              <p className="text-xs text-gray-500 truncate">epefiadmin@gmail.com</p>
             </div>
-          )} */}
+          )}
         </div>
 
         {!isCollapsed && (
