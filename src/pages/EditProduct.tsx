@@ -30,8 +30,8 @@ import {
   type ProductFormData,
 } from "@/schemas/product-schema";
 
-import GeneralInfoForm from "@/components/product/edit/GeneralInfoForm";
-import FeaturesForm from "@/components/product/edit/FeaturesForm";
+import GeneralInfoForm from "@/components/product/GeneralInfoForm";
+import FeaturesForm from "@/components/product/FeaturesForm";
 
 
 

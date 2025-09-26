@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,12 +30,11 @@ import {
 import { CoursesAPI } from "@/service/courses";
 
 // Form components
-import GeneralInfoForm from "@/components/product/edit/GeneralInfoForm";
-import FeaturesForm from "@/components/product/edit/FeaturesForm";
+import GeneralInfoForm from "@/components/product/GeneralInfoForm";
+import FeaturesForm from "@/components/product/FeaturesForm";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -64,45 +63,15 @@ export default function CreateProduct() {
   });
 
   useEffect(() => {
-    if (!id) {
-      setCourseCreated(false);
-      setCreatedCourseId(null);
-      setModules([]);
-      setCurrentTab(0);
-      setCourseAlreadyCreatedInSession(false); 
-    }
-
-    if (id) {
-      const loadFormacion = async () => {
-        try {
-          const data = await CoursesAPI.getById(id);
-          setCourseCreated(true);
-          setCreatedCourseId(id);
-
-          form.reset({
-            title: data.titulo || "",
-            description: data.descripcion || "",
-            price: data.precio || 0,
-            duration: data.duracion?.toString() || "",
-            level: data.nivel || "intermedio",
-            modality: data.modalidad || "virtual",
-            pilar: data.pilar || "liderazgo",
-            id_profesor: data.id_profesor || "",
-            imagen: data.imagen || "",
-            tags: Array.isArray(data.tags) ? data.tags : [],
-            isActive: data.estado === "activo" || true,
-          });
-        } catch (err) {
-          toast.error("No se pudo cargar la formación");
-          navigate("/products");
-        }
-      };
-      loadFormacion();
-    }
-  }, [id, form, navigate]);
+    setCourseCreated(false);
+    setCreatedCourseId(null);
+    setModules([]);
+    setCurrentTab(0);
+    setCourseAlreadyCreatedInSession(false); 
+  }, []);
 
   const onSubmit = async (data: ProductFormData) => {
-    if (!id && courseAlreadyCreatedInSession) {
+    if (courseAlreadyCreatedInSession) {
       return;
     }
 
@@ -124,19 +93,13 @@ export default function CreateProduct() {
     };
 
     try {
-      if (id) {
-        await CoursesAPI.update(id, payload);
-        toast.success("Formación actualizada correctamente");
-        navigate("/products");
-      } else {
-        const response = await CoursesAPI.create(payload);
-        const newCourseId = String(response.id);
-        setCreatedCourseId(newCourseId);
-        setCourseCreated(true);
-        setCurrentTab(2);
-        setCourseAlreadyCreatedInSession(true);
-        toast.success("Curso creado. Ahora puedes agregar módulos");
-      }
+      const response = await CoursesAPI.create(payload);
+      const newCourseId = String(response.id);
+      setCreatedCourseId(newCourseId);
+      setCourseCreated(true);
+      setCurrentTab(2);
+      setCourseAlreadyCreatedInSession(true);
+      toast.success("Curso creado. Ahora puedes agregar módulos");
     } catch (err: any) {
       const message =
         err.response?.data?.message || "Error al guardar la formación";
@@ -224,11 +187,10 @@ export default function CreateProduct() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            {id ? "Editar Formación" : "Crear Nueva Formación"}
+            Crear Nueva Formación
           </h1>
           <p className="text-gray-600 mt-1">
-            Completa los datos para {id ? "actualizar" : "crear"} esta
-            formación.
+            Completa los datos para crear esta formación.
           </p>
         </div>
       </div>
@@ -316,7 +278,7 @@ export default function CreateProduct() {
                       toast.error("Por favor completa todos los campos requeridos.");
                       return;
                     }
-                    onSubmit(form.getValues());
+                    await onSubmit(form.getValues());
                   }
                 }}
                 disabled={loading}
@@ -333,7 +295,7 @@ export default function CreateProduct() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 ) : currentTab === 1 ? (
-                  id ? "Actualizar Formación" : "Crear Curso"
+                  "Crear Curso"
                 ) : null}
               </Button>
             ) : (
