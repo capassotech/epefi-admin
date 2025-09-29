@@ -65,6 +65,14 @@ export interface ModuleFormData {
   contents: ModuleFormData[];
 }
 
+
+export interface DegreeFormData {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  estado: "activo" | "inactivo";
+}
+
 export interface ContentItemFormData {
   id?: string;
   type: "VIDEO" | "PDF" | "QUIZ" | "DOCX" | "IMAGE";
