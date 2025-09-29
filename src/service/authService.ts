@@ -1,10 +1,24 @@
 import axios from "axios";
-import { getAuth, GoogleAuthProvider, signInWithCustomToken, signOut, signInWithPopup, signInWithCredential, sendPasswordResetEmail, confirmPasswordReset } from "firebase/auth";
-import { auth } from "../../config/firebase-client"
-import { RegisterData, LoginData, AuthResponse, UserProfile } from "../types/index";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithCustomToken,
+  signOut,
+  signInWithPopup,
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+} from "firebase/auth";
+import { auth } from "../../config/firebase-client";
+import type {
+  RegisterData,
+  LoginData,
+  AuthResponse,
+  UserProfile,
+} from "../types/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL =
+  import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -57,7 +71,6 @@ class AuthService {
     }
   }
 
-
   async googleLogin() {
     try {
       const googleProvider = new GoogleAuthProvider();
@@ -79,7 +92,12 @@ class AuthService {
     }
   }
 
-  async googleRegister(firstName: string, lastName: string, dni: string, acceptTerms: boolean): Promise<void> {
+  async googleRegister(
+    firstName: string,
+    lastName: string,
+    dni: string,
+    acceptTerms: boolean
+  ): Promise<void> {
     const googleProvider = new GoogleAuthProvider();
     const auth = getAuth();
 
@@ -108,7 +126,7 @@ class AuthService {
         email: user.email,
         nombre: firstName,
         apellido: lastName,
-        role: "student",
+        role: response.data.user?.role || { admin: false, student: true },
         registrationTime: new Date().toISOString(),
       };
 
@@ -116,49 +134,89 @@ class AuthService {
 
       return response.data;
     } catch (error: any) {
-      console.error("Error en googleLogin: ", error.response?.data?.error);
+      console.error("Error en googleRegister: ", error.response?.data?.error);
       throw new Error(error.response?.data?.error || error.message);
     }
   }
 
   // Iniciar sesión
+  // Método login CORREGIDO - Backend primero
   async login(credentials: LoginData): Promise<AuthResponse> {
     try {
+      console.log("🔐 Iniciando login...");
+
+      // 1️⃣ PRIMERO: Llamar al backend
       const response = await api.post("/auth/login", credentials);
+      console.log("✅ Backend respondió:", response.data);
 
-      if (response.data.customToken) {
-        await signInWithCustomToken(auth, response.data.customToken);
-      }
-
+      // 2️⃣ SEGUNDO: Si el backend dice OK, autenticar con Firebase
       if (response.data.user) {
+        try {
+          await this.authenticateWithFirebase(
+            credentials.email,
+            credentials.password
+          );
+          console.log("✅ Firebase autenticado");
+        } catch (firebaseError) {
+          console.warn("⚠️ Error en Firebase, pero backend OK:", firebaseError);
+          // Continuar aunque Firebase falle, porque el backend ya validó
+        }
+
+        // 3️⃣ Guardar datos del usuario
         const studentData = {
           uid: response.data.user.uid,
           email: response.data.user.email,
           nombre: response.data.user.nombre,
           apellido: response.data.user.apellido,
+          dni: response.data.user.dni,
           role: response.data.user.role,
+          emailVerificado: response.data.user.emailVerificado || false,
+          activo: response.data.user.activo || true,
           loginTime: new Date().toISOString(),
         };
 
         localStorage.setItem("studentData", JSON.stringify(studentData));
+        console.log("💾 Datos guardados:", studentData);
       }
 
       return response.data;
     } catch (error: any) {
+      console.error("❌ Error en login:", error);
+
       if (error.response?.data) {
         throw error.response.data;
       }
-      throw new Error("Error de conexión. Verifica tu conexión a internet.");
+      throw new Error(error.message || "Error al iniciar sesión");
+    }
+  }
+
+  // Método authenticateWithFirebase
+  private async authenticateWithFirebase(
+    email: string,
+    password: string
+  ): Promise<void> {
+    try {
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("✅ Firebase auth exitoso:", userCredential.user.uid);
+    } catch (error: any) {
+      console.error("❌ Firebase auth falló:", error.code);
+      throw error;
     }
   }
 
   async getUserById(uid: string): Promise<UserProfile> {
     try {
       const response = await api.get(`/auth/user/${uid}`);
-      console.log(response.data)
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || "Error al obtener el usuario");
+      throw new Error(
+        error.response?.data?.error || "Error al obtener el usuario"
+      );
     }
   }
 
@@ -170,25 +228,25 @@ class AuthService {
       if (error.response?.status === 404) {
         return false;
       }
-      // Si es otro tipo de error (500, 401, etc.), lo lanzamos
-      throw new Error(error.response?.data?.error || "Error al verificar el usuario");
+      throw new Error(
+        error.response?.data?.error || "Error al verificar el usuario"
+      );
     }
   }
 
   async forgotPassword(email: string): Promise<void> {
     try {
-      // Validar si el usuario existe en la db
       await api.get(`/auth/check-email/${email}`);
 
-      const result = await sendPasswordResetEmail(auth, email, {
+      await sendPasswordResetEmail(auth, email, {
         url: `${FRONTEND_URL}/recuperar-contrasena`,
       });
-      console.log("result", result);
-      
     } catch (error: any) {
-      const customError = new Error(error.response?.data?.error || "Error al enviar email de recuperación");
+      const customError = new Error(
+        error.response?.data?.error || "Error al enviar email de recuperación"
+      );
       (customError as any).exists = error.response?.data?.exists || false;
-      
+
       throw customError;
     }
   }
@@ -201,11 +259,11 @@ class AuthService {
     }
   }
 
-  // Obtener perfil del usuario
   async getProfile(): Promise<UserProfile> {
     try {
-      const response = await api.get("/auth/me");
-      return response.data;
+      const response = await api.get("/users/me");
+
+      return response.data.user || response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
         await this.logout();
@@ -219,7 +277,6 @@ class AuthService {
     }
   }
 
-  // Cerrar sesión
   async logout(): Promise<void> {
     try {
       await signOut(auth);
@@ -262,7 +319,7 @@ class AuthService {
 
   updateStudentDataInStorage(data: any): void {
     try {
-      const existingData = this.getStudentDataFromStorage();
+      const existingData = this.getStudentDataFromStorage() || {};
       const updatedData = { ...existingData, ...data };
       localStorage.setItem("studentData", JSON.stringify(updatedData));
     } catch (error) {

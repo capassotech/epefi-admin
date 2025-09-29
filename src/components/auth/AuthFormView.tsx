@@ -15,14 +15,12 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { PasswordRequirements } from "./PasswordRequirements";
 
 export default function AuthFormView({
   isLogin = false,
   currentStep = 1,
   showEmailForm = false,
   onSubmit,
-  onGoogleAuth,
   onInputChange,
   onStepChange,
   onEmailMethodSelect,
@@ -539,7 +537,11 @@ export default function AuthFormView({
           <Link to="/" className="inline-flex items-center space-x-2 mb-8">
             <div className="flex items-center space-x-2">
               <div className="h-10 rounded-lg flex items-center justify-center">
-                <img src="/logo-blanco.png" alt="INEE Logo" className="h-20" />
+                <img
+                  src="../../public/logoNegro.png "
+                  alt="EPEFI Logo"
+                  className="h-20"
+                />
               </div>
             </div>
           </Link>

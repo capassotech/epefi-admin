@@ -1,4 +1,3 @@
-
 import type React from "react";
 import {
   createContext,
@@ -8,9 +7,9 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from "../../config/firebase-client"
+import { auth } from "../../config/firebase-client";
 import authService from "@/service/authService";
-import { UserProfile } from "../types/index";
+import type { UserProfile } from "../types/types";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -21,7 +20,12 @@ interface AuthContextType {
   register: (userData: any) => Promise<any>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  googleRegister: (firstName: string, lastName: string, dni: string, acceptTerms: boolean) => Promise<any>;
+  googleRegister: (
+    firstName: string,
+    lastName: string,
+    dni: string,
+    acceptTerms: boolean
+  ) => Promise<any>;
   googleLogin: () => Promise<any>;
   forgotPassword: (email: string) => Promise<void>;
   changePassword: (oobCode: string, password: string) => Promise<void>;
@@ -48,30 +52,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!firebaseUser && !!user;
 
-  // Escuchar cambios en el estado de autenticación de Firebase
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("🔄 Auth state changed:", firebaseUser?.email);
       setFirebaseUser(firebaseUser);
 
       if (firebaseUser) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Si hay un usuario de Firebase, obtener su perfil del backend
-          const profile = await authService.getProfile();
-          setUser(profile);
+        // ✅ Solo cargar del localStorage
+        const storedData = localStorage.getItem("studentData");
 
-          authService.updateStudentDataInStorage({
-            dni: profile.dni,
-            fechaRegistro: profile.fechaRegistro,
-            aceptaTerminos: profile.aceptaTerminos,
-            lastProfileUpdate: new Date().toISOString(),
-          });
-        } catch (error) {
-          console.error("Error al obtener perfil:", error);
+        if (storedData) {
+          try {
+            const parsedData = JSON.parse(storedData);
+            console.log("✅ Usuario cargado:", parsedData);
+            setUser(parsedData);
+          } catch (error) {
+            console.error("❌ Error parseando localStorage:", error);
+            setUser(null);
+          }
+        } else {
+          console.log("⚠️ No hay datos en localStorage");
           setUser(null);
         }
       } else {
+        console.log("👤 No hay usuario autenticado");
         setUser(null);
       }
 
@@ -84,10 +88,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Los datos ya se guardaron en localStorage en el servicio
+
       const response = await authService.login({ email, password });
-      return response; // Retornar respuesta para usar en el componente
+
+      // Esperar para que se guarde en localStorage
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Cargar del localStorage
+      const storedData = localStorage.getItem("studentData");
+      if (storedData) {
+        const userData = JSON.parse(storedData);
+        setUser(userData);
+        console.log("✅ Usuario autenticado en context:", userData);
+      }
+
+      setIsLoading(false);
+      return response;
     } catch (error) {
       setIsLoading(false);
       throw error;
@@ -97,7 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: any) => {
     try {
       setIsLoading(true);
-      
+
       const response = await authService.register({
         email: userData.email,
         password: userData.password,
@@ -107,20 +123,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         aceptaTerminos: userData.acceptTerms,
       });
 
-      // Los datos ya se guardaron en localStorage en el servicio
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const storedData = localStorage.getItem("studentData");
+      if (storedData) {
+        setUser(JSON.parse(storedData));
+      }
+
       setIsLoading(false);
-      return response; // Retornar respuesta para usar en el componente
+      return response;
     } catch (error) {
       setIsLoading(false);
       throw error;
     }
   };
 
-  const googleRegister = async (firstName: string, lastName: string, dni: string, acceptTerms: boolean) => {
+  const googleRegister = async (
+    firstName: string,
+    lastName: string,
+    dni: string,
+    acceptTerms: boolean
+  ) => {
     try {
       setIsLoading(true);
 
-      const response = await authService.googleRegister(firstName, lastName, dni, acceptTerms);
+      const response = await authService.googleRegister(
+        firstName,
+        lastName,
+        dni,
+        acceptTerms
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const storedData = localStorage.getItem("studentData");
+      if (storedData) {
+        setUser(JSON.parse(storedData));
+      }
 
       setIsLoading(false);
       return response;
@@ -134,6 +173,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authService.googleLogin();
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const storedData = localStorage.getItem("studentData");
+      if (storedData) {
+        setUser(JSON.parse(storedData));
+      }
+
       setIsLoading(false);
       return response;
     } catch (error) {
@@ -144,41 +191,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      console.log("🚪 Iniciando logout...");
       await authService.logout();
       setUser(null);
       setFirebaseUser(null);
+      localStorage.removeItem("studentData");
+      console.log("✅ Logout exitoso");
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("❌ Error durante logout:", error);
+      setUser(null);
+      setFirebaseUser(null);
+      localStorage.removeItem("studentData");
     }
   };
 
   const refreshUser = async () => {
     try {
       if (firebaseUser) {
-        const profile = await authService.getProfile();
-        setUser(profile);
-
-        authService.updateStudentDataInStorage({
-          dni: profile.dni,
-          fechaRegistro: profile.fechaRegistro,
-          aceptaTerminos: profile.aceptaTerminos,
-          lastProfileUpdate: new Date().toISOString(),
-        });
+        const storedData = localStorage.getItem("studentData");
+        if (storedData) {
+          setUser(JSON.parse(storedData));
+          console.log("🔄 Usuario refrescado");
+        }
       }
     } catch (error) {
       console.error("Error al refrescar usuario:", error);
-      await logout();
     }
   };
 
   const forgotPassword = async (email: string) => {
     try {
       await authService.forgotPassword(email);
-      console.log("Email de recuperación enviado exitosamente");
+      console.log("Email de recuperación enviado");
     } catch (error: any) {
-      console.log("Error al recuperar contraseña:", error.message);
-      console.log("Usuario existe:", error.exists);
-      
+      console.error("Error al recuperar contraseña:", error);
       throw error;
     }
   };
@@ -188,6 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.changePassword(oobCode, password);
     } catch (error) {
       console.error("Error al cambiar contraseña:", error);
+      throw error;
     }
   };
 
@@ -203,7 +250,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     googleRegister,
     googleLogin,
     forgotPassword,
-    changePassword
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

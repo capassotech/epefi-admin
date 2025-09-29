@@ -1,10 +1,10 @@
-import { AdminSidebar } from '@/components/admin/Sidebar';
-import { Routes, Route } from 'react-router-dom';
-import Dashboard from './Dashboard';
-import Products from './Products';
-import CreateProduct from './CreateProduct';
-import ProductDetail from './ProductDetail';
-import EditProduct from './EditProduct';
+import { AdminSidebar } from "@/components/admin/Sidebar";
+import { Routes, Route } from "react-router-dom";
+import Dashboard from "./Dashboard";
+import Products from "./Products";
+import CreateProduct from "./CreateProduct";
+import ProductDetail from "./ProductDetail";
+import EditProduct from "./EditProduct";
 
 const Index = () => {
   return (
