@@ -13,7 +13,7 @@ export interface Module {
   url_contenido: string;
 }
 
-export interface Degree {
+export interface  Subject {
   id: string;
   id_curso: string;
   modulos: string[];
@@ -49,7 +49,7 @@ export interface DashboardStats {
   activeStudents: number;
   totalProducts: number;
   totalRevenue: number;
-  popularProducts: Degree[];
+  popularProducts: Subject[];
 }
 
 export interface ContentItemProps {
@@ -66,10 +66,8 @@ export interface ModuleFormData {
 }
 
 
-export interface DegreeFormData {
-  id: string;
-  titulo: string;
-  descripcion: string;
+export interface SubjectFormData {
+  nombre: string;
   estado: "activo" | "inactivo";
 }
 

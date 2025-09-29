@@ -7,7 +7,7 @@ export const productFormSchema = z.object({
   precio: z.number().min(0, "El precio debe ser positivo"),
   estado: z.enum(["activo", "inactivo"]),
   imagen: z.string().optional(),
-  materias: z.array(z.string()).default([]),
+  materias: z.array(z.string()),
 });
 
 export type ProductFormData = z.infer<typeof productFormSchema>;

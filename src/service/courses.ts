@@ -1,6 +1,7 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
+import type { SubjectFormData } from "@/types/types";
 
 // const API_URL = "https://inee-backend.onrender.com";
 const API_URL = "http://localhost:3000";
@@ -64,14 +65,26 @@ export const CoursesAPI = {
     return res.data;
   },
 
-  createMateria: async (data: Record<string, unknown>) => {
-    const res = await api.post('/materias', data);
-    return res.data;
+  createMateria: async (data: SubjectFormData) => {
+    try {
+      const res = await api.post('/materias', data);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.message || axiosError.message || "Error al crear materia";
+      throw new Error(errorMessage);
+    }
   },
 
-  updateMateria: async (id: string, data: Record<string, unknown>) => {
-    const res = await api.put(`/materias/${id}`, data);
-    return res.data;
+  updateMateria: async (id: string, data: SubjectFormData) => {
+    try {
+      const res = await api.put(`/materias/${id}`, data);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.message || axiosError.message || "Error al actualizar materia";
+      throw new Error(errorMessage);
+    }
   },
 
   deleteMateria: async (id: string) => {

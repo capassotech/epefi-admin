@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Video, FileText, HelpCircle, ImageIcon, File } from "lucide-react";
-import { ContenidoForm, ContentTypeOption } from "@/types/modules";
+import { type ContentTypeOption } from "@/types/modules";
 
 interface ContenidoFormRowProps {
   index: number;

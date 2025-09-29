@@ -9,13 +9,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { Control, FieldValues } from "react-hook-form";
 
-const GeneralInfoForm = ({ control }: any) => {
+interface GeneralInfoFormProps {
+  control: Control<FieldValues>;
+}
+
+const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {
   return (
     <div className="space-y-4">
       <FormField
         control={control}
-        name="title"
+        name="titulo"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Título de la Formación *</FormLabel>
@@ -33,7 +38,7 @@ const GeneralInfoForm = ({ control }: any) => {
 
       <FormField
         control={control}
-        name="description"
+        name="descripcion"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Descripción *</FormLabel>
@@ -72,7 +77,7 @@ const GeneralInfoForm = ({ control }: any) => {
 
         <FormField
           control={control}
-          name="price"
+          name="precio"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Precio *</FormLabel>

@@ -25,7 +25,7 @@ import { CoursesAPI } from "@/service/courses";
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import FeaturesForm from "@/components/product/FeaturesForm";
-import DegreesForm from "@/components/product/DegreesForm";
+import SubjectForm from "@/components/product/SubjectForm";
 import ModulesTab from "@/components/product/ModulesTab";
 import type { ModuloForm } from "@/types/modules";
 
@@ -36,7 +36,7 @@ export default function CreateProduct() {
 
   const [courseCreated, setCourseCreated] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
-  const [createdDegreeId, setCreatedDegreeId] = useState<string | null>(null);
+  const [createdSubjectId, setCreatedSubjectId] = useState<string | null>(null);
   const [modules, setModules] = useState<ModuloForm[]>([]);
 
   const [courseAlreadyCreatedInSession, setCourseAlreadyCreatedInSession] = useState(false);
@@ -48,21 +48,21 @@ export default function CreateProduct() {
       descripcion: "",
       precio: 0,
       estado: "activo",
-      materias: [],
       imagen: "",
+      materias: [],
     },
     mode: "onChange",
   });
 
   useEffect(() => {
     setCourseCreated(false);
-    setCreatedDegreeId(null);
+    setCreatedSubjectId(null);
     setModules([]);
     setCurrentTab(0);
     setCourseAlreadyCreatedInSession(false); 
   }, []);
 
-  const onSubmit = async (data: ProductFormData) => {
+  const createCourse = async (data: ProductFormData) => {
     if (courseAlreadyCreatedInSession) {
       return;
     }
@@ -83,9 +83,8 @@ export default function CreateProduct() {
       const newCourseId = String(response.id);
       setCreatedCourseId(newCourseId);
       setCourseCreated(true);
-      setCurrentTab(3);
       setCourseAlreadyCreatedInSession(true);
-      toast.success("Curso creado. Ahora puedes agregar módulos");
+      toast.success("Curso creado exitosamente");
     } catch (err: unknown) {
       const message = err instanceof Error && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data 
         ? String(err.response.data.message)
@@ -96,43 +95,77 @@ export default function CreateProduct() {
     }
   };
 
-  // const createModule = async (moduleData: ModuloForm) => {
-  //   if (!createdCourseId || createdCourseId.trim() === "") {
-  //     toast.error("El ID del curso no está disponible. Por favor, inténtalo de nuevo.");
-  //     return;
-  //   }
+  const createSubject = async (subjectData: { nombre: string; estado: string }) => {
+    if (!createdCourseId) {
+      toast.error("Primero debes crear el curso");
+      return;
+    }
 
-  //   setLoading(true);
-  //   try {
-  //     const payload = {
-  //       id_curso: createdCourseId,
-  //       titulo: moduleData.titulo,
-  //       descripcion: moduleData.descripcion,
-  //       bibliografia: moduleData.bibliografia,
-  //       url_miniatura: moduleData.url_miniatura,
-  //       url_contenido: moduleData.url_contenido,
-  //       tipo_contenido: moduleData.tipo_contenido,
-  //     };
+    setLoading(true);
+    try {
+      const payload = {
+        nombre: subjectData.nombre,
+        estado: subjectData.estado as "activo" | "inactivo",
+        id_curso: createdCourseId,
+      };
 
-  //     const response = await CoursesAPI.createModule(payload);
+      const response = await CoursesAPI.createMateria(payload);
+      setCreatedSubjectId(response.id);
+      toast.success("Materia creada exitosamente");
+      
+      // Actualizar el curso con la nueva materia
+      const updatedMaterias = [...(form.getValues().materias || []), response.id];
+      form.setValue("materias", updatedMaterias);
+      
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error("Error al crear materia: " + errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  //     setModules((prev) => [...prev, { id: response.id, ...payload }]);
-  //     toast.success("Módulo agregado exitosamente");
-  //   } catch (err: unknown) {
-  //     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-  //     toast.error("Error al crear módulo: " + errorMessage);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  const createModule = async (moduleData: ModuloForm) => {
+    if (!createdSubjectId) {
+      toast.error("Primero debes crear una materia");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        id_materia: createdSubjectId,
+        titulo: moduleData.titulo,
+        descripcion: moduleData.descripcion,
+        bibliografia: moduleData.bibliografia,
+        url_miniatura: moduleData.url_miniatura,
+        url_contenido: moduleData.url_contenido,
+        tipo_contenido: moduleData.tipo_contenido,
+      };
+
+      const response = await CoursesAPI.createModule(payload);
+      setModules((prev) => [...prev, { ...moduleData, id: response.id }]);
+      toast.success("Módulo agregado exitosamente");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      toast.error("Error al crear módulo: " + errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const finalizeCourse = async () => {
     if (!createdCourseId) return;
 
     setLoading(true);
     try {
-      const moduleIds = modules.map((m) => m.id);
-      await CoursesAPI.update(createdCourseId, { id_modulos: moduleIds });
+      // Actualizar el curso con las materias creadas
+      const currentFormData = form.getValues();
+      await CoursesAPI.update(createdCourseId, {
+        ...currentFormData,
+        materias: currentFormData.materias || [],
+      });
+      
       toast.success("Curso completado exitosamente");
       navigate("/products");
     } catch (err) {
@@ -146,7 +179,7 @@ export default function CreateProduct() {
   const tabs = [
     { id: "general", label: "Información General", component: GeneralInfoForm },
     { id: "features", label: "Características", component: FeaturesForm },
-    { id: "materias", label: "Materias", component: DegreesForm },
+    { id: "materias", label: "Materias", component: SubjectForm },
     { id: "modules", label: "Módulos", component: ModulesTab },
   ];
 
@@ -200,16 +233,16 @@ export default function CreateProduct() {
             <button
               key={tab.id}
               onClick={() => setCurrentTab(index)}
-              // disabled={index === 3 && !courseCreated}
-              className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
-                ? "border-blue-500 text-blue-600"
-                : index === 3 && !courseCreated
-                  ? "border-transparent text-gray-300"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                disabled={index === 3 && !createdSubjectId}
+                className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
+                  ? "border-blue-500 text-blue-600"
+                  : index === 3 && !createdSubjectId
+                    ? "border-transparent text-gray-300 cursor-not-allowed"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
             >
               {tab.label}
-              {index === 3 && courseCreated && modules.length > 0 && (
+              {index === 3 && createdSubjectId && modules.length > 0 && (
                 <Badge variant="secondary" className="ml-2">
                   {modules.length}
                 </Badge>
@@ -225,10 +258,16 @@ export default function CreateProduct() {
             <CardContent className="p-6">
               {currentTab === 0 && <GeneralInfoForm control={form.control} />}
               {currentTab === 1 && <FeaturesForm control={form.control} />}
-              {currentTab === 2 && <DegreesForm control={form.control} />}
+              {currentTab === 2 && (
+                <SubjectForm 
+                  control={form.control} 
+                  onSubjectCreated={createSubject}
+                  courseId={createdCourseId}
+                />
+              )}
               {currentTab === 3 && (
                 <ModulesTab
-                  degreeId={createdCourseId}
+                  degreeId={createdSubjectId}
                   modules={modules}
                   onCreateModule={createModule}
                   loading={loading}
@@ -238,7 +277,6 @@ export default function CreateProduct() {
             </CardContent>
           </Card>
 
-          {/* Botones de navegación */}
           <div className="flex justify-between pt-4">
             <Button
               type="button"
@@ -254,32 +292,57 @@ export default function CreateProduct() {
               <Button
                 type="button"
                 onClick={async () => {
-                  if (currentTab === 0 || currentTab === 1) {
+                  if (currentTab === 0) {
                     handleNext();
-                  } else if (currentTab === 2) {
+                  } else if (currentTab === 1) {
                     const isValid = await form.trigger();
                     if (!isValid) {
                       toast.error("Por favor completa todos los campos requeridos.");
                       return;
                     }
-                    await onSubmit(form.getValues());
+                    await createCourse(form.getValues());
+                    if (courseCreated) {
+                      handleNext();
+                    }
+                  } else if (currentTab === 2) {
+                    if (!createdSubjectId) {
+                      toast.error("Primero debes crear una materia antes de continuar.");
+                      return;
+                    }
+                    handleNext();
                   }
                 }}
                 disabled={loading}
               >
-                {loading && currentTab === 2 ? (
+                {loading && currentTab === 1 ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : currentTab === 2 ? (
+                ) : (currentTab === 1 && !courseCreated) ? (
                   <Save className="w-4 h-4 mr-2" />
                 ) : null}
 
-                {currentTab === 0 || currentTab === 1 || currentTab === 2 ? (
+                {currentTab === 0 ? (
                   <>
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
-                ) : currentTab === 3 ? (
-                  "Crear Curso"
+                ) : currentTab === 1 ? (
+                  courseCreated ? (
+                    <>
+                      Siguiente
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  ) : (
+                    "Crear Curso"
+                  )
+                ) : currentTab === 2 ? (
+                  createdSubjectId ? (
+                    <>
+                      Ir a Módulos
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  ) : (
+                    "Crear Materia Primero"
+                  )
                 ) : null}
               </Button>
             ) : (

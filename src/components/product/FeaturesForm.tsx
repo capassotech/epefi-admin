@@ -5,13 +5,18 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
+import type { Control, FieldValues } from "react-hook-form";
 
-const FeaturesForm = ({ control }: any) => {
+interface FeaturesFormProps {
+  control: Control<FieldValues>;
+}
+
+const FeaturesForm = ({ control }: FeaturesFormProps) => {
   return (
     <div className="space-y-4">
       <FormField
         control={control}
-        name="isActive"
+        name="estado"
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
@@ -23,8 +28,8 @@ const FeaturesForm = ({ control }: any) => {
             <FormControl>
               <input
                 type="checkbox"
-                checked={field.value}
-                onChange={field.onChange}
+                checked={field.value === "activo"}
+                onChange={(e) => field.onChange(e.target.checked ? "activo" : "inactivo")}
                 className="h-4 w-4 rounded border-gray-300"
               />
             </FormControl>
