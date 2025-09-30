@@ -19,7 +19,7 @@ export interface Module {
 
 export interface Subject {
   id: string;
-  id_curso: string;
+  id_cursos: string[];
   modulos: string[];
   nombre: string;
 }
@@ -67,11 +67,6 @@ export interface ModuleFormData {
   titulo: string;
   descripcion: string;
   contents: ModuleFormData[];
-}
-
-export interface SubjectFormData {
-  nombre: string;
-  estado: "activo" | "inactivo";
 }
 
 export interface ContentItemFormData {

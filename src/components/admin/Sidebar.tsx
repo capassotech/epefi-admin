@@ -21,6 +21,11 @@ const navigation = [
     icon: Calendar,
   },
   {
+    name: "Materias",
+    href: "/subjects",
+    icon: BookOpen,
+  },
+  {
     name: "Crear formación",
     href: "/products/create",
     icon: Plus,
@@ -42,14 +47,13 @@ export function AdminSidebar() {
     }
   };
 
-  // ✅ Obtener nombre completo y email del usuario
   const userFullName = user ? `${user.nombre} ${user.apellido}` : "Cargando...";
   const userEmail = user?.email || "";
 
   return (
     <div
       className={cn(
-        "flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300",
+        "flex flex-col h-screen sticky top-0 bg-white border-r border-gray-200 transition-all duration-300",
         isCollapsed ? "w-16" : "w-64"
       )}
     >

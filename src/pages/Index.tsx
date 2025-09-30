@@ -5,6 +5,10 @@ import Products from "./Products";
 import CreateProduct from "./CreateProduct";
 import ProductDetail from "./ProductDetail";
 import EditProduct from "./EditProduct";
+import Subjects from "./Subjects";
+import CreateModule from "./CreateModule";
+// import SubjectDetail from "./SubjectDetail";
+// import EditSubject from "./EditSubject";
 
 const Index = () => {
   return (
@@ -17,6 +21,10 @@ const Index = () => {
           <Route path="/products/create" element={<CreateProduct />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/products/:id/edit" element={<EditProduct />} />
+          <Route path="/subjects" element={<Subjects />} />
+          <Route path="/modules/create" element={<CreateModule />} />
+          {/* <Route path="/subjects/:id" element={<SubjectDetail />} />
+          <Route path="/subjects/:id/edit" element={<EditSubject />} /> */}
         </Routes>
       </main>
     </div>

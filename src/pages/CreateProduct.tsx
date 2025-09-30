@@ -25,8 +25,8 @@ import { CoursesAPI } from "@/service/courses";
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import FeaturesForm from "@/components/product/FeaturesForm";
-import SubjectForm from "@/components/product/SubjectForm";
-import ModulesTab from "@/components/product/ModulesTab";
+// import SubjectForm from "@/components/subject/SubjectForm";
+import ModulesTab from "@/components/subject/ModulesTab";
 import type { ModuloForm } from "@/types/modules";
 
 export default function CreateProduct() {

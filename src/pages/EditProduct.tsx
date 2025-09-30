@@ -25,8 +25,8 @@ import {
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import FeaturesForm from "@/components/product/FeaturesForm";
-import ModulesTab from "@/components/product/ModulesTab";
-import type { ModuloForm, ModuleData } from "@/types/modules";
+import ModulesTab from "@/components/subject/ModulesTab";
+import type { ModuloForm } from "@/types/modules";
 
 
 
@@ -38,17 +38,17 @@ export default function EditProduct() {
 
   const [courseCreated, setCourseCreated] = useState(true);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
-  const [modules, setModules] = useState<ModuleData[]>([]);
+  const [modules, setModules] = useState<ModuloForm[]>([]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      price: 0,
-      duration: "",
-      level: "intermedio",
-      modality: "virtual",
+      titulo: "",
+      descripcion: "",
+      precio: 0,
+      duracion: "",
+      nivel: "intermedio",
+      modalidad: "virtual",
       pilar: "liderazgo",
       id_profesor: "",
       imagen: "",
@@ -74,9 +74,9 @@ export default function EditProduct() {
         setCourseCreated(true);
 
         form.reset({
-          title: data.titulo || "",
-          description: data.descripcion || "",
-          price: data.precio || 0,
+          titulo: data.titulo || "",
+          descripcion: data.descripcion || "",
+          precio: data.precio || 0,
           duration: data.duracion?.toString() || "",
           level: data.nivel || "intermedio",
           modality: data.modalidad || "virtual",
@@ -117,11 +117,11 @@ export default function EditProduct() {
 
     const payload = {
       titulo: data.title,
-      descripcion: data.description,
-      precio: data.price,
-      duracion: parseInt(data.duration) || 0,
-      nivel: data.level,
-      modalidad: data.modality,
+      descripcion: data.descripcion,
+      precio: data.precio,
+      duracion: parseInt(data.duracion) || 0,
+      nivel: data.nivel,
+      modalidad: data.modalidad,
       pilar: data.pilar,
       estado: data.isActive ? "activo" : "inactivo",
       imagen: data.imagen || "",

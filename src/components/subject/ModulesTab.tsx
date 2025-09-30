@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge";
 import {
   Plus,
-  BookOpen,
   Video,
   FileText,
   HelpCircle,
@@ -14,10 +13,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { type ModuloForm } from "@/types/modules";
-import ContenidoFormRow from "./ContenidoFormRow";
+// import ContenidoFormRow from "./ContenidoFormRow";
 
 interface ModulesTabProps {
-  degreeId: string | null;
+  subjectId: string | null;
   modules: ModuloForm[];
   onCreateModule: (moduleData: ModuloForm) => Promise<void>;
   loading: boolean;
@@ -27,7 +26,7 @@ interface ModulesTabProps {
 }
 
 export default function ModulesTab({
-  degreeId,
+  subjectId,
   modules,
   onCreateModule,
   loading: externalLoading,
@@ -46,12 +45,6 @@ export default function ModulesTab({
     url_contenido: "",
     tipo_contenido: "video",
   });
-
-  const handleAddContent = () => {
-    setModuleForm((prev) => ({
-      ...prev
-    }));
-  };
 
   const validateModule = (): boolean => {
     if (!moduleForm.titulo.trim()) {
@@ -149,7 +142,7 @@ export default function ModulesTab({
     }
   };
 
-  if (!degreeId) {
+  if (!subjectId) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 mb-4">

@@ -139,17 +139,10 @@ class AuthService {
     }
   }
 
-  // Iniciar sesión
-  // Método login CORREGIDO - Backend primero
   async login(credentials: LoginData): Promise<AuthResponse> {
     try {
-      console.log("🔐 Iniciando login...");
-
-      // 1️⃣ PRIMERO: Llamar al backend
       const response = await api.post("/auth/login", credentials);
-      console.log("✅ Backend respondió:", response.data);
-
-      // 2️⃣ SEGUNDO: Si el backend dice OK, autenticar con Firebase
+      
       if (response.data.user) {
         try {
           await this.authenticateWithFirebase(
@@ -159,7 +152,6 @@ class AuthService {
           console.log("✅ Firebase autenticado");
         } catch (firebaseError) {
           console.warn("⚠️ Error en Firebase, pero backend OK:", firebaseError);
-          // Continuar aunque Firebase falle, porque el backend ya validó
         }
 
         // 3️⃣ Guardar datos del usuario
@@ -190,7 +182,6 @@ class AuthService {
     }
   }
 
-  // Método authenticateWithFirebase
   private async authenticateWithFirebase(
     email: string,
     password: string

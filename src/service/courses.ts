@@ -1,7 +1,7 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
-import type { SubjectFormData } from "@/types/types";
+import type { Subject } from "@/types/types";
 
 // const API_URL = "https://inee-backend.onrender.com";
 const API_URL = "http://localhost:3000";
@@ -65,7 +65,7 @@ export const CoursesAPI = {
     return res.data;
   },
 
-  createMateria: async (data: SubjectFormData) => {
+  createMateria: async (data: Omit<Subject, 'id'>) => {
     try {
       const res = await api.post('/materias', data);
       return res.data;
@@ -76,7 +76,7 @@ export const CoursesAPI = {
     }
   },
 
-  updateMateria: async (id: string, data: SubjectFormData) => {
+  updateMateria: async (id: string, data: Subject) => {
     try {
       const res = await api.put(`/materias/${id}`, data);
       return res.data;
