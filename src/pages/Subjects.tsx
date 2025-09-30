@@ -4,7 +4,7 @@ import { SubjectList } from '../components/subject/SubjectList';
 import CreateSubjectModal from '../components/subject/CreateSubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { CoursesAPI } from "@/service/courses";
-import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
+import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Subject } from '@/types/types';
@@ -17,10 +17,12 @@ export default function Subjects() {
     const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
     useEffect(() => {
         const fetchMaterias = async () => {
@@ -49,6 +51,8 @@ export default function Subjects() {
     const handleConfirmDelete = async () => {
         if (!confirmDeleteId) return;
 
+        setDeleteLoading(true);
+
         try {
             await CoursesAPI.deleteMateria(confirmDeleteId);
 
@@ -59,50 +63,86 @@ export default function Subjects() {
         } finally {
             setIsDeleteModalOpen(false);
             setConfirmDeleteId(null);
+            setDeleteLoading(false);
         }
     };
 
-  const handleCancelDelete = () => {
-    setIsDeleteModalOpen(false);
-    setConfirmDeleteId(null);
-  };
+    const handleCancelDelete = () => {
+        setIsDeleteModalOpen(false);
+        setConfirmDeleteId(null);
+    };
 
-  const handleCreateSubject = async (subjectData: { nombre: string, id_cursos: string[], modulos: string[] }): Promise<Subject> => {
-    try {
-      const payload = {
-        nombre: subjectData.nombre,
-        id_cursos: subjectData.id_cursos,
-        modulos: subjectData.modulos,
-      };
+    const handleCreateSubject = async (subjectData: { nombre: string, id_cursos: string[], modulos: string[] }): Promise<Subject> => {
+        try {
+            const payload = {
+                nombre: subjectData.nombre,
+                id_cursos: subjectData.id_cursos,
+                modulos: subjectData.modulos,
+            };
 
-      const response = await CoursesAPI.createMateria({
-        nombre: payload.nombre,
-        id_cursos: payload.id_cursos,
-        modulos: payload.modulos,
-      });
+            const response = await CoursesAPI.createMateria({
+                nombre: payload.nombre,
+                id_cursos: payload.id_cursos,
+                modulos: payload.modulos,
+            });
 
-      const newSubject: Subject = {
-        id: response.id,
-        nombre: payload.nombre,
-        id_cursos: payload.id_cursos,
-        modulos: payload.modulos,
-      };
+            const newSubject: Subject = {
+                id: response.id,
+                nombre: payload.nombre,
+                id_cursos: payload.id_cursos,
+                modulos: payload.modulos,
+            };
 
-      setMaterias(prev => [newSubject, ...prev]);
-      setFilteredSubjects(prev => [newSubject, ...prev]);
-      
-      toast.success("Materia creada exitosamente");
-      return newSubject;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error("Error al crear materia: " + errorMessage);
-      throw err; 
-    }
-  };
+            setMaterias(prev => [newSubject, ...prev]);
+            setFilteredSubjects(prev => [newSubject, ...prev]);
 
-  const handleCancelCreate = () => {
-    setIsCreateModalOpen(false);
-  };
+            toast.success("Materia creada exitosamente");
+            return newSubject;
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+            toast.error("Error al crear materia: " + errorMessage);
+            throw err;
+        }
+    };
+
+    const handleCancelCreate = () => {
+        setIsCreateModalOpen(false);
+        setEditingSubject(null);
+    };
+
+    const handleEditClick = (subject: Subject) => {
+        setEditingSubject(subject);
+        setIsCreateModalOpen(true);
+    };
+
+    const handleUpdateSubject = async (subjectData: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }): Promise<void> => {
+        try {
+            await CoursesAPI.updateMateria(subjectData.id, {
+                id: subjectData.id,
+                nombre: subjectData.nombre,
+                id_cursos: subjectData.id_cursos,
+                modulos: subjectData.modulos,
+            });
+
+            // Actualizar el estado local
+            setMaterias(prev => prev.map(m => 
+                m.id === subjectData.id 
+                    ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
+                    : m
+            ));
+            setFilteredSubjects(prev => prev.map(m => 
+                m.id === subjectData.id 
+                    ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
+                    : m
+            ));
+
+            toast.success("Materia actualizada exitosamente");
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+            toast.error("Error al actualizar materia: " + errorMessage);
+            throw err;
+        }
+    };
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
@@ -215,12 +255,13 @@ export default function Subjects() {
                                 >
                                     <SubjectCard
                                         subject={m}
+                                        onEdit={handleEditClick}
                                     />
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} />
+                        <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} />
                     )}
                 </>
             ) : (
@@ -230,19 +271,20 @@ export default function Subjects() {
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron materias</h3>
                     <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear una nueva materia.</p>
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="admin-button"
-                        >
-                            Crear primera materia
-                        </button>
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="admin-button cursor-pointer"
+                    >
+                        Crear primera materia
+                    </button>
                 </div>
             )}
 
             <ConfirmDeleteModal
                 isOpen={isDeleteModalOpen}
-                onCancel={handleCancelDelete}  
+                onCancel={handleCancelDelete}
                 onConfirm={handleConfirmDelete}
+                deleteLoading={deleteLoading}
                 itemName={materias.find(m => m.id === confirmDeleteId)?.nombre || "esta materia"}
             />
 
@@ -250,7 +292,9 @@ export default function Subjects() {
                 isOpen={isCreateModalOpen}
                 onCancel={handleCancelCreate}
                 onSubjectCreated={handleCreateSubject}
-                courseId={null} // No specific course for standalone subjects
+                courseId={null} 
+                editingSubject={editingSubject}
+                onSubjectUpdated={handleUpdateSubject}
             />
         </div>
     );

@@ -5,15 +5,16 @@ import { type Subject } from '@/types/types';
 
 interface SubjectCardProps {
   subject: Subject;
+  onEdit?: (subject: Subject) => void;
 }
 
-export function SubjectCard({ subject }: SubjectCardProps) {
+export function SubjectCard({ subject, onEdit }: SubjectCardProps) {
   return (
     <div className="admin-card overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
       {/* Header Icon */}
       <div className="aspect-video bg-gray-200 overflow-hidden">
         <img
-          src={subject.image ?? subject.image ?? '/placeholder.svg'}
+          src={'/placeholder.svg'}
           alt={subject.nombre}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -30,16 +31,13 @@ export function SubjectCard({ subject }: SubjectCardProps) {
         <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
           {subject.nombre}
         </h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-          {subject.modulos.length} modulos
-        </p>
 
         {/* Course Info */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             {subject.id_cursos && (
               <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                Curso: {subject.id_cursos.join(', ')}
+                Curso/s: {subject.id_cursos.join(', ')}
               </span>
             )}
           </div>
@@ -53,15 +51,14 @@ export function SubjectCard({ subject }: SubjectCardProps) {
               Ver Detalles
             </Button>
           </Link>
-          <Link to={`/subjects/${subject.id}/edit`} className="flex-1">
-            <Button
-              variant="default"
-              size="sm"
-              className="w-full"
-            >
-              Editar
-            </Button>
-          </Link>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full flex-1"
+            onClick={() => onEdit?.(subject)}
+          >
+            Editar
+          </Button>
         </div>
       </div>
     </div>

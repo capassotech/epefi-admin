@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Control, FieldValues } from "react-hook-form";
+import type { Control } from "react-hook-form";
 
 interface GeneralInfoFormProps {
-  control: Control<FieldValues>;
+  control: Control<{ titulo: string; descripcion: string; precio: number; estado: "activo" | "inactivo"; materias: string[]; imagen?: string | undefined; }>;
 }
 
 const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {

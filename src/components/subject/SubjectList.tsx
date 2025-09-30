@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
@@ -9,10 +8,10 @@ import { type Subject } from '@/types/types';
 interface SubjectListProps {
   subjects: Subject[];
   onDelete?: (id: string) => void;
+  onEdit?: (subject: Subject) => void;
 }
 
-export const SubjectList = ({ subjects, onDelete }: SubjectListProps) => {
-  const navigate = useNavigate();
+export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -70,7 +69,7 @@ export const SubjectList = ({ subjects, onDelete }: SubjectListProps) => {
                 className="flex items-start px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors duration-150 space-x-4"
               >
                 <img
-                  src={m.image ?? m.image ?? '/placeholder.svg'}
+                  src={'/placeholder.svg'}
                   className="w-24 h-24 object-cover rounded-md border"
                   alt={m.nombre}
                 />
@@ -108,17 +107,10 @@ export const SubjectList = ({ subjects, onDelete }: SubjectListProps) => {
                   <Button
                     size="sm"
                     variant="outline"
+                    className='cursor-pointer'
                     onClick={(e) => {
                       e.stopPropagation();
-                      const id = m.id;
-
-                      if (!id || typeof id !== 'string' || id.trim().length === 0) {
-                        console.error("Materia sin ID válido:", m);
-                        setToast({ message: "Error: Esta materia no tiene un ID válido.", type: 'error' });
-                        return;
-                      }
-
-                      navigate(`/subjects/${encodeURIComponent(id)}/edit`);
+                      onEdit?.(m);
                     }}
                   >
                     Editar
@@ -126,6 +118,7 @@ export const SubjectList = ({ subjects, onDelete }: SubjectListProps) => {
                   <Button
                     size="sm"
                     variant="destructive"
+                    className='cursor-pointer'
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(m.id);

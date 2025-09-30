@@ -3,7 +3,6 @@ import { auth } from "@/firebase";
 import axios from "axios";
 import type { Subject } from "@/types/types";
 
-// const API_URL = "https://inee-backend.onrender.com";
 const API_URL = "http://localhost:3000";
 
 const api = axios.create({
@@ -70,8 +69,8 @@ export const CoursesAPI = {
       const res = await api.post('/materias', data);
       return res.data;
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
-      const errorMessage = axiosError.response?.data?.message || axiosError.message || "Error al crear materia";
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error al crear materia";
       throw new Error(errorMessage);
     }
   },

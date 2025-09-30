@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 
 import {
     Dialog,
@@ -18,7 +18,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { CoursesAPI } from '@/service/courses';
-import { type Course } from '@/types/types';
+import { type Course, type Subject } from '@/types/types';
 
 
 interface CreateSubjectModalProps {
@@ -26,6 +26,8 @@ interface CreateSubjectModalProps {
     onCancel: () => void;
     onSubjectCreated: (subjectData: { nombre: string; id_cursos: string[], modulos: string[] }) => Promise<{ id: string }>;
     courseId?: string | null;
+    editingSubject?: Subject | null;
+    onSubjectUpdated?: (subjectData: { id: string; nombre: string; id_cursos: string[], modulos: string[] }) => Promise<void>;
 }
 
 
@@ -33,34 +35,45 @@ const CreateSubjectModal = ({
     isOpen,
     onCancel,
     courseId,
-    onSubjectCreated
+    onSubjectCreated,
+    editingSubject,
+    onSubjectUpdated
 }: CreateSubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
     const [subjectForm, setSubjectForm] = useState({
         nombre: "",
-        id_cursos: Array.isArray(courseId) ? courseId : courseId ? [courseId] : [],
-        modulos: [],
+        id_cursos: Array.isArray(courseId) ? courseId : courseId ? [courseId] : [] as string[],
+        modulos: [] as string[],
     });
 
     useEffect(() => {
         if (isOpen) {
-            const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
-            setSubjectForm({
-                nombre: "",
-                id_cursos: initialCourses,
-                modulos: [],
-            });
-            setSelectedCourses(initialCourses);
+            if (editingSubject) {
+                setSubjectForm({
+                    nombre: editingSubject.nombre,
+                    id_cursos: editingSubject.id_cursos || [],
+                    modulos: editingSubject.modulos || [],
+                });
+                setSelectedCourses(editingSubject.id_cursos || []);
+            } else {
+                const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
+                setSubjectForm({
+                    nombre: "",
+                    id_cursos: initialCourses,
+                    modulos: [],
+                });
+                setSelectedCourses(initialCourses);
+            }
 
             loadExistingCourses();
         }
-    }, [isOpen, courseId]);
+    }, [isOpen, courseId, editingSubject]);
 
     const loadExistingCourses = async () => {
         const courses = await CoursesAPI.getAll();
-        console.log(courses)
         setCourses(courses);
     };
 
@@ -98,32 +111,47 @@ const CreateSubjectModal = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+        setLoading(true);
         const error = validateForm();
         if (error) {
             alert(error);
+            setLoading(false);
             return;
         }
 
-        const subjectDataToSend = {
-            nombre: subjectForm.nombre,
-            id_cursos: selectedCourses,
-            modulos: subjectForm.modulos,
-        };
+        try {
+            const subjectDataToSend = {
+                nombre: subjectForm.nombre,
+                id_cursos: selectedCourses,
+                modulos: subjectForm.modulos,
+            };
 
-        const res = await onSubjectCreated(subjectDataToSend);
-        
-        const subjectData = {
-            id: res.id,
-            nombre: subjectForm.nombre,
-            id_cursos: selectedCourses,
-            modulos: subjectForm.modulos,
-        };
-        
-        localStorage.setItem('pendingSubjectData', JSON.stringify(subjectData));
-        
-        onCancel();
-        navigate('/modules/create');
+            if (editingSubject && onSubjectUpdated) {
+                await onSubjectUpdated({
+                    id: editingSubject.id,
+                    ...subjectDataToSend
+                });
+                onCancel();
+            } else {
+                const res = await onSubjectCreated(subjectDataToSend);
+                
+                const subjectData = {
+                    id: res.id,
+                    nombre: subjectForm.nombre,
+                    id_cursos: selectedCourses,
+                    modulos: subjectForm.modulos,
+                };
+                
+                localStorage.setItem('pendingSubjectData', JSON.stringify(subjectData));
+                
+                onCancel();
+                navigate('/modules/create');
+            }
+        } catch (error) {
+            console.error('Error al procesar materia:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -137,7 +165,9 @@ const CreateSubjectModal = ({
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex items-center justify-between p-6 border-b">
-                        <h2 className="text-xl font-semibold text-gray-900">Crear Nueva Materia</h2>
+                        <h2 className="text-xl font-semibold text-gray-900">
+                            {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
+                        </h2>
                     </div>
 
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -218,7 +248,6 @@ const CreateSubjectModal = ({
                             </div>
                         )}
 
-                        {/* Actions */}
                         <div className="flex justify-end space-x-3 pt-4 border-t">
                             <Button
                                 type="button"
@@ -228,9 +257,17 @@ const CreateSubjectModal = ({
                                 Cancelar
                             </Button>
                             <Button
+                                className='cursor-pointer'
                                 type="submit"
+                                disabled={loading}
                             >
-                                Continuar con Módulos
+                                {loading ? (
+                                    <Loader2 className='h-4 w-4 animate-spin' />
+                                ) : editingSubject ? (
+                                    'Guardar Cambios'
+                                ) : (
+                                    'Continuar con Módulos'
+                                )}
                             </Button>
                         </div>
                     </form>

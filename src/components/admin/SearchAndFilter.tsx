@@ -103,7 +103,7 @@ export const SearchAndFilter = ({
       {/* Botón crear (opcional) */}
       {!hideCreateButton && onCreateNew && (
         <Button onClick={onCreateNew}>
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4 mr-2 cursor-pointer" />
           {createButtonText}
         </Button>
       )}

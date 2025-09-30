@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { type ModuloForm } from "@/types/modules";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ export default function CreateModule() {
     const navigate = useNavigate();
     const [modules, setModules] = useState<ModuloForm[]>([]);
     const [pendingSubject, setPendingSubject] = useState<PendingSubjectData | null>(null);
+    const [loading, setLoading] = useState(false);
     const [isCreatingSubject, setIsCreatingSubject] = useState(false);
 
     useEffect(() => {
@@ -35,13 +36,19 @@ export default function CreateModule() {
     }, []);
 
     const createModule = async (moduleData: ModuloForm) => {
+        setLoading(true);
         setModules([...modules, moduleData]);
         toast.success('Módulo agregado correctamente');
+        setLoading(false);
     };
 
-    const handleBackToSubjects = () => {
+    const handleBackToSubjects = async () => {
+        setLoading(true);
+        await CoursesAPI.deleteMateria(pendingSubject?.id || '');
+
         localStorage.removeItem('pendingSubjectData');
         navigate('/subjects');
+        setLoading(false);
     };
 
     const handleFinishSubjectCreation = async () => {
@@ -120,9 +127,9 @@ export default function CreateModule() {
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                         <span>Creando módulos para: {pendingSubject.nombre}</span>
-                        <Button onClick={handleBackToSubjects} variant="outline" size="sm">
+                        <Button onClick={handleBackToSubjects} variant="outline" size="sm" className="cursor-pointer" disabled={loading}>
                             <ArrowLeft className="h-4 w-4 mr-2" />
-                            Cancelar
+                            {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : 'Cancelar'}
                         </Button>
                     </CardTitle>
                     <CardDescription>
@@ -138,7 +145,7 @@ export default function CreateModule() {
                             <Button 
                                 onClick={handleFinishSubjectCreation}
                                 disabled={isCreatingSubject}
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 cursor-pointer"
                             >
                                 {isCreatingSubject ? (
                                     <>
