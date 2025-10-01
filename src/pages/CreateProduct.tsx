@@ -24,6 +24,7 @@ import { CoursesAPI } from "@/service/courses";
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import FeaturesForm from "@/components/product/FeaturesForm";
+import SubjectCreation from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ export default function CreateProduct() {
       setCourseCreated(true);
       setCourseAlreadyCreatedInSession(true);
       toast.success("Curso creado exitosamente");
+      handleNext();
     } catch (err: unknown) {
       const message = err instanceof Error && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data
         ? String(err.response.data.message)
@@ -88,6 +90,7 @@ export default function CreateProduct() {
   };
 
   const finalizeCourse = async () => {
+    console.log("createdCourseId", createdCourseId);
     if (!createdCourseId) return;
 
     setLoading(true);
@@ -111,6 +114,7 @@ export default function CreateProduct() {
   const tabs = [
     { id: "general", label: "Información General", component: GeneralInfoForm },
     { id: "features", label: "Características", component: FeaturesForm },
+    { id: "subjects", label: "Materias", component: SubjectCreation },
   ];
 
   const handleNext = () => { if (currentTab < tabs.length - 1) setCurrentTab(currentTab + 1) };
@@ -162,9 +166,10 @@ export default function CreateProduct() {
             <button
               key={tab.id}
               onClick={() => setCurrentTab(index)}
+              disabled={index === 1 && !createdCourseId || index === 2 && !createdCourseId}
               className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
                 ? "border-blue-500 text-blue-600"
-                : index === 1 && !createdCourseId
+                : index === 1 && !createdCourseId || index === 2 && !createdCourseId
                   ? "border-transparent text-gray-300 cursor-not-allowed"
                   : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
@@ -176,11 +181,12 @@ export default function CreateProduct() {
       </div>
 
       <Form {...form}>
-        <form className="space-y-8">
+        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
           <Card>
             <CardContent className="p-6">
               {currentTab === 0 && <GeneralInfoForm control={form.control} />}
               {currentTab === 1 && <FeaturesForm control={form.control} />}
+              {currentTab === 2 && <SubjectCreation control={form.control} courseId={createdCourseId} />}
             </CardContent>
           </Card>
 
@@ -189,13 +195,13 @@ export default function CreateProduct() {
               type="button"
               variant="outline"
               onClick={handleBack}
-              disabled={currentTab === 0 || loading}
+              disabled={currentTab === 0 || loading || currentTab === 2 && !createdCourseId}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Anterior
             </Button>
 
-            {currentTab < 1 ? (
+            {currentTab < 2 && !createdCourseId ? (
               <Button
                 type="button"
                 onClick={async () => {
@@ -207,10 +213,8 @@ export default function CreateProduct() {
                       toast.error("Por favor completa todos los campos requeridos.");
                       return;
                     }
+                    console.log("form.getValues()", form.getValues());
                     await createCourse(form.getValues());
-                    if (courseCreated) {
-                      handleNext();
-                    }
                   }
                 }}
                 disabled={loading}
@@ -221,7 +225,7 @@ export default function CreateProduct() {
                   <Save className="w-4 h-4 mr-2" />
                 ) : null}
 
-                {currentTab === 0 && !courseCreated ? (
+                {currentTab === 0 || currentTab === 1 && !courseCreated ? (
                   <>
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -238,7 +242,7 @@ export default function CreateProduct() {
                 ) : null}
               </Button>
             ) : (
-              <Button onClick={finalizeCourse} disabled={loading}>
+              <Button type="button" onClick={finalizeCourse} disabled={loading}>
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (

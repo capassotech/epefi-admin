@@ -82,25 +82,7 @@ export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) =>
                     >
                       {m.nombre}
                     </Link>
-                    {/* <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${m.id_cursos.length > 0
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                        }`}
-                    >
-                      {m.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                    </span> */}
                   </div>
-
-                  {/* <div className="mt-1 flex items-center text-sm text-gray-500 space-x-4">
-                    <p>📚 Materia</p>
-                    <p>🎯 {m.id_cursos.length > 0 ? 'Activo' : 'Inactivo'}</p>
-                    {m.id_cursos && <p>🎓 Curso: {m.id_cursos.join(', ')}</p>}
-                  </div> */}
-
-                  {/* <div className="mt-2 flex items-center justify-between">
-                    <p className="text-sm text-gray-600 line-clamp-2">{m.modulos.length} modulos</p>
-                  </div> */}
                 </div>
 
                 <div className="flex flex-col space-y-2">

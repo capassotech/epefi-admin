@@ -8,6 +8,7 @@ import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Subject } from '@/types/types';
+import { useNavigate } from 'react-router-dom';
 
 export default function Subjects() {
     const [materias, setMaterias] = useState<Subject[]>([]);
@@ -18,7 +19,7 @@ export default function Subjects() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [deleteLoading, setDeleteLoading] = useState(false);
-
+    const navigate = useNavigate();
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -295,6 +296,9 @@ export default function Subjects() {
                 courseId={null} 
                 editingSubject={editingSubject}
                 onSubjectUpdated={handleUpdateSubject}
+                onGoToModules={async (subjectId: string) => {
+                    navigate(`/modules/create?subjectId=${subjectId}`);
+                }}
             />
         </div>
     );

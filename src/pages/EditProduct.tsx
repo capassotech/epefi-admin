@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,10 @@ import {
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import FeaturesForm from "@/components/product/FeaturesForm";
 import ModulesTab from "@/components/subject/ModulesTab";
+import CreateSubjectModal from "@/components/subject/CreateSubjectModal";
+import SubjectList from "@/components/subject/SubjectList";
 import type { ModuloForm } from "@/types/modules";
+import type { Subject } from "@/types/types";
 
 
 
@@ -39,6 +42,10 @@ export default function EditProduct() {
   const [courseCreated, setCourseCreated] = useState(true);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [modules, setModules] = useState<ModuloForm[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -46,14 +53,9 @@ export default function EditProduct() {
       titulo: "",
       descripcion: "",
       precio: 0,
-      duracion: "",
-      nivel: "intermedio",
-      modalidad: "virtual",
-      pilar: "liderazgo",
-      id_profesor: "",
+      estado: "activo",
       imagen: "",
-      tags: [],
-      isActive: true,
+      materias: [],
     },
     mode: "onChange",
   });
@@ -77,27 +79,31 @@ export default function EditProduct() {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
           precio: data.precio || 0,
-          duration: data.duracion?.toString() || "",
-          level: data.nivel || "intermedio",
-          modality: data.modalidad || "virtual",
-          pilar: data.pilar || "liderazgo",
-          id_profesor: data.id_profesor || "",
+          estado: data.estado || "activo",
           imagen: data.imagen || "",
-          tags: Array.isArray(data.tags) ? data.tags : [],
-          isActive: data.estado === "activo",
+          materias: Array.isArray(data.materias) ? data.materias : [],
         });
 
         if (data.modulos && Array.isArray(data.modulos)) {
           setModules(data.modulos);
         } else if (data.id_modulos && Array.isArray(data.id_modulos)) {
           const modulosPromises = data.id_modulos.map((moduleId: string) =>
-            CoursesAPI.getModuleById(moduleId).catch(err => {
+            CoursesAPI.getModuleById(moduleId).catch(() => {
               console.warn(`Módulo no encontrado: ${moduleId}`);
               return null;
             })
           );
           const modulos = await Promise.all(modulosPromises);
           setModules(modulos.filter(Boolean));
+        }
+
+        // Cargar materias asociadas a este curso
+        try {
+          const allSubjects = await CoursesAPI.getMaterias();
+          const associated = (allSubjects || []).filter((s: Subject) => Array.isArray(s.id_cursos) && s.id_cursos.includes(id));
+          setSubjects(associated);
+        } catch (e) {
+          console.warn("No se pudieron cargar las materias del curso", e);
         }
       } catch (err) {
         console.error(err);
@@ -111,112 +117,70 @@ export default function EditProduct() {
     loadFormacion();
   }, [id, form, navigate]);
 
-  const onSubmit = async (data: ProductFormData) => {
+  const onSubmit = async (data: ProductFormData) => {    
     if (!id) return;
     setLoading(true);
 
     const payload = {
-      titulo: data.title,
+      titulo: data.titulo,
       descripcion: data.descripcion,
       precio: data.precio,
-      duracion: parseInt(data.duracion) || 0,
-      nivel: data.nivel,
-      modalidad: data.modalidad,
-      pilar: data.pilar,
-      estado: data.isActive ? "activo" : "inactivo",
+      estado: data.estado,
       imagen: data.imagen || "",
-      id_profesor: data.id_profesor,
-      tags: data.tags || [],
-      id_modulos: modules.map(m => m.id).filter(id => id != null),
+      materias: data.materias || [],
     };
 
     try {
       await CoursesAPI.update(id, payload);
       toast.success("Formación actualizada correctamente");
       navigate("/products");
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Error al actualizar la formación";
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const message = axiosErr.response?.data?.message || "Error al actualizar la formación";
       toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
-  const createModule = async (moduleData: ModuloForm) => {
-    if (!createdCourseId) return;
-
-    setLoading(true);
+  const handleSubjectCreated = async (payload: { nombre: string; id_cursos: string[]; modulos: string[] }) => {
     try {
-      const payload = {
-        id_curso: createdCourseId,
-        titulo: moduleData.titulo,
-        descripcion: moduleData.descripcion,
-        temas: moduleData.temas,
-        contenido: moduleData.contenido.map((c) => ({
-          titulo: c.titulo,
-          descripcion: c.descripcion,
-          tipo_contenido: c.tipo_contenido,
-          duracion: c.duracion,
-          url_contenido: c.url_contenido,
-          url_miniatura: c.url_miniatura ?? null,
-        })),
-      };
-
-      const response = await CoursesAPI.createModule(payload);
-      setModules((prev) => [...prev, { id: response.id, ...payload }]);
-      toast.success("Módulo agregado exitosamente");
-    } catch (err: unknown) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error("Error al crear módulo: " + errorMessage);
-    } finally {
-      setLoading(false);
+      const created = await CoursesAPI.createMateria({
+        nombre: payload.nombre,
+        id_cursos: payload.id_cursos,
+        modulos: payload.modulos,
+      } as Omit<Subject, 'id'>);
+      setSubjects(prev => [...prev, created]);
+      return { id: created.id };
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al crear materia");
+      throw e;
     }
-  };
+  }
 
-  const editModule = async (moduleId: string, moduleData: ModuloForm) => {
-    if (!createdCourseId) return;
-
-    setLoading(true);
+  const handleSubjectUpdated = async (data: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }) => {
     try {
-      const payload = {
-        id_curso: createdCourseId,
-        titulo: moduleData.titulo,
-        descripcion: moduleData.descripcion,
-        temas: moduleData.temas,
-        contenido: moduleData.contenido.map((c) => ({
-          titulo: c.titulo,
-          descripcion: c.descripcion,
-          tipo_contenido: c.tipo_contenido,
-          duracion: c.duracion,
-          url_contenido: c.url_contenido,
-          url_miniatura: c.url_miniatura ?? null,
-        })),
-      };
-
-      await CoursesAPI.updateModule(moduleId, payload);
-      setModules((prev) =>
-        prev.map((mod) =>
-          mod.id === moduleId ? { ...mod, ...payload } : mod
-        )
-      );
-      toast.success("Módulo actualizado correctamente");
-    } catch (err: unknown) {
-      console.error("Error al actualizar módulo:", err);
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error("Error al actualizar módulo: " + errorMessage);
-    } finally {
-      setLoading(false);
+      await CoursesAPI.updateMateria(data.id, {
+        id: data.id,
+        nombre: data.nombre,
+        id_cursos: data.id_cursos,
+        modulos: data.modulos,
+      } as Subject);
+      setSubjects(prev => prev.map(s => s.id === data.id ? { ...s, nombre: data.nombre, id_cursos: data.id_cursos, modulos: data.modulos } : s));
+      toast.success("Materia actualizada correctamente");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al actualizar la materia");
     }
-  };
+  }
+
 
   const tabs = [
-    { id: "general", label: "Información General", component: GeneralInfoForm },
-    { id: "features", label: "Características", component: FeaturesForm },
-    { id: "modules", label: "Módulos", component: ModulesTab },
-  ];
-
-  const CurrentComponent = tabs[currentTab]?.component;
+    { id: "general", label: "Información General" },
+    { id: "features", label: "Características" },
+    { id: "subjects", label: "Materias" },
+  ] as const;
 
   const handleNext = () => {
     if (currentTab < tabs.length - 1) setCurrentTab(currentTab + 1);
@@ -256,7 +220,7 @@ export default function EditProduct() {
               <CheckCircle className="w-5 h-5 text-green-600" />
               <div>
                 <p className="font-medium text-green-800">Curso cargado exitosamente</p>
-                <p className="text-sm text-green-600">ID: {createdCourseId} | Módulos: {modules.length}</p>
+                <p className="text-sm text-green-600">ID: {createdCourseId}</p>
               </div>
             </div>
           </CardContent>
@@ -286,21 +250,77 @@ export default function EditProduct() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={(e) => {
+          e.preventDefault() 
+          form.handleSubmit(onSubmit)
+        }} className="space-y-8">
           <Card>
             <CardContent className="p-6">
               {currentTab < 2 ? (
-                CurrentComponent && <CurrentComponent control={form.control} />
+                currentTab === 0 ? (
+                  <GeneralInfoForm control={form.control} />
+                ) : (
+                  <FeaturesForm control={form.control} />
+                )
               ) : (
-                <ModulesTab
-                  courseId={createdCourseId}
-                  modules={modules}
-                  onCreateModule={createModule}
-                  loading={loading}
-                  setModules={setModules}
-                  onEditModule={editModule}
-                  mode="edit"
-                />
+                <div className="space-y-4">
+                  <Card>
+                    <CardContent className="p-6 flex justify-between items-center">
+                      <div>
+                        <h1 className="text-base">Materias</h1>
+                        <div className="text-sm text-muted-foreground">
+                          Visualiza y gestiona las materias asociadas a esta formación
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        className="cursor-pointer"
+                        onClick={() => { setEditingSubject(null); setIsSubjectModalOpen(true); }}
+                      >
+                        Agregar Materia
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <SubjectList
+                    subjects={subjects}
+                    onEdit={(subject) => { setEditingSubject(subject); setIsSubjectModalOpen(true); }}
+                    onDelete={async (subjectId: string) => {
+                      try {
+                        await CoursesAPI.deleteMateria(subjectId);
+                        setSubjects(prev => prev.filter(s => s.id !== subjectId));
+                      } catch (e) {
+                        console.error(e);
+                        toast.error("Error al eliminar la materia");
+                      }
+                    }}
+                  />
+
+                  <CreateSubjectModal
+                    isOpen={isSubjectModalOpen}
+                    onCancel={() => setIsSubjectModalOpen(false)}
+                    courseId={createdCourseId ?? undefined}
+                    editingSubject={editingSubject}
+                    onSubjectUpdated={handleSubjectUpdated}
+                    onSubjectCreated={handleSubjectCreated}
+                    onGoToModules={async (subjectId: string) => {
+                      setSelectedSubjectId(subjectId);
+                      navigate(`/modules/create?subjectId=${subjectId}`);
+                      try {
+                        const subj = subjects.find(s => s.id === subjectId);
+                        if (subj && Array.isArray(subj.modulos) && subj.modulos.length > 0) {
+                          const fetched = await CoursesAPI.getModulesByIds(subj.modulos);
+                          setModules(fetched as unknown as ModuloForm[]);
+                        } else {
+                          setModules([]);
+                        }
+                      } catch (e) {
+                        console.error(e);
+                        toast.error("No se pudieron cargar los módulos de la materia");
+                      }
+                    }}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
@@ -316,7 +336,7 @@ export default function EditProduct() {
               Anterior
             </Button>
 
-            {currentTab < 2 ? (
+            {currentTab < 3 ? (
               <Button
                 type="button"
                 onClick={async () => {
@@ -329,6 +349,8 @@ export default function EditProduct() {
                       return;
                     }
                     form.handleSubmit(onSubmit)();
+                  } else if (currentTab === 2) {
+                    handleNext();
                   }
                 }}
                 disabled={loading}
@@ -346,6 +368,11 @@ export default function EditProduct() {
                   </>
                 ) : currentTab === 1 ? (
                   "Actualizar Formación"
+                ) : currentTab === 2 ? (
+                  <>
+                    Siguiente
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
                 ) : null}
               </Button>
             ) : (

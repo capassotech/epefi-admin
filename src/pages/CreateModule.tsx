@@ -1,10 +1,11 @@
 import ModulesTab from "@/components/subject/ModulesTab";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { type ModuloForm } from "@/types/modules";
+import type { Subject } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
 
@@ -17,12 +18,36 @@ interface PendingSubjectData {
 
 export default function CreateModule() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [modules, setModules] = useState<ModuloForm[]>([]);
     const [pendingSubject, setPendingSubject] = useState<PendingSubjectData | null>(null);
+    const [subjectFromQuery, setSubjectFromQuery] = useState<Subject | null>(null);
     const [loading, setLoading] = useState(false);
     const [isCreatingSubject, setIsCreatingSubject] = useState(false);
 
     useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const subjectId = params.get('subjectId');
+
+        if (subjectId) {
+            (async () => {
+                try {
+                    const subject = await CoursesAPI.getMateriaById(subjectId);
+                    setSubjectFromQuery(subject);
+                    if (Array.isArray(subject.modulos) && subject.modulos.length > 0) {
+                        const fetched = await CoursesAPI.getModulesByIds(subject.modulos);
+                        setModules(fetched as unknown as ModuloForm[]);
+                    } else {
+                        setModules([]);
+                    }
+                } catch (e) {
+                    console.error('Error al cargar materia/modulos:', e);
+                    toast.error('No se pudieron cargar los datos de la materia');
+                }
+            })();
+            return;
+        }
+
         const savedSubjectData = localStorage.getItem('pendingSubjectData');
         if (savedSubjectData) {
             try {
@@ -33,22 +58,49 @@ export default function CreateModule() {
                 toast.error('Error al cargar datos de la materia');
             }
         }
-    }, []);
+    }, [location.search]);
 
     const createModule = async (moduleData: ModuloForm) => {
         setLoading(true);
-        setModules([...modules, moduleData]);
-        toast.success('Módulo agregado correctamente');
-        setLoading(false);
+        try {
+            if (subjectFromQuery) {
+                const created = await CoursesAPI.createModule({
+                    ...moduleData,
+                    id_materia: subjectFromQuery.id
+                });
+                const updatedSubject: Subject = {
+                    ...subjectFromQuery,
+                    modulos: [...(subjectFromQuery.modulos || []), created.id]
+                };
+                await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
+                setSubjectFromQuery(updatedSubject);
+                setModules((prev) => [...prev, moduleData]);
+                toast.success('Módulo agregado correctamente');
+            } else if (pendingSubject) {
+                setModules((prev) => [...prev, moduleData]);
+                toast.success('Módulo agregado correctamente');
+            } else {
+                toast.error('No hay materia seleccionada');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al crear módulo');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleBackToSubjects = async () => {
         setLoading(true);
-        await CoursesAPI.deleteMateria(pendingSubject?.id || '');
-
-        localStorage.removeItem('pendingSubjectData');
-        navigate('/subjects');
-        setLoading(false);
+        try {
+            if (pendingSubject && !subjectFromQuery) {
+                await CoursesAPI.deleteMateria(pendingSubject.id);
+                localStorage.removeItem('pendingSubjectData');
+            }
+            navigate('/subjects');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleFinishSubjectCreation = async () => {
@@ -97,7 +149,7 @@ export default function CreateModule() {
         }
     };
 
-    if (!pendingSubject) {
+    if (!pendingSubject && !subjectFromQuery) {
         return (
             <div className="space-y-6">
                 <Card>
@@ -107,7 +159,7 @@ export default function CreateModule() {
                             No hay materia pendiente
                         </CardTitle>
                         <CardDescription>
-                            No se encontraron datos de una materia pendiente para crear módulos.
+                            No se encontró materia para gestionar módulos.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -126,14 +178,24 @@ export default function CreateModule() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                        <span>Creando módulos para: {pendingSubject.nombre}</span>
+                        <span>
+                            {subjectFromQuery ? (
+                                <>Gestionando módulos de: {subjectFromQuery.nombre}</>
+                            ) : (
+                                <>Creando módulos para: {pendingSubject?.nombre}</>
+                            )}
+                        </span>
                         <Button onClick={handleBackToSubjects} variant="outline" size="sm" className="cursor-pointer" disabled={loading}>
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : 'Cancelar'}
                         </Button>
                     </CardTitle>
                     <CardDescription>
-                        Crea los módulos que formarán parte de esta materia. Puedes agregar tantos módulos como necesites.
+                        {subjectFromQuery ? (
+                            <>Agrega o actualiza los módulos de esta materia.</>
+                        ) : (
+                            <>Crea los módulos que formarán parte de esta materia. Puedes agregar tantos módulos como necesites.</>
+                        )}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -141,7 +203,7 @@ export default function CreateModule() {
                         <div className="text-sm text-gray-600">
                             Módulos creados: <span className="font-semibold">{modules.length}</span>
                         </div>
-                        {modules.length > 0 && (
+                        {modules.length > 0 && !subjectFromQuery && (
                             <Button 
                                 onClick={handleFinishSubjectCreation}
                                 disabled={isCreatingSubject}
@@ -164,8 +226,52 @@ export default function CreateModule() {
                 </CardContent>
             </Card>
 
+            {/* Listado de módulos existentes */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Módulos existentes</CardTitle>
+                    <CardDescription>
+                        {modules.length === 0
+                            ? 'Aún no hay módulos para esta materia.'
+                            : 'Visualiza los módulos ya creados para esta materia.'}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {modules.length === 0 ? (
+                        <div className="text-sm text-gray-500">Sin módulos</div>
+                    ) : (
+                        <div className="space-y-3">
+                            {modules.map((m, idx) => (
+                                <div key={idx} className="p-4 border rounded-md">
+                                    <div className="flex items-center justify-between">
+                                        <div className="font-medium">{m.titulo || 'Sin título'}</div>
+                                        <div className="text-xs text-gray-500 capitalize">
+                                            {m.tipo_contenido || 'contenido'}
+                                        </div>
+                                    </div>
+                                    {m.descripcion && (
+                                        <p className="text-sm text-gray-600 mt-1">{m.descripcion}</p>
+                                    )}
+                                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-500">
+                                        {m.bibliografia && (
+                                            <div>Bibliografía: <span className="text-gray-700">{m.bibliografia}</span></div>
+                                        )}
+                                        {m.url_miniatura && (
+                                            <div>Miniatura: <a className="text-blue-600 underline" href={m.url_miniatura} target="_blank" rel="noreferrer">ver</a></div>
+                                        )}
+                                        {m.url_contenido && (
+                                            <div>Contenido: <a className="text-blue-600 underline" href={m.url_contenido} target="_blank" rel="noreferrer">abrir</a></div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
             <ModulesTab 
-                subjectId={pendingSubject.id[0]} 
+                subjectId={(subjectFromQuery?.id) || (pendingSubject?.id ?? null)} 
                 modules={modules} 
                 onCreateModule={createModule} 
                 loading={false}

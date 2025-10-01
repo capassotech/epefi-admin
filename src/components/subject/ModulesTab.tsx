@@ -77,6 +77,7 @@ export default function ModulesTab({
 
   const handleSubmitModule = async () => {
     if (!validateModule()) return;
+    setLoading(true);
 
     const moduleData: ModuloForm = {
       titulo: moduleForm.titulo,
@@ -99,6 +100,8 @@ export default function ModulesTab({
       resetForm();
     } catch (error) {
       console.error("Error al guardar módulo:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -292,6 +295,7 @@ export default function ModulesTab({
                 type="button"
                 onClick={handleSubmitModule}
                 disabled={loading || externalLoading}
+                className="cursor-pointer"
                 size="sm"
               >
                 {(loading || externalLoading) ? (
@@ -305,6 +309,7 @@ export default function ModulesTab({
               <Button
                 variant="outline"
                 onClick={resetForm}
+                className="cursor-pointer"
                 size="sm"
               >
                 Cancelar

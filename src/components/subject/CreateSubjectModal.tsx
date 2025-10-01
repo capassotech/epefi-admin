@@ -28,6 +28,7 @@ interface CreateSubjectModalProps {
     courseId?: string | null;
     editingSubject?: Subject | null;
     onSubjectUpdated?: (subjectData: { id: string; nombre: string; id_cursos: string[], modulos: string[] }) => Promise<void>;
+    onGoToModules?: (subjectId: string, moduleIds: string[]) => void;
 }
 
 
@@ -37,7 +38,8 @@ const CreateSubjectModal = ({
     courseId,
     onSubjectCreated,
     editingSubject,
-    onSubjectUpdated
+    onSubjectUpdated,
+    onGoToModules
 }: CreateSubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
@@ -249,6 +251,15 @@ const CreateSubjectModal = ({
                         )}
 
                         <div className="flex justify-end space-x-3 pt-4 border-t">
+                            {editingSubject && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => onGoToModules?.(editingSubject.id, editingSubject.modulos || []) }
+                                >
+                                    Gestionar módulos
+                                </Button>
+                            )}
                             <Button
                                 type="button"
                                 variant="outline"
