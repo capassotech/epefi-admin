@@ -1,10 +1,13 @@
-import { AdminSidebar } from '@/components/admin/Sidebar';
-import { Routes, Route } from 'react-router-dom';
-import Dashboard from './Dashboard';
-import Products from './Products';
-import CreateProduct from './CreateProduct';
-import ProductDetail from './ProductDetail';
-import EditProduct from './EditProduct';
+import { AdminSidebar } from "@/components/admin/Sidebar";
+import { Routes, Route } from "react-router-dom";
+import Dashboard from "./Dashboard";
+import Products from "./Products";
+import CreateProduct from "./CreateProduct";
+import ProductDetail from "./ProductDetail";
+import EditProduct from "./EditProduct";
+import Subjects from "./Subjects";
+import CreateModule from "./CreateModule";
+import Students from "./Students";
 
 const Index = () => {
   return (
@@ -17,8 +20,10 @@ const Index = () => {
           <Route path="/products/create" element={<CreateProduct />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/products/:id/edit" element={<EditProduct />} />
-          {/* <Route path="/students" element={<div>Students</div>} />
-          <Route path="/students/:id" element={<div>StudentDetail</div>} /> */}
+          <Route path="/subjects" element={<Subjects />} />
+          <Route path="/modules/create" element={<CreateModule />} />
+          <Route path="/students" element={<Students />} />{" "}
+          {/* ← AGREGAR ESTA LÍNEA */}
         </Routes>
       </main>
     </div>
