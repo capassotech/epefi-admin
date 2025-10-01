@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -23,7 +22,6 @@ import { CoursesAPI } from "@/service/courses";
 
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
-import FeaturesForm from "@/components/product/FeaturesForm";
 import SubjectCreation from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
@@ -113,7 +111,6 @@ export default function CreateProduct() {
 
   const tabs = [
     { id: "general", label: "Información General", component: GeneralInfoForm },
-    { id: "features", label: "Características", component: FeaturesForm },
     { id: "subjects", label: "Materias", component: SubjectCreation },
   ];
 
@@ -185,8 +182,7 @@ export default function CreateProduct() {
           <Card>
             <CardContent className="p-6">
               {currentTab === 0 && <GeneralInfoForm control={form.control} />}
-              {currentTab === 1 && <FeaturesForm control={form.control} />}
-              {currentTab === 2 && <SubjectCreation control={form.control} courseId={createdCourseId} />}
+              {currentTab === 1 && <SubjectCreation control={form.control} courseId={createdCourseId} />}
             </CardContent>
           </Card>
 
@@ -201,36 +197,32 @@ export default function CreateProduct() {
               Anterior
             </Button>
 
-            {currentTab < 2 && !createdCourseId ? (
+            {currentTab === 0 && !createdCourseId ? (
               <Button
                 type="button"
+                className="cursor-pointer"
                 onClick={async () => {
-                  if (currentTab === 0) {
-                    handleNext();
-                  } else if (currentTab === 1) {
-                    const isValid = await form.trigger();
-                    if (!isValid) {
-                      toast.error("Por favor completa todos los campos requeridos.");
-                      return;
-                    }
-                    console.log("form.getValues()", form.getValues());
-                    await createCourse(form.getValues());
+                  const isValid = await form.trigger();
+                  if (!isValid) {
+                    toast.error("Por favor completa todos los campos requeridos.");
+                    return;
                   }
+                  await createCourse(form.getValues());
                 }}
                 disabled={loading}
               >
-                {loading && currentTab === 0 ? (
+                {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (currentTab === 0 && !courseCreated) ? (
+                ) : (!courseCreated) ? (
                   <Save className="w-4 h-4 mr-2" />
                 ) : null}
 
-                {currentTab === 0 || currentTab === 1 && !courseCreated ? (
+                {!courseCreated ? (
                   <>
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
-                ) : currentTab === 0 && courseCreated ? (
+                ) : courseCreated ? (
                   courseCreated ? (
                     <>
                       Siguiente

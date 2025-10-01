@@ -81,6 +81,7 @@ export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) =>
                       className="text-lg font-semibold text-gray-900 hover:text-[#7a1a3a] hover:underline transition-colors duration-200 line-clamp-2"
                     >
                       {m.nombre}
+                      <p className='text-sm text-gray-500'>{m.modulos ? m.modulos.length : 0} {m.modulos && m.modulos.length !== 1 ? 'modulos' : 'modulo'}</p>
                     </Link>
                   </div>
                 </div>

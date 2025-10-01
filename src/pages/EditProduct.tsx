@@ -117,7 +117,7 @@ export default function EditProduct() {
     loadFormacion();
   }, [id, form, navigate]);
 
-  const onSubmit = async (data: ProductFormData) => {    
+  const onSubmit = async (data: ProductFormData) => {
     if (!id) return;
     setLoading(true);
 
@@ -133,7 +133,7 @@ export default function EditProduct() {
     try {
       await CoursesAPI.update(id, payload);
       toast.success("Formación actualizada correctamente");
-      navigate("/products");
+      handleNext();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message = axiosErr.response?.data?.message || "Error al actualizar la formación";
@@ -175,10 +175,35 @@ export default function EditProduct() {
     }
   }
 
+  const handleOnGoToModules = async (subjectId: string) => {
+    setSelectedSubjectId(subjectId);
+    navigate(`/modules/create?subjectId=${subjectId}`);
+    try {
+      const subj = subjects.find(s => s.id === subjectId);
+      if (subj && Array.isArray(subj.modulos) && subj.modulos.length > 0) {
+        const fetched = await CoursesAPI.getModulesByIds(subj.modulos);
+        setModules(fetched as unknown as ModuloForm[]);
+      } else {
+        setModules([]);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudieron cargar los módulos de la materia");
+    }
+  }
+
+  const handleOnDeleteSubject = async (subjectId: string) => {
+    try {
+      await CoursesAPI.deleteMateria(subjectId);
+      setSubjects(prev => prev.filter(s => s.id !== subjectId));
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al eliminar la materia");
+    }
+  }
 
   const tabs = [
     { id: "general", label: "Información General" },
-    { id: "features", label: "Características" },
     { id: "subjects", label: "Materias" },
   ] as const;
 
@@ -239,11 +264,6 @@ export default function EditProduct() {
                 }`}
             >
               {tab.label}
-              {index === 2 && modules.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {modules.length}
-                </Badge>
-              )}
             </button>
           ))}
         </nav>
@@ -251,17 +271,13 @@ export default function EditProduct() {
 
       <Form {...form}>
         <form onSubmit={(e) => {
-          e.preventDefault() 
+          e.preventDefault()
           form.handleSubmit(onSubmit)
         }} className="space-y-8">
           <Card>
             <CardContent className="p-6">
-              {currentTab < 2 ? (
-                currentTab === 0 ? (
-                  <GeneralInfoForm control={form.control} />
-                ) : (
-                  <FeaturesForm control={form.control} />
-                )
+              {currentTab < 1 ? (
+                <GeneralInfoForm control={form.control} />
               ) : (
                 <div className="space-y-4">
                   <Card>
@@ -285,15 +301,7 @@ export default function EditProduct() {
                   <SubjectList
                     subjects={subjects}
                     onEdit={(subject) => { setEditingSubject(subject); setIsSubjectModalOpen(true); }}
-                    onDelete={async (subjectId: string) => {
-                      try {
-                        await CoursesAPI.deleteMateria(subjectId);
-                        setSubjects(prev => prev.filter(s => s.id !== subjectId));
-                      } catch (e) {
-                        console.error(e);
-                        toast.error("Error al eliminar la materia");
-                      }
-                    }}
+                    onDelete={handleOnDeleteSubject}
                   />
 
                   <CreateSubjectModal
@@ -303,22 +311,7 @@ export default function EditProduct() {
                     editingSubject={editingSubject}
                     onSubjectUpdated={handleSubjectUpdated}
                     onSubjectCreated={handleSubjectCreated}
-                    onGoToModules={async (subjectId: string) => {
-                      setSelectedSubjectId(subjectId);
-                      navigate(`/modules/create?subjectId=${subjectId}`);
-                      try {
-                        const subj = subjects.find(s => s.id === subjectId);
-                        if (subj && Array.isArray(subj.modulos) && subj.modulos.length > 0) {
-                          const fetched = await CoursesAPI.getModulesByIds(subj.modulos);
-                          setModules(fetched as unknown as ModuloForm[]);
-                        } else {
-                          setModules([]);
-                        }
-                      } catch (e) {
-                        console.error(e);
-                        toast.error("No se pudieron cargar los módulos de la materia");
-                      }
-                    }}
+                    onGoToModules={handleOnGoToModules}
                   />
                 </div>
               )}
@@ -336,44 +329,33 @@ export default function EditProduct() {
               Anterior
             </Button>
 
-            {currentTab < 3 ? (
+            {currentTab === 0 ? (
               <Button
                 type="button"
                 onClick={async () => {
-                  if (currentTab === 0) {
-                    handleNext();
-                  } else if (currentTab === 1) {
-                    const isValid = await form.trigger();
-                    if (!isValid) {
-                      toast.error("Por favor completa todos los campos requeridos.");
-                      return;
-                    }
-                    form.handleSubmit(onSubmit)();
-                  } else if (currentTab === 2) {
-                    handleNext();
+                  const isValid = await form.trigger();
+                  if (!isValid) {
+                    toast.error("Por favor completa todos los campos requeridos.");
+                    return;
                   }
+                  form.handleSubmit(onSubmit)();
                 }}
                 disabled={loading}
               >
-                {loading && currentTab === 1 ? (
+                {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : currentTab === 1 ? (
+                ) : (
                   <Save className="w-4 h-4 mr-2" />
-                ) : null}
+                )}
 
                 {currentTab === 0 ? (
                   <>
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
-                ) : currentTab === 1 ? (
+                ) : (
                   "Actualizar Formación"
-                ) : currentTab === 2 ? (
-                  <>
-                    Siguiente
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                ) : null}
+                )}
               </Button>
             ) : (
               <Button onClick={form.handleSubmit(onSubmit)} disabled={loading}>
