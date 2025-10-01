@@ -1,6 +1,6 @@
 // src/components/admin/DashboardStats.tsx
 import { type DashboardStats } from "@/types/types";
-import { Users, BookOpen, DollarSign } from "lucide-react";
+import { Users, BookOpen } from "lucide-react";
 
 interface DashboardStatsProps {
   stats: DashboardStats;
@@ -21,13 +21,6 @@ export function DashboardStatsComponent({ stats }: DashboardStatsProps) {
       subtitle: "Total de formaciones",
       icon: BookOpen,
       color: "purple",
-    },
-    {
-      title: "Ingresos",
-      value: `$${stats.totalRevenue.toLocaleString()}`,
-      subtitle: "Total generado",
-      icon: DollarSign,
-      color: "green",
     },
   ];
 
