@@ -19,7 +19,7 @@ import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
 
 
-export default function SubjectCreation({ courseId }: { courseId?: string | null }) {
+export default function SubjectCreation({ courseId, setNewSubjects }: { courseId?: string | null, setNewSubjects: (newSubjects: boolean) => void }) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
@@ -130,10 +130,12 @@ export default function SubjectCreation({ courseId }: { courseId?: string | null
                 })
             );
             toast.success("Materias asociadas al curso");
+            setNewSubjects(true);
             // Refresh lists
             const refreshed = await CoursesAPI.getMaterias();
             setAllSubjects(Array.isArray(refreshed) ? refreshed : []);
             setSelectedSubjects([]);
+            setNewSubjects(false);
         } catch (e) {
             console.error(e);
             toast.error("Error al asociar materias");

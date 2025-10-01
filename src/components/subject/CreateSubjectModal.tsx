@@ -113,6 +113,7 @@ const CreateSubjectModal = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
         setLoading(true);
         const error = validateForm();
         if (error) {
