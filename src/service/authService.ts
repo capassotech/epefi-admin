@@ -16,7 +16,7 @@ import type {
   UserProfile,
 } from "../types/types";
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = "https://epefi-backend.onrender.com";
 const FRONTEND_URL =
   import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";
 
@@ -142,7 +142,7 @@ class AuthService {
   async login(credentials: LoginData): Promise<AuthResponse> {
     try {
       const response = await api.post("/auth/login", credentials);
-      
+
       if (response.data.user) {
         try {
           await this.authenticateWithFirebase(

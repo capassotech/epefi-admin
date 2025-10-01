@@ -7,8 +7,7 @@ import ProductDetail from "./ProductDetail";
 import EditProduct from "./EditProduct";
 import Subjects from "./Subjects";
 import CreateModule from "./CreateModule";
-// import SubjectDetail from "./SubjectDetail";
-// import EditSubject from "./EditSubject";
+import Students from "./Students";
 
 const Index = () => {
   return (
@@ -23,8 +22,8 @@ const Index = () => {
           <Route path="/products/:id/edit" element={<EditProduct />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/modules/create" element={<CreateModule />} />
-          {/* <Route path="/subjects/:id" element={<SubjectDetail />} />
-          <Route path="/subjects/:id/edit" element={<EditSubject />} /> */}
+          <Route path="/students" element={<Students />} />{" "}
+          {/* ← AGREGAR ESTA LÍNEA */}
         </Routes>
       </main>
     </div>

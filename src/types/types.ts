@@ -36,24 +36,47 @@ export interface Course {
 
 export interface Student {
   id: string;
-  name: string;
   email: string;
+  nombre: string;
   apellido: string;
-  fechaActualizacion: string;
-  fechaRegistro: string;
-  activo: boolean;
+  dni: string;
   role: {
     admin: boolean;
     student: boolean;
   };
+  fechaRegistro: FirestoreTimestamp;
+  fechaActualizacion?: FirestoreTimestamp;
+  fechaUltimoAcceso?: FirestoreTimestamp;
+  activo: boolean;
+  emailVerificado?: boolean;
+  cursos_asignados?: string[] | string;
+  fechaCreacion?: FirestoreTimestamp;
+}
+
+// ✅ NUEVA INTERFAZ USER
+export interface User {
+  id: string;
+  uid: string;
+  email: string;
+  name?: string;
+  nombre?: string;
+  apellido?: string;
+  photoURL?: string;
+  role: "admin" | "user";
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  fechaRegistro?: FirestoreTimestamp | string;
+  fechaActualizacion?: FirestoreTimestamp | string;
 }
 
 export interface DashboardStats {
   totalStudents: number;
-  activeStudents: number;
+  popularProducts: Subject[];
+  totalUsers: number;
   totalProducts: number;
   totalRevenue: number;
-  popularProducts: Subject[];
+  activeUsers: number;
 }
 
 export interface ContentItemProps {
