@@ -84,7 +84,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <Link
-                      to={`/admin/formaciones/${encodeURIComponent(f.id)}`}
+                      to={`/products/${encodeURIComponent(f.id)}`}
                       className="text-lg font-semibold text-gray-900 hover:text-[#7a1a3a] hover:underline transition-colors duration-200 line-clamp-2"
                     >
                       {f.titulo}

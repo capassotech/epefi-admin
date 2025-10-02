@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PencilIcon } from 'lucide-react';
+import { Loader2, PencilIcon } from 'lucide-react';
 import {
   ArrowLeft,
   Clock,
@@ -15,39 +15,16 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
+import type { Course, Subject } from '@/types/types';
 
-interface Formacion {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  precio: number;
-  duracion: number;
-  nivel: string;
-  modalidad: string;
-  pilar: string;
-  estado: 'activo' | 'inactivo';
-  imagen: string;
-  id_profesor: string;
-  tags: string[];
-  id_modulos: string[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-interface Modulo {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  duracion?: number;
-}
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [formacion, setFormacion] = useState<Formacion | null>(null);
-  const [modulos, setModulos] = useState<Modulo[]>([]); 
+  const [formacion, setFormacion] = useState<Course | null>(null);
+  const [materias, setMaterias] = useState<Subject[]>([]); 
   const [loading, setLoading] = useState(true);
-  const [loadingModulos, setLoadingModulos] = useState(false);
+  const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,15 +39,15 @@ const ProductDetail = () => {
         const data = await CoursesAPI.getById(id);
         setFormacion(data);
 
-        if (data.id_modulos && data.id_modulos.length > 0) {
-          setLoadingModulos(true);
+        if (data.materias && data.materias.length > 0) {
+          setLoadingMaterias(true);
           try {
-            const modulosData = await CoursesAPI.getModulesByIds(data.id_modulos);
-            setModulos(modulosData);
+            const materiasData = await CoursesAPI.getMateriasByIds(data.materias);
+            setMaterias(materiasData);
           } catch (moduloError) {
-            console.error("⚠️ Error al cargar módulos:", moduloError);
+            console.error("⚠️ Error al cargar materias:", moduloError);
           } finally {
-            setLoadingModulos(false);
+            setLoadingMaterias(false);
           }
         }
       } catch (error: any) {
@@ -84,16 +61,20 @@ const ProductDetail = () => {
     fetchData();
   }, [id]);
 
-  if (loading) return <div className="p-6">Cargando...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="h-8 w-8 animate-spin" />
+    </div>
+  );
+
   if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
   if (!formacion) return <div className="p-6">No se encontró la formación</div>;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className='cursor-pointer'>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
@@ -101,14 +82,14 @@ const ProductDetail = () => {
         </div>
         <Button
           variant="outline"
-          onClick={() => navigate(`/admin/formaciones/editar/${encodeURIComponent(formacion.id)}`)}
+          className='cursor-pointer'
+          onClick={() => navigate(`/products/${encodeURIComponent(formacion.id)}/edit`)}
         >
           <PencilIcon className="w-4 h-4 mr-2" />
           Editar
         </Button>
       </div>
 
-      {/* Imagen */}
       {formacion.imagen && (
         <Card>
           <CardHeader>
@@ -119,7 +100,7 @@ const ProductDetail = () => {
           </CardHeader>
           <CardContent>
             <img
-              src={formacion.imagen}
+              src={formacion.imagen ?? formacion.imagen ?? '/placeholder.svg'}
               alt={formacion.titulo}
               className="max-w-full h-auto rounded-lg border"
             />
@@ -127,7 +108,6 @@ const ProductDetail = () => {
         </Card>
       )}
 
-      {/* Descripción */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -140,7 +120,6 @@ const ProductDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Detalles */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -151,31 +130,9 @@ const ProductDetail = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="flex items-center">
-                <Clock className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Duración:</strong> {formacion.duracion} horas
-              </p>
               <p className="flex items-center mt-2">
                 <Users className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Nivel:</strong> {formacion.nivel || "N/A"}
-              </p>
-              <p className="flex items-center mt-2">
-                <DollarSign className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Precio:</strong> ${formacion.precio.toFixed(2)}
-              </p>
-              <p className="flex items-center mt-2">
-                <Building className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Modalidad:</strong> {formacion.modalidad || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="flex items-center">
-                <Tag className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Pilar:</strong> {formacion.pilar || "N/A"}
-              </p>
-              <p className="flex items-center mt-2">
-                <Users className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>ID Profesor:</strong> {formacion.id_profesor || "N/A"}
+                <p><strong>Precio de la formación:</strong> <span className='text-gray-500'>${formacion.precio || "N/A"}</span></p>
               </p>
               <p className="flex items-center mt-2">
                 <Tag className="w-4 h-4 mr-2 text-gray-500" />
@@ -189,71 +146,29 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          {/* ➕ Sección de Módulos */}
-          {formacion.id_modulos && formacion.id_modulos.length > 0 && (
+          {formacion.materias && formacion.materias.length > 0 && (
             <div className="mt-6 pt-4 border-t">
               <CardTitle className="flex items-center mb-3">
                 <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
-                Módulos ({formacion.id_modulos.length})
+                Materias ({formacion.materias.length})
               </CardTitle>
-              {loadingModulos ? (
-                <p>Cargando módulos...</p>
-              ) : modulos.length > 0 ? (
+              {loadingMaterias ? (
+                <p>Cargando materias...</p> 
+              ) : materias.length > 0 ? (
                 <div className="space-y-3">
-                  {modulos.map((modulo) => (
+                  {materias.map((materia) => (
                     <div
-                      key={modulo.id}
+                      key={materia.id}
                       className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
                     >
-                      <h4 className="font-semibold text-lg">{modulo.nombre}</h4>
-                      {modulo.descripcion && (
-                        <p className="text-gray-700 mt-1 text-sm">{modulo.descripcion}</p>
-                      )}
-                      {modulo.duracion && (
-                        <p className="text-gray-500 text-xs mt-1">
-                          Duración: {modulo.duracion} horas
-                        </p>
-                      )}
+                      <h4 className="font-semibold text-lg">Nombre: {materia.nombre}</h4>
+                      <p>Cantidad de modulos: {materia.modulos.length}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">No se pudieron cargar los detalles de los módulos.</p>
+                <p className="text-gray-500">No se pudieron cargar los detalles de las materias.</p>
               )}
-            </div>
-          )}
-
-          {/* Etiquetas */}
-          {formacion.tags && formacion.tags.length > 0 && (
-            <div className="mt-6 pt-4 border-t">
-              <p className="flex items-center">
-                <Tag className="w-4 h-4 mr-2 text-gray-500" />
-                <strong>Etiquetas:</strong>
-              </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formacion.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Fechas */}
-          {(formacion.createdAt || formacion.updatedAt) && (
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-sm text-gray-500">
-                {formacion.createdAt && (
-                  <>Creado: {new Date(formacion.createdAt).toLocaleString()} </>
-                )}
-                {formacion.updatedAt && (
-                  <> • Actualizado: {new Date(formacion.updatedAt).toLocaleString()}</>
-                )}
-              </p>
             </div>
           )}
         </CardContent>

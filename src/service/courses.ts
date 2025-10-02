@@ -59,6 +59,23 @@ export const CoursesAPI = {
     return res.data;
   },
 
+  getMateriasByIds: async (ids: string[]) => {
+    if (!ids || ids.length === 0) return [];
+    const materias: Subject[] = [];
+
+    try {
+      for (const id of ids) {
+        const res = await api.get(`/materias/${id}`);
+        materias.push(res.data);
+      }
+      return materias;
+
+    } catch (error) {
+      console.error("Error al cargar materias:", error);
+      throw new Error("Error al cargar materias");
+    }
+  },
+
   getMaterias: async () => {
     const res = await api.get('/materias');
     return res.data;
