@@ -16,7 +16,7 @@ const navigation = [
     icon: Users,
   },
   {
-    name: "Formaciones",
+    name: "Cursos",
     href: "/products",
     icon: Calendar,
   },
