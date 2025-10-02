@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import CreateSubjectModal from "../subject/CreateSubjectModal";
+import SubjectModal from "../subject/SubjectModal";
 import { useEffect, useMemo, useState } from "react";
 import { type Subject } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
@@ -217,7 +217,7 @@ export default function SubjectCreation({ courseId, setNewSubjects }: { courseId
                 </CardContent>
             </Card>
 
-            <CreateSubjectModal
+            <SubjectModal
                 isOpen={isCreateModalOpen}
                 onCancel={handleCancelCreate}
                 onSubjectCreated={handleCreateSubject}

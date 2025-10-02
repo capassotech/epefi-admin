@@ -21,7 +21,7 @@ import { CoursesAPI } from '@/service/courses';
 import { type Course, type Subject } from '@/types/types';
 
 
-interface CreateSubjectModalProps {
+interface SubjectModalProps {
     isOpen: boolean;
     onCancel: () => void;
     onSubjectCreated: (subjectData: { nombre: string; id_cursos: string[], modulos: string[] }) => Promise<{ id: string }>;
@@ -32,7 +32,7 @@ interface CreateSubjectModalProps {
 }
 
 
-const CreateSubjectModal = ({
+const SubjectModal = ({
     isOpen,
     onCancel,
     courseId,
@@ -40,7 +40,7 @@ const CreateSubjectModal = ({
     editingSubject,
     onSubjectUpdated,
     onGoToModules
-}: CreateSubjectModalProps) => {
+}: SubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -301,4 +301,4 @@ const CreateSubjectModal = ({
     );
 };
 
-export default CreateSubjectModal;
+export default SubjectModal;

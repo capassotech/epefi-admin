@@ -135,6 +135,7 @@ export const CoursesAPI = {
   createModule: async (data: Record<string, unknown>) => {
     try {
       const res = await api.post('/modulos', data);
+      console.log(res.data);
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } }; message?: string };

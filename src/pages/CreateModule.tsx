@@ -1,14 +1,14 @@
-import ModulesTab from "@/components/subject/ModulesTab";
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
-import { type ModuloForm } from "@/types/modules";
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Plus } from "lucide-react";
 import type { Module, Subject } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
 import ModulesList from "@/components/subject/ModulesList";
+import ModulesModal from "@/components/subject/ModulesModal";
+import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 
 interface PendingSubjectData {
     id: string;
@@ -20,11 +20,16 @@ interface PendingSubjectData {
 export default function CreateModule() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [modules, setModules] = useState<ModuloForm[]>([]);
+    const [modules, setModules] = useState<Module[]>([]);
     const [pendingSubject, setPendingSubject] = useState<PendingSubjectData | null>(null);
     const [subjectFromQuery, setSubjectFromQuery] = useState<Subject | null>(null);
     const [loading, setLoading] = useState(false);
     const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingSubject, setEditingSubject] = useState<Module | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -37,7 +42,7 @@ export default function CreateModule() {
                     setSubjectFromQuery(subject);
                     if (Array.isArray(subject.modulos) && subject.modulos.length > 0) {
                         const fetched = await CoursesAPI.getModulesByIds(subject.modulos);
-                        setModules(fetched as unknown as ModuloForm[]);
+                        setModules(fetched);
                     } else {
                         setModules([]);
                     }
@@ -61,31 +66,33 @@ export default function CreateModule() {
         }
     }, [location.search]);
 
-    const createModule = async (moduleData: ModuloForm) => {
+    const createModule = async (moduleData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<{ id: string }> => {
         setLoading(true);
         try {
             if (subjectFromQuery) {
-                const created = await CoursesAPI.createModule({
-                    ...moduleData,
-                    id_materia: subjectFromQuery.id
-                });
+                const created = await CoursesAPI.createModule(moduleData);
                 const updatedSubject: Subject = {
                     ...subjectFromQuery,
                     modulos: [...(subjectFromQuery.modulos || []), created.id]
                 };
                 await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
                 setSubjectFromQuery(updatedSubject);
-                setModules((prev) => [...prev, moduleData]);
+                setModules((prev) => [...prev, { id: created.id, ...moduleData } as Module]);
                 toast.success('Módulo agregado correctamente');
+                return { id: created.id };
             } else if (pendingSubject) {
-                setModules((prev) => [...prev, moduleData]);
+                const tempId = `temp-${Date.now()}`;
+                setModules((prev) => [...prev, { id: tempId, ...moduleData } as Module]);
                 toast.success('Módulo agregado correctamente');
+                return { id: tempId };
             } else {
                 toast.error('No hay materia seleccionada');
+                return { id: '' };
             }
         } catch (e) {
             console.error(e);
             toast.error('Error al crear módulo');
+            throw e as Error;
         } finally {
             setLoading(false);
         }
@@ -147,6 +154,78 @@ export default function CreateModule() {
             toast.error('Error al crear la materia y módulos');
         } finally {
             setIsCreatingSubject(false);
+        }
+    };
+
+    const handleCancelCreate = () => {
+        setIsCreateModalOpen(false);
+        setEditingSubject(null);
+    };
+
+    const handleModuleCreated = async (moduleData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<{ id: string }> => {
+        const res = await createModule(moduleData);
+        setIsCreateModalOpen(false);
+        return res;
+    };
+
+    const handleModuleUpdated = async (moduleData: { id: string; titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }) => {
+        if (moduleData.id.startsWith('temp-')) {
+            // Solo actualiza local si es temporal
+            setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
+        } else {
+            await CoursesAPI.updateModule(moduleData.id, {
+                titulo: moduleData.titulo,
+                descripcion: moduleData.descripcion,
+                id_materia: moduleData.id_materia,
+                tipo_contenido: moduleData.tipo_contenido,
+                bibliografia: moduleData.bibliografia,
+                url_miniatura: moduleData.url_miniatura,
+                url_contenido: moduleData.url_contenido,
+            });
+            setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
+        }
+        setEditingSubject(null);
+        setIsCreateModalOpen(false);
+    };
+
+    const handleDeleteClick = (id: string) => {
+        setConfirmDeleteId(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleEditClick = (module: Module) => {
+        setEditingSubject(module);
+        setIsCreateModalOpen(true);
+    };
+
+    const handleCancelDelete = () => {
+        setIsDeleteModalOpen(false);
+        setConfirmDeleteId(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!confirmDeleteId) return;
+        setDeleteLoading(true);
+        try {
+            if (!confirmDeleteId.startsWith('temp-')) {
+                await CoursesAPI.deleteModule(confirmDeleteId);
+                if (subjectFromQuery) {
+                    const updatedSubject: Subject = {
+                        ...subjectFromQuery,
+                        modulos: (subjectFromQuery.modulos || []).filter(mid => mid !== confirmDeleteId),
+                    };
+                    await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
+                    setSubjectFromQuery(updatedSubject);
+                }
+            }
+            setModules(prev => prev.filter(m => m.id !== confirmDeleteId));
+        } catch (e) {
+            console.error('Error al eliminar módulo:', e);
+            toast.error('No se pudo eliminar el módulo');
+        } finally {
+            setDeleteLoading(false);
+            setIsDeleteModalOpen(false);
+            setConfirmDeleteId(null);
         }
     };
 
@@ -227,33 +306,49 @@ export default function CreateModule() {
                 </CardContent>
             </Card>
 
-            {/* Listado de módulos existentes */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Módulos existentes</CardTitle>
-                    <CardDescription>
-                        {modules.length === 0
-                            ? 'Aún no hay módulos para esta materia.'
-                            : 'Visualiza los módulos ya creados para esta materia.'}
-                    </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Módulos existentes</CardTitle>
+                        <CardDescription>
+                            {modules.length === 0
+                                ? 'Aún no hay módulos para esta materia.'
+                                : 'Visualiza los módulos ya creados para esta materia.'}
+                        </CardDescription>
+                    </div>
+                    <div>
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="cursor-pointer">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Crear módulo
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {modules.length === 0 ? (
                         <div className="text-sm text-gray-500">Sin módulos</div>
                     ) : (
                         <div className="space-y-3">
-                            <ModulesList modules={modules as unknown as Module[]} />
+                            <ModulesList modules={modules} onDelete={handleDeleteClick} onEdit={handleEditClick} />
                         </div>
                     )}
                 </CardContent>
             </Card>
+            
+            <ModulesModal
+                isOpen={isCreateModalOpen}
+                onCancel={handleCancelCreate}
+                onModuleCreated={handleModuleCreated}
+                courseId={subjectFromQuery?.id || pendingSubject?.id}
+                editingModule={editingSubject}
+                onModuleUpdated={handleModuleUpdated}
+            />
 
-            <ModulesTab 
-                subjectId={(subjectFromQuery?.id) || (pendingSubject?.id ?? null)} 
-                modules={modules} 
-                onCreateModule={createModule} 
-                loading={false}
-                setModules={setModules}
+            <ConfirmDeleteModal
+                isOpen={isDeleteModalOpen}
+                onCancel={handleCancelDelete}
+                onConfirm={handleConfirmDelete}
+                deleteLoading={deleteLoading}
+                itemName={modules.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
             />
         </div>
     );
