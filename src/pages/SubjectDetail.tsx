@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Module, Subject } from '@/types/types';
+import ModulesList from '@/components/subject/ModulesList';
 
 
 export const SubjectDetail = () => {
@@ -79,14 +80,6 @@ export const SubjectDetail = () => {
                     </Button>
                     <h1 className="text-3xl font-bold text-gray-900">{materia.nombre}</h1>
                 </div>
-                {/* <Button
-                    variant="outline"
-                    className='cursor-pointer'
-                    onClick={() => navigate(`/products/${encodeURIComponent(materia.id)}/edit`)}
-                >
-                    <PencilIcon className="w-4 h-4 mr-2" />
-                    Editar
-                </Button> */}
             </div>
 
             {materia.imagen && (
@@ -124,17 +117,18 @@ export const SubjectDetail = () => {
                             {loadingModulos ? (
                                 <p>Cargando materias...</p>
                             ) : modulos.length > 0 ? (
-                                <div className="space-y-3">
-                                    {modulos.map((modulo) => (
-                                        <div
-                                            key={modulo.id}
-                                            className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
-                                        >
-                                            <h4 className="font-semibold text-lg">Nombre: {modulo.titulo}</h4>
-                                            <p>Descripcion: {modulo.descripcion}</p>
-                                        </div>
-                                    ))}
-                                </div>
+                                // <div className="space-y-3">
+                                //     {modulos.map((modulo) => (
+                                //         <div
+                                //             key={modulo.id}
+                                //             className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
+                                //         >
+                                //             <h4 className="font-semibold text-lg">Nombre: {modulo.titulo}</h4>
+                                //             <p>Descripcion: {modulo.descripcion}</p>
+                                //         </div>
+                                //     ))}
+                                // </div>
+                                <ModulesList modules={modulos} />
                             ) : (
                                 <p className="text-gray-500">No se pudieron cargar los detalles de los modulos.</p>
                             )}

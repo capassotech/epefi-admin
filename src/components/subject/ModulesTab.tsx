@@ -165,7 +165,7 @@ export default function ModulesTab({
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Módulos del Curso</h3>
-        <Button type="button" onClick={() => setShowForm(!showForm)}>
+        <Button type="button" className="cursor-pointer" onClick={() => setShowForm(!showForm)}>
           <Plus className="w-4 h-4 mr-2" />
           Agregar Módulo
         </Button>

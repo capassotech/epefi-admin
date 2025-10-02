@@ -23,7 +23,7 @@ const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {
         name="titulo"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Título de la Formación *</FormLabel>
+            <FormLabel>Título del Curso *</FormLabel>
             <FormControl>
               <Input
                 placeholder="Ej: Curso de Liderazgo Empresarial"

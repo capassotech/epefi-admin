@@ -71,7 +71,7 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Actions */}
         <div className="flex space-x-2">
           <Link to={`/products/${product.id}`} className="flex-1">
-            <Button variant="outline" size="sm" className="w-full">
+            <Button variant="outline" size="sm" className="w-full cursor-pointer">
               Ver Detalles
             </Button>
           </Link>
@@ -79,6 +79,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <Button
               variant="default"
               size="sm"
+              className='cursor-pointer'
               onClick={() => {
 
               }}

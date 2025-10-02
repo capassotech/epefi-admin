@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, X } from 'lucide-react';
 
@@ -45,6 +45,7 @@ const CreateSubjectModal = ({
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const location = useLocation();
     const [subjectForm, setSubjectForm] = useState({
         nombre: "",
         id_cursos: Array.isArray(courseId) ? courseId : courseId ? [courseId] : [] as string[],
@@ -113,7 +114,7 @@ const CreateSubjectModal = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         setLoading(true);
         const error = validateForm();
         if (error) {
@@ -137,16 +138,16 @@ const CreateSubjectModal = ({
                 onCancel();
             } else {
                 const res = await onSubjectCreated(subjectDataToSend);
-                
+
                 const subjectData = {
                     id: res.id,
                     nombre: subjectForm.nombre,
                     id_cursos: selectedCourses,
                     modulos: subjectForm.modulos,
                 };
-                
+
                 localStorage.setItem('pendingSubjectData', JSON.stringify(subjectData));
-                
+
                 onCancel();
                 navigate('/modules/create');
             }
@@ -193,61 +194,72 @@ const CreateSubjectModal = ({
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Curso/s asociado/s
-                            </label>
-                            <Select onValueChange={handleCourseSelect}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Seleccionar cursos..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {courses
-                                        .filter(course => !selectedCourses.includes(course.id))
-                                        .map((course) => (
-                                            <SelectItem key={course.id} value={course.id}>
-                                                {course.titulo}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
-                            
-                            {/* Mostrar cursos seleccionados */}
-                            {selectedCourses.length > 0 && (
-                                <div className="mt-3">
-                                    <p className="text-sm text-gray-600 mb-2">Cursos seleccionados:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedCourses.map((courseId) => (
-                                            <Badge key={courseId} variant="secondary" className="flex items-center gap-1">
-                                                {getCourseName(courseId)}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCourseRemove(courseId)}
-                                                    className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        {!location.pathname.includes('products') ? (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Curso/s asociado/s
+                                    </label>
+                                    <Select onValueChange={handleCourseSelect}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Seleccionar cursos..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {courses
+                                                .filter(course => !selectedCourses.includes(course.id))
+                                                .map((course) => (
+                                                    <SelectItem key={course.id} value={course.id}>
+                                                        {course.titulo}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
 
-                        {selectedCourses.length > 0 && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                        </svg>
-                                    </div>
-                                    <div className="ml-3">
-                                        <p className="text-sm text-blue-700">
-                                            Esta materia se asociará a {selectedCourses.length} curso{selectedCourses.length > 1 ? 's' : ''} seleccionado{selectedCourses.length > 1 ? 's' : ''}
-                                        </p>
-                                    </div>
+                                    {/* Mostrar cursos seleccionados */}
+                                    {selectedCourses.length > 0 && (
+                                        <div className="mt-3">
+                                            <p className="text-sm text-gray-600 mb-2">Cursos seleccionados:</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {selectedCourses.map((courseId) => (
+                                                    <Badge key={courseId} variant="secondary" className="flex items-center gap-1">
+                                                        {getCourseName(courseId)}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCourseRemove(courseId)}
+                                                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {selectedCourses.length > 0 && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                                        <div className="flex items-center">
+                                            <div className="flex-shrink-0">
+                                                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="ml-3">
+                                                <p className="text-sm text-blue-700">
+                                                    Esta materia se asociará a {selectedCourses.length} curso{selectedCourses.length > 1 ? 's' : ''} seleccionado{selectedCourses.length > 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div>
+                                <h1>Esta materia se asociará a:</h1>
+                                <Badge key={courseId} variant="default" className="flex items-center gap-1 w-fit mt-3">
+                                    {getCourseName(courseId || '')}
+                                </Badge>
                             </div>
                         )}
 
@@ -256,7 +268,7 @@ const CreateSubjectModal = ({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => onGoToModules?.(editingSubject.id, editingSubject.modulos || []) }
+                                    onClick={() => onGoToModules?.(editingSubject.id, editingSubject.modulos || [])}
                                 >
                                     Gestionar módulos
                                 </Button>

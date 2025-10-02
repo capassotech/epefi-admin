@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { type ModuloForm } from "@/types/modules";
-import type { Subject } from "@/types/types";
+import type { Module, Subject } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
+import ModulesList from "@/components/subject/ModulesList";
 
 interface PendingSubjectData {
     id: string;
@@ -241,30 +242,7 @@ export default function CreateModule() {
                         <div className="text-sm text-gray-500">Sin módulos</div>
                     ) : (
                         <div className="space-y-3">
-                            {modules.map((m, idx) => (
-                                <div key={idx} className="p-4 border rounded-md">
-                                    <div className="flex items-center justify-between">
-                                        <div className="font-medium">{m.titulo || 'Sin título'}</div>
-                                        <div className="text-xs text-gray-500 capitalize">
-                                            {m.tipo_contenido || 'contenido'}
-                                        </div>
-                                    </div>
-                                    {m.descripcion && (
-                                        <p className="text-sm text-gray-600 mt-1">{m.descripcion}</p>
-                                    )}
-                                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-500">
-                                        {m.bibliografia && (
-                                            <div>Bibliografía: <span className="text-gray-700">{m.bibliografia}</span></div>
-                                        )}
-                                        {m.url_miniatura && (
-                                            <div>Miniatura: <a className="text-blue-600 underline" href={m.url_miniatura} target="_blank" rel="noreferrer">ver</a></div>
-                                        )}
-                                        {m.url_contenido && (
-                                            <div>Contenido: <a className="text-blue-600 underline" href={m.url_contenido} target="_blank" rel="noreferrer">abrir</a></div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                            <ModulesList modules={modules as unknown as Module[]} />
                         </div>
                     )}
                 </CardContent>
