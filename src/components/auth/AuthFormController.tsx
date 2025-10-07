@@ -39,7 +39,6 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    // ✅ Validación de email
     if (!formData.email) {
       newErrors.email = "El email es requerido";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
