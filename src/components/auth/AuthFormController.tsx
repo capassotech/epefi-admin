@@ -76,10 +76,8 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
     setIsSubmitting(true);
 
     try {
-      // ✅ Hacer login
       await login(formData.email, formData.password);
 
-      // ✅ Esperar un momento para que se guarde en localStorage
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const studentData = authService.getStudentDataFromStorage();
@@ -87,7 +85,6 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
 
       const userName = studentData?.nombre || "Usuario";
 
-      // ✅ VALIDAR SI ES ADMIN (solo para panel admin)
       const isAdmin = studentData?.role?.admin === true;
 
       if (!isAdmin) {
@@ -140,7 +137,7 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
       currentStep={currentStep}
       showEmailForm={showEmailForm}
       onSubmit={handleSubmit}
-      onGoogleAuth={() => {}} // Deshabilitado para admin
+      onGoogleAuth={() => {}} 
       onInputChange={handleInputChange}
       onStepChange={handleStepChange}
       onEmailMethodSelect={handleEmailMethodSelect}
