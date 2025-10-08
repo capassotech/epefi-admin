@@ -160,10 +160,6 @@ export interface RegisterData {
   aceptaTerminos: boolean;
 }
 
-export interface CreateUserFormData extends RegisterData {
-  confirmPassword: string;
-}
-
 export interface CreateUserResponse {
   success: boolean;
   message: string;
@@ -204,4 +200,20 @@ export interface AuthResponse {
   message: string;
   user: UserProfile; // ✅ Usar UserProfile completo
   customToken?: string;
+}
+
+
+export interface CreateUserFormData {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  dni: string;
+  role: {
+    admin: boolean;
+    student: boolean;
+  };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
 }

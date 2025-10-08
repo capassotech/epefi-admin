@@ -1,0 +1,478 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { useCreateUser } from "@/hooks/useCreateUser";
+
+import {
+  Loader2,
+  User,
+  Mail,
+  Lock,
+  BadgeIcon as IdCard,
+  X,
+  Eye,
+  EyeOff,
+  BookOpen,
+} from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CoursesAPI } from "@/service/courses";
+import { type Course, type CreateUserFormData } from "@/types/types";
+
+interface CreateUserModalProps {
+  onUserCreated?: () => void;
+  triggerText?: string;
+}
+
+
+
+export const CreateUserModal = ({
+  onUserCreated,
+  triggerText = "Crear Estudiante",
+}: CreateUserModalProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [courseSelectValue, setCourseSelectValue] = useState<string>("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [formData, setFormData] = useState<CreateUserFormData>({
+    nombre: "",
+    apellido: "",
+    email: "",
+    password: "",
+    dni: "",
+    role: {
+      admin: false,
+      student: false,
+    },
+    cursos_asignados: [],
+    emailVerificado: false,
+  });
+  const { createUser, isLoading } = useCreateUser();
+
+  const loadCourses = async () => {
+    const courses = await CoursesAPI.getAll();
+    setCourses(courses);
+  };
+
+  useEffect(() => { loadCourses() }, []);
+
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = "El nombre es requerido";
+    }
+
+    if (!formData.apellido.trim()) {
+      newErrors.apellido = "El apellido es requerido";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "El email es requerido";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "El email no es válido";
+    }
+
+    if (!formData.dni.trim()) {
+      newErrors.dni = "El DNI es requerido";
+    } else if (!/^\d{7,8}$/.test(formData.dni.replace(/\D/g, ""))) {
+      newErrors.dni = "El DNI debe tener 7 u 8 dígitos";
+    }
+
+    if (!formData.role || (!formData.role.admin && !formData.role.student)) {
+      newErrors.role = "El rol es requerido";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    if (confirmEmail === formData.email) {
+      setFormData((prev) => ({ ...prev, emailVerificado: true }));
+    } else {
+      setErrors({
+        emailVerificado: "El email de confirmación no coincide con el email",
+      });
+      setFormData((prev) => ({ ...prev, emailVerificado: false }));
+      return;
+    }
+
+    const result = await createUser(formData);
+
+    if (result.success) {
+      setFormData({
+        nombre: "",
+        apellido: "",
+        email: "",
+        dni: "",
+        role: {
+          admin: false,
+          student: false,
+        },
+        cursos_asignados: [],
+        emailVerificado: false,
+        password: "",
+      });
+      setErrors({});
+      setIsOpen(false);
+
+      if (onUserCreated) onUserCreated();
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | boolean | string[]) => {
+    if (field === "role") {
+      const selected = String(value);
+      setFormData((prev) => ({
+        ...prev,
+        role: {
+          admin: selected === "admin",
+          student: selected === "student",
+        },
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
+
+    // Limpiar error del campo cuando el usuario empiece a escribir
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleAddCourse = (courseId: string) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.cursos_asignados) ? prev.cursos_asignados : [];
+      if (current.includes(courseId)) return prev;
+      return { ...prev, cursos_asignados: [...current, courseId] };
+    });
+    // reset select to placeholder
+    setCourseSelectValue("");
+    if (errors.cursos_asignados) {
+      setErrors((prev) => ({ ...prev, cursos_asignados: "" }));
+    }
+  };
+
+  const handleRemoveCourse = (courseId: string) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.cursos_asignados) ? prev.cursos_asignados : [];
+      return { ...prev, cursos_asignados: current.filter((id: string) => id !== courseId) };
+    });
+  };
+
+  const formatDNI = (value: string) => {
+    // Remover caracteres no numéricos y limitar a 8 dígitos
+    const numbers = value.replace(/\D/g, "").slice(0, 8);
+    return numbers;
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button className="cursor-pointer">
+          <User className="w-4 h-4 mr-2" />
+          {triggerText}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <User className="w-5 h-5" />
+            <span>Crear Nuevo Usuario</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <Card>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Nombre y Apellido en una fila */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Nombre */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="nombre"
+                    className="flex items-center space-x-2"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Nombre <span className="text-red-500">*</span></span>
+                  </Label>
+                  <Input
+                    id="nombre"
+                    type="text"
+                    placeholder="Nombre"
+                    value={formData.nombre}
+                    onChange={(e) =>
+                      handleInputChange("nombre", e.target.value)
+                    }
+                    className={errors.nombre ? "border-red-500" : ""}
+                    disabled={isLoading}
+                  />
+                  {errors.nombre && (
+                    <p className="text-sm text-red-500">{errors.nombre}</p>
+                  )}
+                </div>
+
+                {/* Apellido */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="apellido"
+                    className="flex items-center space-x-2"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Apellido <span className="text-red-500">*</span></span>
+                  </Label>
+                  <Input
+                    id="apellido"
+                    type="text"
+                    placeholder="Apellido"
+                    value={formData.apellido}
+                    onChange={(e) =>
+                      handleInputChange("apellido", e.target.value)
+                    }
+                    className={errors.apellido ? "border-red-500" : ""}
+                    disabled={isLoading}
+                  />
+                  {errors.apellido && (
+                    <p className="text-sm text-red-500">{errors.apellido}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Email <span className="text-red-500">*</span></span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="usuario@ejemplo.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={errors.email ? "border-red-500" : ""}
+                  disabled={isLoading}
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Verificacion de Email */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmEmail" className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4" />
+                  <span>Confirmar Email <span className="text-red-500">*</span></span>
+                </Label>
+                <Input
+                  id="confirmEmail"
+                  type="email"
+                  placeholder="usuario@ejemplo.com"
+                  value={confirmEmail}
+                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  className={errors.emailVerificado ? "border-red-500" : ""}
+                  disabled={isLoading}
+                />
+                {errors.emailVerificado && (
+                  <p className="text-sm text-red-500">{errors.emailVerificado}</p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center space-x-2">
+                  <Lock className="w-4 h-4" />
+                  <span>Contraseña <span className="text-red-500">*</span></span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Tu contraseña"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    className={errors.password ? "border-red-500" : ""}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors duration-200"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 cursor-pointer" />
+                    ) : (
+                      <Eye className="h-4 w-4 cursor-pointer" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password}</p>
+                )}
+              </div>
+
+              {/* DNI */}
+              <div className="space-y-2">
+                <Label htmlFor="dni" className="flex items-center space-x-2">
+                  <IdCard className="w-4 h-4" />
+                  <span>DNI <span className="text-red-500">*</span></span>
+                </Label>
+                <Input
+                  id="dni"
+                  type="text"
+                  placeholder="12345678"
+                  value={formData.dni}
+                  onChange={(e) =>
+                    handleInputChange("dni", formatDNI(e.target.value))
+                  }
+                  className={errors.dni ? "border-red-500" : ""}
+                  disabled={isLoading}
+                  maxLength={8}
+                />
+                {errors.dni && (
+                  <p className="text-sm text-red-500">{errors.dni}</p>
+                )}
+              </div>
+
+              {/* Rol */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="role"
+                  className="flex items-center space-x-2"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Rol <span className="text-red-500">*</span></span>
+                </Label>
+                <div className="relative">
+                  <Select
+                    value={formData.role.admin ? "admin" : formData.role.student ? "student" : ""}
+                    onValueChange={(value) => handleInputChange("role", value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="role" className={errors.role ? "w-full border-red-500" : "w-full"}>
+                      <SelectValue placeholder="Seleccionar rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="student">Estudiante</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {errors.role && (
+                  <p className="text-sm text-red-500">{errors.role}</p>
+                )}
+              </div>
+
+              {/* Asignar cursos */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="cursos_asignados"
+                  className="flex items-center space-x-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Asignar cursos</span>
+                </Label>
+                <div className="relative">
+                  <Select
+                    value={courseSelectValue}
+                    onValueChange={(value) => handleAddCourse(value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="cursos_asignados" className={errors.cursos_asignados ? "w-full border-red-500" : "w-full"}>
+                      <SelectValue placeholder="Seleccionar cursos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.titulo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {Array.isArray(formData.cursos_asignados) && formData.cursos_asignados.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {formData.cursos_asignados.map((courseId: string) => {
+                      const course = courses.find((c) => c.id === courseId);
+                      return (
+                        <span key={courseId} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm">
+                          <span className="mr-2">{course ? course.titulo : courseId}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCourse(courseId)}
+                            className="text-gray-500 hover:text-gray-700"
+                            aria-label={`Quitar ${course ? course.titulo : "curso"}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {errors.cursos_asignados && (
+                  <p className="text-sm text-red-500">
+                    {errors.cursos_asignados}
+                  </p>
+                )}
+              </div>
+
+              {/* Botones */}
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsOpen(false)}
+                  disabled={isLoading}
+                  className="flex-1 cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isLoading} className="flex-1 cursor-pointer">
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-4 h-4 mr-2" />
+                      Crear Usuario
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog>
+  );
+};

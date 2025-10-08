@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,7 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Plus } from "lucide-react";
+import { Search, Filter } from "lucide-react";
+import { CreateUserModal } from "../students/CreateUserModal";
 
 export interface FilterOptions {
   status?: string;
@@ -100,12 +100,12 @@ export const SearchAndFilter = ({
         </div>
       </div>
 
-      {/* Botón crear (opcional) */}
+
       {!hideCreateButton && onCreateNew && (
-        <Button onClick={onCreateNew}>
-          <Plus className="w-4 h-4 mr-2 cursor-pointer" />
-          {createButtonText}
-        </Button>
+        <CreateUserModal
+          onUserCreated={onCreateNew}
+          triggerText={createButtonText}
+        />
       )}
     </div>
   );
