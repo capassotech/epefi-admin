@@ -6,7 +6,6 @@ import { StudentsAPI } from "@/service/students";
 
 export const useCreateUser = () => {
   const [isLoading, setIsLoading] = useState(false);
-  // const { createUserDB } = useStudents();
 
   const createUser = async (
     userData: CreateUserFormData
@@ -67,8 +66,48 @@ export const useCreateUser = () => {
     }
   };
 
+  const updateUser = async (
+    id: string,
+    userData: Partial<CreateUserFormData>
+  ): Promise<CreateUserResponse> => {
+    setIsLoading(true);
+
+    try {
+      const response = await StudentsAPI.updateStudent(id, userData);
+      console.log(response);
+
+      toast({
+        title: "Usuario actualizado exitosamente",
+        description: `El usuario ${userData.nombre} ${userData.apellido} ha sido actualizado correctamente.`,
+      });
+
+      return {
+        success: true,
+        message: "Usuario actualizado exitosamente",
+        // user: response,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+
+      toast({
+        title: "Error al actualizar usuario",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      return {
+        success: false,
+        message: errorMessage,
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     createUser,
+    updateUser,
     isLoading,
   };
 };

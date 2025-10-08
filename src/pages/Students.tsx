@@ -8,13 +8,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import { type Student } from "@/types/types";
+import { type StudentDB } from "@/types/types";
 import { Loader2 } from "lucide-react";
 
 export default function Students() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentDB[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
@@ -22,6 +22,7 @@ export default function Students() {
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -49,6 +50,7 @@ export default function Students() {
 
   const handleConfirmDelete = async () => {
     if (!confirmDeleteId) return;
+    setDeleteLoading(true);
 
     try {
       await StudentsAPI.delete(confirmDeleteId);
@@ -61,6 +63,7 @@ export default function Students() {
       console.error("Error al eliminar estudiante:", err);
     } finally {
       setIsDeleteModalOpen(false);
+      setDeleteLoading(false);
       setConfirmDeleteId(null);
     }
   };
@@ -68,6 +71,17 @@ export default function Students() {
   const handleCancelDelete = () => {
     setIsDeleteModalOpen(false);
     setConfirmDeleteId(null);
+  };
+
+  const handleUserUpdated = async () => {
+    try {
+      const res = await StudentsAPI.getAll();
+      const data = Array.isArray(res) ? res : res?.data || [];
+      setStudents(data);
+      setFilteredStudents(data);
+    } catch (err) {
+      console.error("Error al actualizar lista de estudiantes:", err);
+    }
   };
 
   const handleSearch = (query: string) => {
@@ -166,7 +180,7 @@ export default function Students() {
       </div>
 
       {filteredStudents.length > 0 ? (
-        <StudentList students={filteredStudents} onDelete={handleDeleteClick} />
+        <StudentList students={filteredStudents} onDelete={handleDeleteClick} onUserUpdated={handleUserUpdated} />
       ) : (
         <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -196,7 +210,7 @@ export default function Students() {
             students.find((s) => s.id === confirmDeleteId)?.apellido || ""
           }`.trim() || "este estudiante"
         }
-        deleteLoading={false}
+        deleteLoading={deleteLoading}
       />
     </div>
   );

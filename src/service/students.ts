@@ -82,6 +82,23 @@ export const StudentsAPI = {
     }
   },
 
+  updateStudent: async (id: string, userData: Partial<CreateUserFormData>) => {
+    try {
+      const res = await api.put(`/usuarios/${id}`, userData);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al actualizar estudiante";
+      throw new Error(errorMessage);
+    }
+  },
+
   delete: async (id: string) => {
     try {
       await api.delete(`/usuarios/${id}`);

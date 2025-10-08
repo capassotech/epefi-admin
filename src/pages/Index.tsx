@@ -9,6 +9,7 @@ import Subjects from "./Subjects";
 import CreateModule from "./CreateModule";
 import Students from "./Students";
 import { SubjectDetail } from "./SubjectDetail";
+import { StudentDetail } from "./StudentDetail";
 
 const Index = () => {
   return (
@@ -24,8 +25,8 @@ const Index = () => {
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/:id" element={<SubjectDetail />} />
           <Route path="/modules/create" element={<CreateModule />} />
-          <Route path="/students" element={<Students />} />{" "}
-          {/* ← AGREGAR ESTA LÍNEA */}
+          <Route path="/students" element={<Students />} />
+          <Route path="/students/:id" element={<StudentDetail />} />
         </Routes>
       </main>
     </div>

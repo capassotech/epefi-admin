@@ -1,23 +1,23 @@
 // src/components/student/StudentList.tsx
 import {
-  Edit2,
   Trash2,
   Mail,
   Calendar,
   CheckCircle,
   XCircle,
 } from "lucide-react";
+import { type StudentDB } from "@/types/types";
+import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
-import { type Student } from "@/types/types";
 
 interface StudentListProps {
-  students: Student[];
+  students: StudentDB[];
   onDelete: (id: string) => void;
+  onUserUpdated?: () => void;
 }
 
-export function StudentList({ students, onDelete }: StudentListProps) {
+export function StudentList({ students, onDelete, onUserUpdated }: StudentListProps) {
   const navigate = useNavigate();
-
   const formatDate = (
     timestamp: { _seconds: number; _nanoseconds: number } | undefined
   ) => {
@@ -29,7 +29,7 @@ export function StudentList({ students, onDelete }: StudentListProps) {
     });
   };
 
-  const getFullName = (student: Student) => {
+  const getFullName = (student: StudentDB) => {
     return (
       `${student.nombre || ""} ${student.apellido || ""}`.trim() || "Sin nombre"
     );
@@ -67,8 +67,9 @@ export function StudentList({ students, onDelete }: StudentListProps) {
           <tbody className="bg-white divide-y divide-gray-200">
             {students.map((student) => (
               <tr
-                key={student.id}
-                className="hover:bg-gray-50 transition-colors duration-150"
+                key={student.dni}
+                className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                onClick={() => navigate(`/students/${student.id}`)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -135,19 +136,18 @@ export function StudentList({ students, onDelete }: StudentListProps) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end space-x-2">
-                    <button
-                      onClick={() => navigate(`/students/edit/${student.id}`)}
-                      className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Editar estudiante"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                    <CreateUserModal
+                      onUserCreated={onUserUpdated}
+                      triggerText="Editar"
+                      isEditing={true}
+                      editingUser={student}
+                    />
                     <button
                       onClick={() => onDelete(student.id)}
                       className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
                       title="Eliminar estudiante"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4 cursor-pointer" />
                     </button>
                   </div>
                 </td>

@@ -1,6 +1,14 @@
 // src/components/product/ConfirmDeleteModal.tsx
-import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   isOpen: boolean;
@@ -11,36 +19,47 @@ interface Props {
 }
 
 const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName = "esta formación", deleteLoading }: Props) => {
-  if (!isOpen) return null;
-
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-      onClick={onCancel} 
-    >
-      <div 
-        className="bg-white p-6 rounded-lg max-w-md w-full shadow-xl"
-        onClick={(e) => e.stopPropagation()} 
-      >
-        <h3 className="text-lg font-bold mb-4">¿Eliminar {itemName}?</h3>
-        <p className="mb-6">Esta acción no se puede deshacer.</p>
-        <div className="flex gap-3 justify-end">
-          <button
+    <Dialog open={isOpen} onOpenChange={onCancel}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            ¿Eliminar {itemName}?
+          </DialogTitle>
+          <DialogDescription>
+            Esta acción no se puede deshacer. El elemento será eliminado permanentemente.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2 sm:gap-0">
+          <Button
+            type="button"
+            variant="outline"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 transition cursor-pointer"
+            disabled={deleteLoading}
+            className="flex-1 sm:flex-none cursor-pointer"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition cursor-pointer"
             disabled={deleteLoading}
+            className="flex-1 sm:flex-none cursor-pointer"
           >
-            {deleteLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : 'Eliminar'}
-          </button>
-        </div>
-      </div>
-    </div>
+            {deleteLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Eliminando...
+              </>
+            ) : (
+              'Eliminar'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

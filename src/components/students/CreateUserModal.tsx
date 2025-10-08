@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   BookOpen,
+  Edit2,
 } from "lucide-react";
 
 import {
@@ -33,18 +34,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CoursesAPI } from "@/service/courses";
-import { type Course, type CreateUserFormData } from "@/types/types";
+import { type Course, type CreateUserFormData, type StudentDB, type FirestoreTimestamp } from "@/types/types";
+
 
 interface CreateUserModalProps {
   onUserCreated?: () => void;
   triggerText?: string;
+  isEditing?: boolean;
+  editingUser?: StudentDB;
 }
-
-
 
 export const CreateUserModal = ({
   onUserCreated,
   triggerText = "Crear Estudiante",
+  isEditing = false,
+  editingUser,
 }: CreateUserModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -52,7 +56,7 @@ export const CreateUserModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmEmail, setConfirmEmail] = useState("");
-  const [formData, setFormData] = useState<CreateUserFormData>({
+  const [formData, setFormData] = useState<CreateUserFormData & { id?: string; fechaRegistro?: FirestoreTimestamp }>({
     nombre: "",
     apellido: "",
     email: "",
@@ -64,8 +68,10 @@ export const CreateUserModal = ({
     },
     cursos_asignados: [],
     emailVerificado: false,
+    id: undefined,
+    fechaRegistro: undefined,
   });
-  const { createUser, isLoading } = useCreateUser();
+  const { createUser, updateUser, isLoading } = useCreateUser();
 
   const loadCourses = async () => {
     const courses = await CoursesAPI.getAll();
@@ -73,6 +79,48 @@ export const CreateUserModal = ({
   };
 
   useEffect(() => { loadCourses() }, []);
+
+  // Resetear formulario cuando el modal se cierra
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        nombre: "",
+        apellido: "",
+        email: "",
+        password: "",
+        dni: "",
+        role: {
+          admin: false,
+          student: false,
+        },
+        cursos_asignados: [],
+        emailVerificado: false,
+        id: undefined,
+        fechaRegistro: undefined,
+      });
+      setConfirmEmail("");
+      setErrors({});
+    }
+  }, [isOpen]);
+
+  // Cargar datos del usuario cuando se abre el modal para editar
+  useEffect(() => {
+    if (isOpen && isEditing && editingUser) {
+      setFormData({
+        nombre: editingUser.nombre,
+        apellido: editingUser.apellido,
+        email: editingUser.email,
+        password: "",
+        dni: editingUser.dni,
+        role: editingUser.role,
+        cursos_asignados: editingUser.cursos_asignados,
+        emailVerificado: editingUser.emailVerificado,
+        id: editingUser.id,
+        fechaRegistro: editingUser.fechaRegistro,
+      });
+      setConfirmEmail(editingUser.email); 
+    }
+  }, [isOpen, isEditing, editingUser]);
 
 
   const validateForm = () => {
@@ -102,6 +150,16 @@ export const CreateUserModal = ({
       newErrors.role = "El rol es requerido";
     }
 
+    // Solo validar contraseña si estamos creando un nuevo usuario
+    if (!isEditing && !formData.password.trim()) {
+      newErrors.password = "La contraseña es requerida";
+    }
+
+    // Solo validar confirmación de email si estamos creando un nuevo usuario
+    if (!isEditing && confirmEmail !== formData.email) {
+      newErrors.emailVerificado = "El email de confirmación no coincide con el email";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -113,35 +171,39 @@ export const CreateUserModal = ({
       return;
     }
 
-    if (confirmEmail === formData.email) {
-      setFormData((prev) => ({ ...prev, emailVerificado: true }));
-    } else {
-      setErrors({
-        emailVerificado: "El email de confirmación no coincide con el email",
-      });
-      setFormData((prev) => ({ ...prev, emailVerificado: false }));
-      return;
+    if (!isEditing) {
+      if (confirmEmail === formData.email) {
+        setFormData((prev) => ({ ...prev, emailVerificado: true }));
+      } else {
+        setErrors({
+          emailVerificado: "El email de confirmación no coincide con el email",
+        });
+        setFormData((prev) => ({ ...prev, emailVerificado: false }));
+        return;
+      }
     }
 
-    const result = await createUser(formData);
+    let result;
+    
+    if (isEditing) {
+      const updateData = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        email: formData.email,
+        dni: formData.dni,
+        role: formData.role,
+        cursos_asignados: formData.cursos_asignados,
+        emailVerificado: formData.emailVerificado,
+      };
+
+      console.log(updateData);
+      result = await updateUser(formData.id!, updateData);
+    } else {
+      result = await createUser(formData);
+    }
 
     if (result.success) {
-      setFormData({
-        nombre: "",
-        apellido: "",
-        email: "",
-        dni: "",
-        role: {
-          admin: false,
-          student: false,
-        },
-        cursos_asignados: [],
-        emailVerificado: false,
-        password: "",
-      });
-      setErrors({});
       setIsOpen(false);
-
       if (onUserCreated) onUserCreated();
     }
   };
@@ -195,16 +257,25 @@ export const CreateUserModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <User className="w-4 h-4 mr-2" />
-          {triggerText}
-        </Button>
+        {isEditing ? (
+          <button
+            className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Editar estudiante"
+          >
+            <Edit2 className="w-4 h-4 cursor-pointer" />
+          </button>
+        ) : (
+          <Button className="cursor-pointer">
+            <User className="w-4 h-4 mr-2" />
+            {triggerText}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <User className="w-5 h-5" />
-            <span>Crear Nuevo Usuario</span>
+            <span>{isEditing ? "Editar Usuario" : "Crear Nuevo Usuario"}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -284,59 +355,63 @@ export const CreateUserModal = ({
                 )}
               </div>
 
-              {/* Verificacion de Email */}
-              <div className="space-y-2">
-                <Label htmlFor="confirmEmail" className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4" />
-                  <span>Confirmar Email <span className="text-red-500">*</span></span>
-                </Label>
-                <Input
-                  id="confirmEmail"
-                  type="email"
-                  placeholder="usuario@ejemplo.com"
-                  value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
-                  className={errors.emailVerificado ? "border-red-500" : ""}
-                  disabled={isLoading}
-                />
-                {errors.emailVerificado && (
-                  <p className="text-sm text-red-500">{errors.emailVerificado}</p>
-                )}
-              </div>
-
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center space-x-2">
-                  <Lock className="w-4 h-4" />
-                  <span>Contraseña <span className="text-red-500">*</span></span>
-                </Label>
-                <div className="relative">
+              {/* Verificacion de Email - Solo mostrar si estamos creando un nuevo usuario */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="confirmEmail" className="flex items-center space-x-2">
+                    <Mail className="w-4 h-4" />
+                    <span>Confirmar Email <span className="text-red-500">*</span></span>
+                  </Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Tu contraseña"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    className={errors.password ? "border-red-500" : ""}
+                    id="confirmEmail"
+                    type="email"
+                    placeholder="usuario@ejemplo.com"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    className={errors.emailVerificado ? "border-red-500" : ""}
                     disabled={isLoading}
                   />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors duration-200"
-                    onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 cursor-pointer" />
-                    ) : (
-                      <Eye className="h-4 w-4 cursor-pointer" />
-                    )}
-                  </button>
+                  {errors.emailVerificado && (
+                    <p className="text-sm text-red-500">{errors.emailVerificado}</p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500">{errors.password}</p>
-                )}
-              </div>
+              )}
+
+              {/* Password - Solo mostrar si estamos creando un nuevo usuario */}
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="flex items-center space-x-2">
+                    <Lock className="w-4 h-4" />
+                    <span>Contraseña <span className="text-red-500">*</span></span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Tu contraseña"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      className={errors.password ? "border-red-500" : ""}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors duration-200"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 cursor-pointer" />
+                      ) : (
+                        <Eye className="h-4 w-4 cursor-pointer" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm text-red-500">{errors.password}</p>
+                  )}
+                </div>
+              )}
 
               {/* DNI */}
               <div className="space-y-2">
@@ -459,12 +534,12 @@ export const CreateUserModal = ({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creando...
+                      {isEditing ? "Actualizando..." : "Creando..."}
                     </>
                   ) : (
                     <>
                       <User className="w-4 h-4 mr-2" />
-                      Crear Usuario
+                      {isEditing ? "Actualizar Usuario" : "Crear Usuario"}
                     </>
                   )}
                 </Button>

@@ -34,41 +34,22 @@ export interface Course {
   precio: number;
 }
 
-export interface Student {
+export interface StudentDB {
   id: string;
-  email: string;
   nombre: string;
   apellido: string;
+  email: string;
   dni: string;
   role: {
     admin: boolean;
     student: boolean;
   };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
   fechaRegistro: FirestoreTimestamp;
-  fechaActualizacion?: FirestoreTimestamp;
-  fechaUltimoAcceso?: FirestoreTimestamp;
-  activo: boolean;
-  emailVerificado?: boolean;
-  cursos_asignados?: string[] | string;
-  fechaCreacion?: FirestoreTimestamp;
 }
 
-// ✅ NUEVA INTERFAZ USER
-export interface User {
-  id: string;
-  uid: string;
-  email: string;
-  name?: string;
-  nombre?: string;
-  apellido?: string;
-  photoURL?: string;
-  role: "admin" | "user";
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  fechaRegistro?: FirestoreTimestamp | string;
-  fechaActualizacion?: FirestoreTimestamp | string;
-}
 
 export interface DashboardStats {
   totalStudents: number;
@@ -203,6 +184,7 @@ export interface AuthResponse {
 }
 
 
+// Este es el type del Student
 export interface CreateUserFormData {
   nombre: string;
   apellido: string;
