@@ -153,9 +153,9 @@ export const CoursesAPI = {
     }
   },
 
-  deleteModule: async (id: string) => {
+  deleteModule: async (id: string, id_materia: string) => {
     try {
-      await api.delete(`/modulos/${id}`);
+      await api.delete(`/modulos/${id}`, { data: { id_materia } });
       return { success: true };
     } catch {
       throw new Error("Error al eliminar módulo");

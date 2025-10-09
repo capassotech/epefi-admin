@@ -15,6 +15,7 @@ import type { Module, Subject } from '@/types/types';
 import ModulesList from '@/components/subject/ModulesList';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import ModulesModal from '@/components/subject/ModulesModal';
+import { toast } from 'sonner';
 
 
 export const SubjectDetail = () => {
@@ -83,10 +84,29 @@ export const SubjectDetail = () => {
 
     const handleConfirmDelete = async () => {
         if (!confirmDeleteId) return;
+        await confirmDelete(confirmDeleteId);
         setIsDeleteModalOpen(false);
         setConfirmDeleteId(null);
         setDeleteLoading(false);
     };
+
+    const confirmDelete = async (selectedId: string) => {    
+        setDeleteLoading(true);
+    
+        try {
+          await CoursesAPI.deleteModule(selectedId, id || '');
+          setModulos(prev => prev.filter(m => m.id !== selectedId));
+    
+          toast.success('Módulo eliminado con éxito');
+    
+          setConfirmDeleteId(null);
+        } catch (err) {
+          toast.error('Error al eliminar el módulo');
+          console.error('Error al eliminar:', err);
+        } finally {
+          setDeleteLoading(false);
+        }
+      };
 
     const handleCancelCreate = () => {
         setIsCreateModalOpen(false);

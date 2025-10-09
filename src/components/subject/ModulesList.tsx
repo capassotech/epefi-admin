@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
-import { CoursesAPI } from '@/service/courses';
 import { type Module } from '@/types/types';
 
 interface ModulesListProps {
@@ -12,42 +10,14 @@ interface ModulesListProps {
 }
 
 export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const closeToast = () => setToast(null);
 
   const handleDelete = async (id: string) => {
     if (onDelete) {
       onDelete(id);
-      await confirmDelete();
-    } else {
-      setSelectedId(id);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedId || isDeleting) return;
-
-    setIsDeleting(true);
-
-    try {
-      if (onDelete) {
-        await onDelete(selectedId); 
-      } else {
-        await CoursesAPI.deleteModule(selectedId);
-      }
-
-      setToast({ message: 'Módulo eliminado con éxito', type: 'success' });
-
-      setSelectedId(null);
-    } catch (err) {
-      setToast({ message: 'Error al eliminar el módulo', type: 'error' });
-      console.error('Error al eliminar:', err);
-    } finally {
-      setIsDeleting(false);
-    }
+    } 
   };
 
   return (
@@ -100,9 +70,8 @@ export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => 
                       e.stopPropagation();
                       handleDelete(m.id);
                     }}
-                    disabled={isDeleting && selectedId === m.id}
                   >
-                    {isDeleting && selectedId === m.id ? "Eliminando..." : "Eliminar"}
+                    Eliminar
                   </Button>
                 </div>
               </li>
