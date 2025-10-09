@@ -187,7 +187,7 @@ const ModulesModal = ({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Descripción
+                                Descripción *
                             </label>
                             <textarea
                                 value={moduleForm.descripcion}
@@ -206,7 +206,7 @@ const ModulesModal = ({
                         <div className='flex gap-4 w-full'>
                             <div className='w-1/2'>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tipo de Contenido
+                                    Tipo de Contenido *
                                 </label>
                                 <Select
                                     onValueChange={(value: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra") =>
@@ -267,7 +267,7 @@ const ModulesModal = ({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                URL de Contenido
+                                URL de Contenido *
                             </label>
                             <input
                                 type="text"
