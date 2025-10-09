@@ -153,9 +153,9 @@ class AuthService {
           console.log("✅ Firebase autenticado");
         } catch (firebaseError) {
           console.warn("⚠️ Error en Firebase, pero backend OK:", firebaseError);
+          throw firebaseError;
         }
 
-        // 3️⃣ Guardar datos del usuario
         const studentData = {
           uid: response.data.user.uid,
           email: response.data.user.email,
@@ -197,7 +197,16 @@ class AuthService {
       console.log("✅ Firebase auth exitoso:", userCredential.user.uid);
     } catch (error: any) {
       console.error("❌ Firebase auth falló:", error.code);
-      throw error;
+
+      if (error.code === "auth/invalid-credential") {
+        throw new Error("Credenciales inválidas");
+      }
+
+      if (error.code === "auth/user-not-found") {
+        throw new Error("Usuario no encontrado");
+      }
+
+      throw new Error("Error al autenticar con Firebase");
     }
   }
 
