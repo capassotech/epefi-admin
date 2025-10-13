@@ -9,6 +9,9 @@ import {
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
+import { Button } from "../ui/button";
 
 interface StudentListProps {
   students: StudentDB[];
@@ -18,6 +21,19 @@ interface StudentListProps {
 
 export function StudentList({ students, onDelete, onUserUpdated }: StudentListProps) {
   const navigate = useNavigate();
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+
+  const getErrorMessage = (e: unknown) => {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return "Ocurrió un error inesperado";
+    }
+  };
   const formatDate = (
     timestamp: { _seconds: number; _nanoseconds: number } | undefined
   ) => {
@@ -135,20 +151,39 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
-                    <CreateUserModal
-                      onUserCreated={onUserUpdated}
-                      triggerText="Editar"
-                      isEditing={true}
-                      editingUser={student}
-                    />
-                    <button
-                      onClick={() => onDelete(student.id)}
-                      className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar estudiante"
+                  <div className="flex flex-col items-end justify-end">
+                    <div className="flex items-center space-x-2">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CreateUserModal
+                          onUserCreated={onUserUpdated}
+                          triggerText="Editar"
+                          isEditing={true}
+                          editingUser={student}
+                        />
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(student.id);
+                        }}
+                        className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar estudiante"
+                      >
+                        <Trash2 className="w-4 h-4 cursor-pointer" />
+                      </button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStudentId(student.id);
+                        setAssignDialogOpen(true);
+                      }}
+                      className="p-2 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Asignar cursos"
                     >
-                      <Trash2 className="w-4 h-4 cursor-pointer" />
-                    </button>
+                      Asignar cursos
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -156,6 +191,22 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
           </tbody>
         </table>
       </div>
+      <CoursesAsignStudentModal
+        id={selectedStudentId}
+        assignDialogOpen={assignDialogOpen}
+        setAssignDialogOpen={(open) => {
+          setAssignDialogOpen(open);
+          if (!open) {
+            setSelectedCourseId(null);
+            setSelectedStudentId(null);
+          }
+        }}
+        selectedCourseId={selectedCourseId}
+        setSelectedCourseId={setSelectedCourseId}
+        getErrorMessage={getErrorMessage}
+        setCourses={(/* _courses */) => { }}
+        showTrigger={false}
+      />
     </div>
   );
 }

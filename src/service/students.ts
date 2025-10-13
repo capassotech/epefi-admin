@@ -4,7 +4,7 @@ import type { CreateUserFormData } from "@/types/types";
 import axios from "axios";
 
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = "http://localhost:3000";
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -84,6 +84,7 @@ export const StudentsAPI = {
 
   updateStudent: async (id: string, userData: Partial<CreateUserFormData>) => {
     try {
+      console.log(id, userData)
       const res = await api.put(`/usuarios/${id}`, userData);
       return res.data;
     } catch (error: unknown) {

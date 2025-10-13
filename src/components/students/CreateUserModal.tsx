@@ -11,10 +11,8 @@ import {
   Mail,
   Lock,
   BadgeIcon as IdCard,
-  X,
   Eye,
   EyeOff,
-  BookOpen,
   Edit2,
 } from "lucide-react";
 
@@ -33,8 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CoursesAPI } from "@/service/courses";
-import { type Course, type CreateUserFormData, type StudentDB, type FirestoreTimestamp } from "@/types/types";
+import { type CreateUserFormData, type StudentDB, type FirestoreTimestamp } from "@/types/types";
 
 
 interface CreateUserModalProps {
@@ -51,8 +48,6 @@ export const CreateUserModal = ({
   editingUser,
 }: CreateUserModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [courseSelectValue, setCourseSelectValue] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -72,13 +67,6 @@ export const CreateUserModal = ({
     fechaRegistro: undefined,
   });
   const { createUser, updateUser, isLoading } = useCreateUser();
-
-  const loadCourses = async () => {
-    const courses = await CoursesAPI.getAll();
-    setCourses(courses);
-  };
-
-  useEffect(() => { loadCourses() }, []);
 
   // Resetear formulario cuando el modal se cierra
   useEffect(() => {
@@ -226,26 +214,6 @@ export const CreateUserModal = ({
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  };
-
-  const handleAddCourse = (courseId: string) => {
-    setFormData((prev) => {
-      const current = Array.isArray(prev.cursos_asignados) ? prev.cursos_asignados : [];
-      if (current.includes(courseId)) return prev;
-      return { ...prev, cursos_asignados: [...current, courseId] };
-    });
-    // reset select to placeholder
-    setCourseSelectValue("");
-    if (errors.cursos_asignados) {
-      setErrors((prev) => ({ ...prev, cursos_asignados: "" }));
-    }
-  };
-
-  const handleRemoveCourse = (courseId: string) => {
-    setFormData((prev) => {
-      const current = Array.isArray(prev.cursos_asignados) ? prev.cursos_asignados : [];
-      return { ...prev, cursos_asignados: current.filter((id: string) => id !== courseId) };
-    });
   };
 
   const formatDNI = (value: string) => {
@@ -462,60 +430,6 @@ export const CreateUserModal = ({
                 </div>
                 {errors.role && (
                   <p className="text-sm text-red-500">{errors.role}</p>
-                )}
-              </div>
-
-              {/* Asignar cursos */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="cursos_asignados"
-                  className="flex items-center space-x-2"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Asignar cursos</span>
-                </Label>
-                <div className="relative">
-                  <Select
-                    value={courseSelectValue}
-                    onValueChange={(value) => handleAddCourse(value)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="cursos_asignados" className={errors.cursos_asignados ? "w-full border-red-500" : "w-full"}>
-                      <SelectValue placeholder="Seleccionar cursos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
-                          {course.titulo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {Array.isArray(formData.cursos_asignados) && formData.cursos_asignados.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {formData.cursos_asignados.map((courseId: string) => {
-                      const course = courses.find((c) => c.id === courseId);
-                      return (
-                        <span key={courseId} className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm">
-                          <span className="mr-2">{course ? course.titulo : courseId}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCourse(courseId)}
-                            className="text-gray-500 hover:text-gray-700"
-                            aria-label={`Quitar ${course ? course.titulo : "curso"}`}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-                {errors.cursos_asignados && (
-                  <p className="text-sm text-red-500">
-                    {errors.cursos_asignados}
-                  </p>
                 )}
               </div>
 
