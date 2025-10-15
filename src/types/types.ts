@@ -35,41 +35,22 @@ export interface Course {
   precio: number;
 }
 
-export interface Student {
+export interface StudentDB {
   id: string;
-  email: string;
   nombre: string;
   apellido: string;
+  email: string;
   dni: string;
   role: {
     admin: boolean;
     student: boolean;
   };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
   fechaRegistro: FirestoreTimestamp;
-  fechaActualizacion?: FirestoreTimestamp;
-  fechaUltimoAcceso?: FirestoreTimestamp;
-  activo: boolean;
-  emailVerificado?: boolean;
-  cursos_asignados?: string[] | string;
-  fechaCreacion?: FirestoreTimestamp;
 }
 
-// ✅ NUEVA INTERFAZ USER
-export interface User {
-  id: string;
-  uid: string;
-  email: string;
-  name?: string;
-  nombre?: string;
-  apellido?: string;
-  photoURL?: string;
-  role: "admin" | "user";
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  fechaRegistro?: FirestoreTimestamp | string;
-  fechaActualizacion?: FirestoreTimestamp | string;
-}
 
 export interface DashboardStats {
   totalStudents: number;
@@ -161,10 +142,6 @@ export interface RegisterData {
   aceptaTerminos: boolean;
 }
 
-export interface CreateUserFormData extends RegisterData {
-  confirmPassword: string;
-}
-
 export interface CreateUserResponse {
   success: boolean;
   message: string;
@@ -205,4 +182,21 @@ export interface AuthResponse {
   message: string;
   user: UserProfile; // ✅ Usar UserProfile completo
   customToken?: string;
+}
+
+
+// Este es el type del Student
+export interface CreateUserFormData {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  dni: string;
+  role: {
+    admin: boolean;
+    student: boolean;
+  };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
 }

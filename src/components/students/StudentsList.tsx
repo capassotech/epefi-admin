@@ -1,23 +1,39 @@
 // src/components/student/StudentList.tsx
 import {
-  Edit2,
   Trash2,
   Mail,
   Calendar,
   CheckCircle,
   XCircle,
 } from "lucide-react";
+import { type StudentDB } from "@/types/types";
+import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
-import { type Student } from "@/types/types";
+import { useState } from "react";
+import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
+import { Button } from "../ui/button";
 
 interface StudentListProps {
-  students: Student[];
+  students: StudentDB[];
   onDelete: (id: string) => void;
+  onUserUpdated?: () => void;
 }
 
-export function StudentList({ students, onDelete }: StudentListProps) {
+export function StudentList({ students, onDelete, onUserUpdated }: StudentListProps) {
   const navigate = useNavigate();
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
+  const getErrorMessage = (e: unknown) => {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return "Ocurrió un error inesperado";
+    }
+  };
   const formatDate = (
     timestamp: { _seconds: number; _nanoseconds: number } | undefined
   ) => {
@@ -29,7 +45,7 @@ export function StudentList({ students, onDelete }: StudentListProps) {
     });
   };
 
-  const getFullName = (student: Student) => {
+  const getFullName = (student: StudentDB) => {
     return (
       `${student.nombre || ""} ${student.apellido || ""}`.trim() || "Sin nombre"
     );
@@ -67,8 +83,9 @@ export function StudentList({ students, onDelete }: StudentListProps) {
           <tbody className="bg-white divide-y divide-gray-200">
             {students.map((student) => (
               <tr
-                key={student.id}
-                className="hover:bg-gray-50 transition-colors duration-150"
+                key={student.dni}
+                className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                onClick={() => navigate(`/students/${student.id}`)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -134,21 +151,39 @@ export function StudentList({ students, onDelete }: StudentListProps) {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end space-x-2">
-                    <button
-                      onClick={() => navigate(`/students/edit/${student.id}`)}
-                      className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Editar estudiante"
+                  <div className="flex flex-col items-end justify-end">
+                    <div className="flex items-center space-x-2">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CreateUserModal
+                          onUserCreated={onUserUpdated}
+                          triggerText="Editar"
+                          isEditing={true}
+                          editingUser={student}
+                        />
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(student.id);
+                        }}
+                        className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar estudiante"
+                      >
+                        <Trash2 className="w-4 h-4 cursor-pointer" />
+                      </button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStudentId(student.id);
+                        setAssignDialogOpen(true);
+                      }}
+                      className="p-2 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Asignar cursos"
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(student.id)}
-                      className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Eliminar estudiante"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      Asignar cursos
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -156,6 +191,22 @@ export function StudentList({ students, onDelete }: StudentListProps) {
           </tbody>
         </table>
       </div>
+      <CoursesAsignStudentModal
+        id={selectedStudentId}
+        assignDialogOpen={assignDialogOpen}
+        setAssignDialogOpen={(open) => {
+          setAssignDialogOpen(open);
+          if (!open) {
+            setSelectedCourseId(null);
+            setSelectedStudentId(null);
+          }
+        }}
+        selectedCourseId={selectedCourseId}
+        setSelectedCourseId={setSelectedCourseId}
+        getErrorMessage={getErrorMessage}
+        setCourses={(/* _courses */) => { }}
+        showTrigger={false}
+      />
     </div>
   );
 }
