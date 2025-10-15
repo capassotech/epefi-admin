@@ -1,8 +1,10 @@
 // src/service/students.ts
 import { auth } from "@/firebase";
+import type { CreateUserFormData } from "@/types/types";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -27,7 +29,7 @@ api.interceptors.request.use(async (config) => {
 export const StudentsAPI = {
   getAll: async () => {
     try {
-      const res = await api.get("/users");
+      const res = await api.get("/usuarios");
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
@@ -44,7 +46,7 @@ export const StudentsAPI = {
 
   getById: async (id: string) => {
     try {
-      const res = await api.get(`/users/${id}`);
+      const res = await api.get(`/usuarios/${id}`);
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
@@ -59,9 +61,20 @@ export const StudentsAPI = {
     }
   },
 
+  createStudent: async (user: CreateUserFormData) => {
+    try {
+      const res = await api.post("/usuarios", user);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error al crear estudiante";
+      throw new Error(errorMessage);
+    }
+  },
+
   getCount: async () => {
     try {
-      const res = await api.get("/users");
+      const res = await api.get("/usuarios");
       return res.data.length || 0;
     } catch (error) {
       console.error("Error getting students count:", error);
@@ -69,9 +82,27 @@ export const StudentsAPI = {
     }
   },
 
+  updateStudent: async (id: string, userData: Partial<CreateUserFormData>) => {
+    try {
+      console.log(id, userData)
+      const res = await api.put(`/usuarios/${id}`, userData);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al actualizar estudiante";
+      throw new Error(errorMessage);
+    }
+  },
+
   delete: async (id: string) => {
     try {
-      await api.delete(`/users/${id}`);
+      await api.delete(`/usuarios/${id}`);
       return { success: true };
     } catch (error: unknown) {
       const axiosError = error as {
