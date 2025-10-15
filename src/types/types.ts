@@ -11,7 +11,7 @@ export interface Module {
   titulo: string;
   descripcion: string;
   id_materia: string;
-  tipo_contenido: "VIDEO" | "PDF" | "QUIZ" | "DOCX" | "IMAGE";
+  tipo_contenido: "video" | "pdf" | "imagen" | "contenido_extra" | "evaluacion";
   bibliografia: string;
   url_miniatura: string;
   url_contenido: string;
@@ -22,6 +22,7 @@ export interface Subject {
   id_cursos: string[];
   modulos: string[];
   nombre: string;
+  imagen?: string;
 }
 
 export interface Course {
@@ -75,7 +76,7 @@ export interface ModuleFormData {
 
 export interface ContentItemFormData {
   id?: string;
-  type: "VIDEO" | "PDF" | "QUIZ" | "DOCX" | "IMAGE";
+  type: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra";
   title: string;
   description: string;
   url: string;

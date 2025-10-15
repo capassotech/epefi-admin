@@ -125,7 +125,7 @@ export default function CreateProduct() {
           <Button
             variant="outline"
             size="sm"
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
@@ -133,10 +133,10 @@ export default function CreateProduct() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Crear Nueva Formación
+            Crear Nuevo Curso
           </h1>
           <p className="text-gray-600 mt-1">
-            Completa los datos para crear esta formación.
+            Completa los datos para crear este curso.
           </p>
         </div>
       </div>

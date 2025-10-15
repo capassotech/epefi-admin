@@ -57,7 +57,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Gestión de Formaciones</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Gestión de Cursos</h2>
       </div>
 
       {/* Lista */}
@@ -65,7 +65,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
         <ul role="list" className="divide-y divide-gray-200">
           {products.length === 0 ? (
             <li className="px-4 py-6 text-center text-gray-500">
-              No hay formaciones registradas.
+              No hay cursos registrados.
             </li>
           ) : (
             products.map((f) => (
@@ -117,13 +117,14 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                   <Button
                     size="sm"
                     variant="outline"
+                    className='cursor-pointer'
                     onClick={(e) => {
                       e.stopPropagation();
                       const id = f.id;
 
                       if (!id || typeof id !== 'string' || id.trim().length === 0) {
-                        console.error("Formación sin ID válido:", f);
-                        setToast({ message: "Error: Esta formación no tiene un ID válido.", type: 'error' });
+                        console.error("Curso sin ID válido:", f);
+                        setToast({ message: "Error: Este curso no tiene un ID válido.", type: 'error' });
                         return;
                       }
 
@@ -135,6 +136,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                   <Button
                     size="sm"
                     variant="destructive"
+                    className='cursor-pointer'
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(f.id);
@@ -149,7 +151,6 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
           )}
         </ul>
       </div>
-      {/* Toast de notificación */}
       {toast && (
         <ToastNotification
           message={toast.message}
@@ -160,33 +161,5 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
     </div>
   );
 };
-
-// Helpers
-// const formatPilar = (pilar: string) => {
-//   const map: Record<string, string> = {
-//     'consultoria-estrategica': 'Consultoría Estratégica',
-//     liderazgo: 'Liderazgo',
-//     emprendimiento: 'Emprendimiento',
-//   };
-//   return map[pilar] || pilar;
-// };
-
-// const formatNivel = (nivel: string) => {
-//   const map: Record<string, string> = {
-//     principiante: 'Inicial',
-//     intermedio: 'Intermedio',
-//     avanzado: 'Avanzado',
-//   };
-//   return map[nivel] || nivel;
-// };
-
-// const formatModalidad = (modalidad: string) => {
-//   const map: Record<string, string> = {
-//     presencial: 'Presencial',
-//     virtual: 'Virtual',
-//     hibrida: 'Híbrida',
-//   };
-//   return map[modalidad] || modalidad;
-// };
 
 export default ProductList;

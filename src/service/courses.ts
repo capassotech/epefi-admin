@@ -135,6 +135,7 @@ export const CoursesAPI = {
   createModule: async (data: Record<string, unknown>) => {
     try {
       const res = await api.post('/modulos', data);
+      console.log(res.data);
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
@@ -152,9 +153,9 @@ export const CoursesAPI = {
     }
   },
 
-  deleteModule: async (id: string) => {
+  deleteModule: async (id: string, id_materia: string) => {
     try {
-      await api.delete(`/modulos/${id}`);
+      await api.delete(`/modulos/${id}`, { data: { id_materia } });
       return { success: true };
     } catch {
       throw new Error("Error al eliminar módulo");

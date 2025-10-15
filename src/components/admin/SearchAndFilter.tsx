@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter } from "lucide-react";
 import { CreateUserModal } from "../students/CreateUserModal";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export interface FilterOptions {
   status?: string;
@@ -24,6 +26,7 @@ interface SearchAndFilterProps {
     sortOptions?: { value: string; label: string }[];
   };
   hideCreateButton?: boolean;
+  isStudentPage?: boolean;
 }
 
 export const SearchAndFilter = ({
@@ -31,6 +34,7 @@ export const SearchAndFilter = ({
   onFilter,
   onCreateNew,
   createButtonText = "Crear Nuevo",
+  isStudentPage = false,
   filterOptions,
   hideCreateButton = false,
 }: SearchAndFilterProps) => {
@@ -102,10 +106,14 @@ export const SearchAndFilter = ({
 
 
       {!hideCreateButton && onCreateNew && (
-        <CreateUserModal
-          onUserCreated={onCreateNew}
-          triggerText={createButtonText}
-        />
+        isStudentPage ? (
+          <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
+        ) : (
+          <Button onClick={onCreateNew} className="cursor-pointer">
+            <Plus className="w-4 h-4 mr-2 cursor-pointer" />
+            {createButtonText}
+          </Button>
+        )
       )}
     </div>
   );

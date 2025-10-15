@@ -143,7 +143,7 @@ export default function Products() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Formaciones</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Cursos</h1>
         <p className="text-gray-600 mt-2">
           Gestiona todos tus cursos, membresías, e-books y contenido gratuito.
         </p>
@@ -153,13 +153,13 @@ export default function Products() {
         onSearch={handleSearch}
         onFilter={handleFilter}
         onCreateNew={() => navigate('/products/create')}
-        createButtonText="Crear formación"
+        createButtonText="Crear curso"
         filterOptions={filterOptions}
       />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {formaciones.length} formaciones
+          Mostrando {filteredProducts.length} de {formaciones.length} cursos
         </p>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <span>Vista:</span>
@@ -203,13 +203,13 @@ export default function Products() {
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-4xl">📚</span>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron formaciones</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron cursos</h3>
           <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear una nueva formación.</p>
           <button
             onClick={() => navigate('/products/create')}
             className="admin-button"
           >
-            Crear primera formación
+            Crear primer curso
           </button>
         </div>
       )}
@@ -218,7 +218,8 @@ export default function Products() {
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}  
         onConfirm={handleConfirmDelete}
-        itemName={formaciones.find(f => f.id === confirmDeleteId)?.titulo || "esta formación"}
+        itemName={formaciones.find(f => f.id === confirmDeleteId)?.titulo || "este curso"}
+        deleteLoading={loading}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SubjectCard } from '../components/subject/SubjectCard';
 import { SubjectList } from '../components/subject/SubjectList';
-import CreateSubjectModal from '../components/subject/CreateSubjectModal';
+import SubjectModal from '../components/subject/SubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
@@ -289,7 +289,7 @@ export default function Subjects() {
                 itemName={materias.find(m => m.id === confirmDeleteId)?.nombre || "esta materia"}
             />
 
-            <CreateSubjectModal
+            <SubjectModal
                 isOpen={isCreateModalOpen}
                 onCancel={handleCancelCreate}
                 onSubjectCreated={handleCreateSubject}
