@@ -168,6 +168,7 @@ export default function Students() {
       <SearchAndFilter
         onSearch={handleSearch}
         onFilter={handleFilter}
+        isStudentPage={true}
         onCreateNew={() => navigate("/students")}
         createButtonText="Crear estudiante"
         filterOptions={filterOptions}
