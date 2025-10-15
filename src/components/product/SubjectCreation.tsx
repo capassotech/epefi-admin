@@ -17,9 +17,13 @@ import {
   } from "@/components/ui/select"
 import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
+interface SubjectCreationProps {
+    courseId?: string | null;
+    setNewSubjects?: (newSubjects: boolean) => void;
+}
 
 
-export default function SubjectCreation({ courseId, setNewSubjects }: { courseId?: string | null, setNewSubjects: (newSubjects: boolean) => void }) {
+export default function SubjectCreation({ courseId, setNewSubjects }: SubjectCreationProps) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
@@ -130,12 +134,12 @@ export default function SubjectCreation({ courseId, setNewSubjects }: { courseId
                 })
             );
             toast.success("Materias asociadas al curso");
-            setNewSubjects(true);
+            setNewSubjects?.(true);
             // Refresh lists
             const refreshed = await CoursesAPI.getMaterias();
             setAllSubjects(Array.isArray(refreshed) ? refreshed : []);
             setSelectedSubjects([]);
-            setNewSubjects(false);
+            setNewSubjects?.(false);
         } catch (e) {
             console.error(e);
             toast.error("Error al asociar materias");

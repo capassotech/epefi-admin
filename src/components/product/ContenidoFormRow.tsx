@@ -1,7 +1,15 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Video, FileText, HelpCircle, ImageIcon, File } from "lucide-react";
 import { type ContentTypeOption } from "@/types/modules";
+
+type ContenidoForm = {
+  titulo: string;
+  descripcion: string;
+  tipo_contenido: ContentTypeOption["value"];
+  url_contenido: string;
+  url_miniatura?: string | null;
+  duracion: number;
+};
 
 interface ContenidoFormRowProps {
   index: number;

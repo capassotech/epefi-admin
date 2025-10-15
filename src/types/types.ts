@@ -25,6 +25,13 @@ export interface Subject {
   imagen?: string;
 }
 
+export interface Degree {
+  id: string;
+  id_curso: string;
+  modulos: string[];
+  nombre: string;
+}
+
 export interface Course {
   id: string;
   titulo: string;
@@ -51,10 +58,24 @@ export interface StudentDB {
   fechaRegistro: FirestoreTimestamp;
 }
 
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  apellido: string;
+  fechaActualizacion: string;
+  fechaRegistro: string;
+  activo: boolean;
+  role: Array<{
+    admin?: boolean;
+    student?: boolean;
+  }>;
+}
+
 
 export interface DashboardStats {
   totalStudents: number;
-  popularProducts: Subject[];
+  popularProducts: Course[];
   totalUsers: number;
   totalProducts: number;
   totalRevenue: number;

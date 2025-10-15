@@ -182,7 +182,7 @@ export default function CreateProduct() {
           <Card>
             <CardContent className="p-6">
               {currentTab === 0 && <GeneralInfoForm control={form.control} />}
-              {currentTab === 1 && <SubjectCreation control={form.control} courseId={createdCourseId} />}
+              {currentTab === 1 && <SubjectCreation courseId={createdCourseId} />}
             </CardContent>
           </Card>
 

@@ -8,9 +8,7 @@ import {
   ArrowLeft,
   Clock,
   BookOpen,
-  DollarSign,
   Tag,
-  Building,
   Users,
   Image as ImageIcon,
 } from 'lucide-react';
@@ -90,7 +88,7 @@ const ProductDetail = () => {
         </Button>
       </div>
 
-      {formacion.imagen && (
+      {formacion.image && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -100,7 +98,7 @@ const ProductDetail = () => {
           </CardHeader>
           <CardContent>
             <img
-              src={formacion.imagen ?? formacion.imagen ?? '/placeholder.svg'}
+              src={formacion.image || '/placeholder.svg'}
               alt={formacion.titulo}
               className="max-w-full h-auto rounded-lg border"
             />

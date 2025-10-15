@@ -37,8 +37,6 @@ export default function EditProduct() {
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newSubjects, setNewSubjects] = useState<boolean>(false);
-  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -214,7 +212,6 @@ export default function EditProduct() {
                     <div className="mt-5">
                       <SubjectList
                         subjects={subjects}
-                        onEdit={(subject) => { setEditingSubject(subject); setIsSubjectModalOpen(true); }}
                         onDelete={handleOnDeleteSubject}
                       />
                     </div>

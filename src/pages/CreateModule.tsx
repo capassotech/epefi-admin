@@ -208,7 +208,10 @@ export default function CreateModule() {
         setDeleteLoading(true);
         try {
             if (!confirmDeleteId.startsWith('temp-')) {
-                await CoursesAPI.deleteModule(confirmDeleteId);
+                if (!subjectFromQuery) {
+                    throw new Error('No se encontró la materia asociada al módulo');
+                }
+                await CoursesAPI.deleteModule(confirmDeleteId, subjectFromQuery.id);
                 if (subjectFromQuery) {
                     const updatedSubject: Subject = {
                         ...subjectFromQuery,
