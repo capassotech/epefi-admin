@@ -14,7 +14,8 @@ export interface Module {
   tipo_contenido: "video" | "pdf" | "imagen" | "contenido_extra" | "evaluacion";
   bibliografia: string;
   url_miniatura: string;
-  url_contenido: string;
+  url_archivo: string;
+  url_video: string[];
 }
 
 export interface Subject {
