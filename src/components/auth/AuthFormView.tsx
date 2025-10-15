@@ -457,7 +457,7 @@ export default function AuthFormView({
             <div className="flex items-center space-x-2">
               <div className="h-10 rounded-lg flex items-center justify-center">
                 <img
-                  src="../../public/logoNegro.png "
+                  src="/logoNegro.png"
                   alt="EPEFI Logo"
                   className="h-20"
                 />
