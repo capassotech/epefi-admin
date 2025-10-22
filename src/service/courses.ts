@@ -2,6 +2,8 @@
 import { auth } from "@/firebase";
 import axios from "axios";
 import type { Subject } from "@/types/types";
+import { storage } from "../../config/firebase-client";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const API_URL =
   import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
@@ -52,6 +54,20 @@ export const CoursesAPI = {
     await api.delete(`/cursos/${id}`);
     return { success: true };
   },
+
+  uploadImage: async (
+    image: File,
+    opts?: { directory?: string; filename?: string; contentType?: string }
+  ) => {
+    const directory = (opts?.directory ?? "Imagenes/Formaciones").replace(/\/+$/g, "");
+    const filename = opts?.filename ?? image.name;
+    const objectPath = `${directory}/${filename}`;
+
+    const storageRef = ref(storage, objectPath);
+    await uploadBytes(storageRef, image, { contentType: image.type });
+    const url = await getDownloadURL(storageRef);
+    return { url, path: objectPath };
+  },  
 
   // Materias CRUD
   getMateriaById: async (id: string) => {

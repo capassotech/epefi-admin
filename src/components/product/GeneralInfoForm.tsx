@@ -10,12 +10,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Control } from "react-hook-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Dispatch, SetStateAction } from "react";
 
 interface GeneralInfoFormProps {
-  control: Control<{ titulo: string; descripcion: string; precio: number; estado: "activo" | "inactivo"; materias: string[]; imagen?: string | undefined; }>;
+  control: Control<{ titulo: string; descripcion: string; precio: number; estado: "activo" | "inactivo"; materias: string[]; imagen?: File | undefined; }>;
+  setImagePreviewUrl: Dispatch<SetStateAction<string | null>>;
+  imagePreviewUrl: string | null;
+  setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
+  isDialogOpen: boolean;
 }
 
-const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {
+const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDialogOpen, isDialogOpen }: GeneralInfoFormProps) => {
   return (
     <div className="space-y-4">
       <FormField
@@ -55,49 +61,29 @@ const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {
         )}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={control}
-          name="imagen"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>URL de la Imagen *</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="https://example.com/imagen-curso.jpg"
-                  {...field}
-                  value={field.value || ""}
-                  required={false}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <FormField
+        control={control}
+        name="precio"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Precio *</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="299.99"
+                {...field}
+                value={field.value || 0}
+                onChange={(e) =>
+                  field.onChange(parseFloat(e.target.value) || 0)
+                }
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-        <FormField
-          control={control}
-          name="precio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Precio *</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="299.99"
-                  {...field}
-                  value={field.value || 0}
-                  onChange={(e) =>
-                    field.onChange(parseFloat(e.target.value) || 0)
-                  }
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
       <FormField
         control={control}
         name="estado"
@@ -117,6 +103,91 @@ const GeneralInfoForm = ({ control }: GeneralInfoFormProps) => {
                 className="h-4 w-4 rounded border-gray-300"
               />
             </FormControl>
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="imagen"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Imagen * (Tamaño recomendado: 1920x1080px | 16:9)</FormLabel>
+            <FormControl>
+              <div className="space-y-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="cursor-pointer"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const objectUrl = URL.createObjectURL(file);
+                      setImagePreviewUrl((prev) => {
+                        if (prev && prev !== objectUrl) URL.revokeObjectURL(prev);
+                        return objectUrl;
+                      });
+                      field.onChange(file);
+                    } else {
+                      setImagePreviewUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return null;
+                      });
+                      field.onChange(undefined);
+                    }
+                  }}
+                  required={false}
+                />
+
+                {imagePreviewUrl && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Vista previa de la imagen seleccionada"
+                        className="h-16 w-16 rounded object-cover border"
+                      />
+                      <button
+                        type="button"
+                        className="text-sm text-primary underline"
+                        onClick={() => setIsDialogOpen(true)}
+                      >
+                        Ver grande
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm text-muted-foreground underline"
+                        onClick={() => {
+                          setImagePreviewUrl((prev) => {
+                            if (prev) URL.revokeObjectURL(prev);
+                            return null;
+                          });
+                          field.onChange(undefined);
+                        }}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogContent className="max-w-3xl">
+                        <DialogHeader>
+                          <DialogTitle>Vista previa</DialogTitle>
+                        </DialogHeader>
+                        <div className="w-full">
+                          <img
+                            src={imagePreviewUrl}
+                            alt="Vista previa"
+                            className="w-full h-auto rounded"
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
+              </div>
+            </FormControl>
+            <FormMessage />
           </FormItem>
         )}
       />
