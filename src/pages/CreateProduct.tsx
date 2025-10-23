@@ -199,7 +199,8 @@ export default function CreateProduct() {
                   setImagePreviewUrl={setImagePreviewUrl} 
                   imagePreviewUrl={imagePreviewUrl} 
                   setIsDialogOpen={setIsDialogOpen} 
-                  isDialogOpen={isDialogOpen} 
+                  isDialogOpen={isDialogOpen}
+                  currentImageUrl={null}
                 />
               }
               {currentTab === 1 && <SubjectCreation courseId={createdCourseId} />}

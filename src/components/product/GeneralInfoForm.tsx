@@ -19,9 +19,24 @@ interface GeneralInfoFormProps {
   imagePreviewUrl: string | null;
   setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
   isDialogOpen: boolean;
+  currentImageUrl?: string | null;
 }
 
-const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDialogOpen, isDialogOpen }: GeneralInfoFormProps) => {
+const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDialogOpen, isDialogOpen, currentImageUrl }: GeneralInfoFormProps) => {
+  const hasValidImage = (url: string | null | undefined): boolean => {
+    return url != null && url.trim() !== "";
+  };
+
+  const getImageSrc = (): string => {
+    if (imagePreviewUrl) return imagePreviewUrl;
+    if (hasValidImage(currentImageUrl)) return currentImageUrl!;
+    return "";
+  };
+
+  const shouldShowImage = (): boolean => {
+    return imagePreviewUrl != null || hasValidImage(currentImageUrl);
+  };
+
   return (
     <div className="space-y-4">
       <FormField
@@ -139,12 +154,12 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
                   required={false}
                 />
 
-                {imagePreviewUrl && (
+                {shouldShowImage() && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
                       <img
-                        src={imagePreviewUrl}
-                        alt="Vista previa de la imagen seleccionada"
+                        src={getImageSrc()}
+                        alt={imagePreviewUrl ? "Vista previa de la imagen seleccionada" : "Imagen actual"}
                         className="h-16 w-16 rounded object-cover border"
                       />
                       <button
@@ -154,19 +169,21 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
                       >
                         Ver grande
                       </button>
-                      <button
-                        type="button"
-                        className="text-sm text-muted-foreground underline"
-                        onClick={() => {
-                          setImagePreviewUrl((prev) => {
-                            if (prev) URL.revokeObjectURL(prev);
-                            return null;
-                          });
-                          field.onChange(undefined);
-                        }}
-                      >
-                        Quitar
-                      </button>
+                      {imagePreviewUrl && (
+                        <button
+                          type="button"
+                          className="text-sm text-muted-foreground underline"
+                          onClick={() => {
+                            setImagePreviewUrl((prev) => {
+                              if (prev) URL.revokeObjectURL(prev);
+                              return null;
+                            });
+                            field.onChange(undefined);
+                          }}
+                        >
+                          Quitar
+                        </button>
+                      )}
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -176,7 +193,7 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
                         </DialogHeader>
                         <div className="w-full">
                           <img
-                            src={imagePreviewUrl}
+                            src={getImageSrc()}
                             alt="Vista previa"
                             className="w-full h-auto rounded"
                           />

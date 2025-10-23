@@ -17,7 +17,8 @@ import type {
 } from "../types/types";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
 const FRONTEND_URL =
   import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";
 
