@@ -22,10 +22,10 @@ import { type Module } from '@/types/types';
 interface ModulesModalProps {
     isOpen: boolean;
     onCancel: () => void;
-    onModuleCreated: (subjectData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }) => Promise<{ id: string }>;
+    onModuleCreated: (subjectData: Module) => Promise<{ id: string }>;
     courseId?: string | null;
     editingModule?: Module | null;
-    onModuleUpdated?: (subjectData: { id: string; titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }) => Promise<void>;
+    onModuleUpdated?: (subjectData: Module) => Promise<void>;
 }
 
 
@@ -44,10 +44,12 @@ const ModulesModal = ({
         descripcion: "",
         bibliografia: "",
         url_miniatura: "",
-        url_contenido: "",
+        url_archivo: "",
+        url_video: [],
         tipo_contenido: "video",
         id_materia: "",
     });
+    const [videoUrlInput, setVideoUrlInput] = useState<string>("");
 
     useEffect(() => {
         if (isOpen) {
@@ -60,7 +62,8 @@ const ModulesModal = ({
                     tipo_contenido: editingModule.tipo_contenido || "VIDEO",
                     bibliografia: editingModule.bibliografia || "",
                     url_miniatura: editingModule.url_miniatura || "",
-                    url_contenido: editingModule.url_contenido || "",
+                    url_archivo: editingModule.url_archivo || "",
+                    url_video: editingModule.url_video || [],
                 });
             } else {
                 setModuleForm({
@@ -71,8 +74,10 @@ const ModulesModal = ({
                     tipo_contenido: "video",
                     bibliografia: "",
                     url_miniatura: "",
-                    url_contenido: "",
-                }); 
+                    url_archivo: "",
+                    url_video: [],
+                });
+                setVideoUrlInput("");
             }
         }
     }, [isOpen, courseId, editingModule]);
@@ -100,21 +105,20 @@ const ModulesModal = ({
 
         try {
             const subjectDataToSend = {
+                id: moduleForm.id,
                 titulo: moduleForm.titulo,
                 descripcion: moduleForm.descripcion,
                 id_materia: moduleForm.id_materia,
                 tipo_contenido: moduleForm.tipo_contenido,
                 bibliografia: moduleForm.bibliografia,
                 url_miniatura: moduleForm.url_miniatura,
-                url_contenido: moduleForm.url_contenido,
+                url_archivo: moduleForm.url_archivo,
+                url_video: moduleForm.url_video,
             };
 
-
             if (editingModule && onModuleUpdated) {
-                await onModuleUpdated({
-                    id: editingModule.id,
-                    ...subjectDataToSend
-                });
+                console.log(subjectDataToSend);
+                await onModuleUpdated(subjectDataToSend);
                 onCancel();
             } else {
                 await onModuleCreated(subjectDataToSend);
@@ -246,41 +250,113 @@ const ModulesModal = ({
                             </div>
                         </div>
 
+                        <div className='flex gap-4 w-full'>
+                            <div className='w-1/2'>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    URL de Miniatura
+                                </label>
+                                <input
+                                    type="text"
+                                    value={moduleForm.url_miniatura}
+                                    onChange={(e) =>
+                                        setModuleForm((prev) => ({
+                                            ...prev,
+                                            url_miniatura: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="https://..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                URL de Miniatura
-                            </label>
-                            <input
-                                type="text"
-                                value={moduleForm.url_miniatura}
-                                onChange={(e) =>
-                                    setModuleForm((prev) => ({
-                                        ...prev,
-                                        url_miniatura: e.target.value,
-                                    }))
-                                }
-                                placeholder="https://..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <div className='w-1/2'>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    URL de Archivo *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={moduleForm.url_archivo}
+                                    onChange={(e) =>
+                                        setModuleForm((prev) => ({
+                                            ...prev,
+                                            url_archivo: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="https://..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                URL de Contenido *
+                                URLs de videos
                             </label>
-                            <input
-                                type="text"
-                                value={moduleForm.url_contenido}
-                                onChange={(e) =>
-                                    setModuleForm((prev) => ({
-                                        ...prev,
-                                        url_contenido: e.target.value,
-                                    }))
-                                }
-                                placeholder="https://..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={videoUrlInput}
+                                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const url = videoUrlInput.trim();
+                                            if (!url) return;
+                                            setModuleForm((prev) => ({
+                                                ...prev,
+                                                url_video: prev.url_video.includes(url)
+                                                    ? prev.url_video
+                                                    : [...prev.url_video, url],
+                                            }));
+                                            setVideoUrlInput("");
+                                        }
+                                    }}
+                                    placeholder="https://... (Enter para agregar)"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                <Button
+                                    type="button"
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                        const url = videoUrlInput.trim();
+                                        if (!url) return;
+                                        setModuleForm((prev) => ({
+                                            ...prev,
+                                            url_video: prev.url_video.includes(url)
+                                                ? prev.url_video
+                                                : [...prev.url_video, url],
+                                        }));
+                                        setVideoUrlInput("");
+                                    }}
+                                >
+                                    Agregar
+                                </Button>
+                            </div>
+                            {moduleForm.url_video.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {moduleForm.url_video.map((url) => (
+                                        <div
+                                            key={url}
+                                            className="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded"
+                                        >
+                                            <span className="text-xs text-gray-800 max-w-[360px] truncate" title={url}>{url}</span>
+                                            <button
+                                                type="button"
+                                                className="text-xs text-red-600 hover:text-red-800"
+                                                onClick={() =>
+                                                    setModuleForm((prev) => ({
+                                                        ...prev,
+                                                        url_video: prev.url_video.filter((u) => u !== url),
+                                                    }))
+                                                }
+                                                title="Quitar URL"
+                                            >
+                                                Quitar
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-end space-x-3 pt-4 border-t">

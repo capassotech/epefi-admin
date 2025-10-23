@@ -1,7 +1,7 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
-import type { Subject } from "@/types/types";
+import { type Subject, type Module } from "@/types/types";
 import { storage } from "../../config/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -161,7 +161,7 @@ export const CoursesAPI = {
     );
   },
 
-  createModule: async (data: Record<string, unknown>) => {
+  createModule: async (data: Module) => {
     try {
       const res = await api.post("/modulos", data);
       console.log(res.data);
@@ -179,7 +179,7 @@ export const CoursesAPI = {
     }
   },
 
-  updateModule: async (id: string, data: Record<string, unknown>) => {
+  updateModule: async (id: string, data: Module) => {
     try {
       const res = await api.put(`/modulos/${id}`, data);
       return res.data;
