@@ -1,10 +1,11 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
-import type { Subject } from "@/types/types";
+import type { Module, Subject } from "@/types/types";
 
-const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
+// const API_URL =
+//   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_URL = "http://localhost:3000"
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -145,7 +146,7 @@ export const CoursesAPI = {
     );
   },
 
-  createModule: async (data: Record<string, unknown>) => {
+  createModule: async (data: Module) => {
     try {
       const res = await api.post("/modulos", data);
       console.log(res.data);
@@ -163,7 +164,7 @@ export const CoursesAPI = {
     }
   },
 
-  updateModule: async (id: string, data: Record<string, unknown>) => {
+  updateModule: async (id: string, data: Module) => {
     try {
       const res = await api.put(`/modulos/${id}`, data);
       return res.data;

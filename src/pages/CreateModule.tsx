@@ -66,7 +66,7 @@ export default function CreateModule() {
         }
     }, [location.search]);
 
-    const createModule = async (moduleData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<{ id: string }> => {
+    const createModule = async (moduleData: Module): Promise<{ id: string }> => {
         setLoading(true);
         try {
             if (subjectFromQuery) {
@@ -77,12 +77,12 @@ export default function CreateModule() {
                 };
                 await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
                 setSubjectFromQuery(updatedSubject);
-                setModules((prev) => [...prev, { id: created.id, ...moduleData } as Module]);
+                setModules((prev) => [...prev, { ...moduleData, id: created.id } as Module]);
                 toast.success('Módulo agregado correctamente');
                 return { id: created.id };
             } else if (pendingSubject) {
                 const tempId = `temp-${Date.now()}`;
-                setModules((prev) => [...prev, { id: tempId, ...moduleData } as Module]);
+                setModules((prev) => [...prev, { ...moduleData, id: tempId } as Module]);
                 toast.success('Módulo agregado correctamente');
                 return { id: tempId };
             } else {
@@ -162,25 +162,26 @@ export default function CreateModule() {
         setEditingSubject(null);
     };
 
-    const handleModuleCreated = async (moduleData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<{ id: string }> => {
+    const handleModuleCreated = async (moduleData: Module): Promise<{ id: string }> => {
         const res = await createModule(moduleData);
         setIsCreateModalOpen(false);
         return res;
     };
 
-    const handleModuleUpdated = async (moduleData: { id: string; titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }) => {
+    const handleModuleUpdated = async (moduleData: Module) => {
         if (moduleData.id.startsWith('temp-')) {
-            // Solo actualiza local si es temporal
             setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
         } else {
             await CoursesAPI.updateModule(moduleData.id, {
+                id: moduleData.id,
                 titulo: moduleData.titulo,
                 descripcion: moduleData.descripcion,
                 id_materia: moduleData.id_materia,
                 tipo_contenido: moduleData.tipo_contenido,
                 bibliografia: moduleData.bibliografia,
                 url_miniatura: moduleData.url_miniatura,
-                url_contenido: moduleData.url_contenido,
+                url_archivo: moduleData.url_archivo,
+                url_video: moduleData.url_video,
             });
             setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
         }

@@ -113,7 +113,7 @@ export const SubjectDetail = () => {
         setEditingSubject(null);
     };
 
-    const handleModuleCreated = async (subjectData: { titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<{ id: string }> => {
+    const handleModuleCreated = async (subjectData: Module): Promise<{ id: string }> => {
         try {
             const created = await CoursesAPI.createModule(subjectData);
             const newModuleId: string = created.id;
@@ -129,7 +129,7 @@ export const SubjectDetail = () => {
             }
 
             // Actualizar la lista local de módulos
-            const newModule: Module = { id: newModuleId, ...subjectData } as Module;
+            const newModule: Module = { ...subjectData, id: newModuleId } as Module;
             setModulos((prev) => [...prev, newModule]);
 
             setIsCreateModalOpen(false);
@@ -140,16 +140,18 @@ export const SubjectDetail = () => {
         }
     };
 
-    const handleModuleUpdated = async (subjectData: { id: string; titulo: string; descripcion: string; id_materia: string; tipo_contenido: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra"; bibliografia: string; url_miniatura: string; url_contenido: string }): Promise<void> => {
+    const handleModuleUpdated = async (subjectData: Module): Promise<void> => {
         try {
             await CoursesAPI.updateModule(subjectData.id, {
+                id: subjectData.id,
                 titulo: subjectData.titulo,
                 descripcion: subjectData.descripcion,
                 id_materia: subjectData.id_materia,
                 tipo_contenido: subjectData.tipo_contenido,
                 bibliografia: subjectData.bibliografia,
                 url_miniatura: subjectData.url_miniatura,
-                url_contenido: subjectData.url_contenido,
+                url_archivo: subjectData.url_archivo,
+                url_video: subjectData.url_video,
             });
 
             // Refrescar el módulo en el estado local
