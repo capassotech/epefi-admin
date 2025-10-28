@@ -132,7 +132,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
       </div>
 
       {/* Navigation */}
-      <nav className={cn("flex-1 py-6 space-y-2", isMobile ? "px-4" : "")}>
+      <nav className={cn("flex-1 py-6 space-y-2", isMobile ? "px-4" : "px-2")}>
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;
           const navItem = (

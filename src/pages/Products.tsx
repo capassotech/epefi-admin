@@ -5,7 +5,6 @@ import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAn
 import { useNavigate } from 'react-router-dom';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
-import { mockProducts } from '@/data/mockData';
 import { type Course } from '@/types/types';
 import { Loader2 } from 'lucide-react';
 
@@ -18,12 +17,12 @@ export default function Products() {
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
-    setFormaciones(mockProducts);
     const fetchFormaciones = async () => {
       try {
         const res = await CoursesAPI.getAll();
@@ -51,15 +50,17 @@ export default function Products() {
     if (!confirmDeleteId) return;
 
     try {
+      setDeleteLoading(true);
       await CoursesAPI.delete(confirmDeleteId);
-
-      setFormaciones(prev => prev.filter(f => f.id !== confirmDeleteId));
-      setFilteredProducts(prev => prev.filter(f => f.id !== confirmDeleteId));
+      
+      setFormaciones(prev => prev.map(f => (f.id === confirmDeleteId ? { ...f, estado: 'inactivo' } : f)));
+      setFilteredProducts(prev => prev.map(f => (f.id === confirmDeleteId ? { ...f, estado: 'inactivo' } : f)));
     } catch (err) {
       console.error("Error al eliminar formación:", err);
     } finally {
       setIsDeleteModalOpen(false);
       setConfirmDeleteId(null);
+      setDeleteLoading(false);
     }
   };
 
@@ -219,7 +220,7 @@ export default function Products() {
         onCancel={handleCancelDelete}  
         onConfirm={handleConfirmDelete}
         itemName={formaciones.find(f => f.id === confirmDeleteId)?.titulo || "este curso"}
-        deleteLoading={loading}
+        deleteLoading={deleteLoading}
       />
     </div>
   );
