@@ -161,7 +161,7 @@ const SubjectModal = ({
     if (!isOpen) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onCancel}>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
             <DialogContent>
                 <div
