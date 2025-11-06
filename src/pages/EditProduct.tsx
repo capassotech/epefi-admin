@@ -26,6 +26,8 @@ import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import SubjectList from "@/components/subject/SubjectList";
 import type { Subject } from "@/types/types";
 import SubjectCreation from "@/components/product/SubjectCreation";
+import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
+import SubjectModal from "@/components/subject/SubjectModal";
 
 
 export default function EditProduct() {
@@ -38,6 +40,12 @@ export default function EditProduct() {
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newSubjects, setNewSubjects] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -142,13 +150,60 @@ export default function EditProduct() {
     }
   };
 
-  const handleOnDeleteSubject = async (subjectId: string) => {
+  const handleOnDeleteSubject = (subjectId: string) => {
+    setConfirmDeleteId(subjectId);
+    setIsDeleteModalOpen(true);
+  }
+
+  const handleCancelDeleteSubject = () => {
+    setIsDeleteModalOpen(false);
+    setConfirmDeleteId(null);
+  }
+
+  const handleConfirmDeleteSubject = async () => {
+    if (!confirmDeleteId) return;
+    setDeleteLoading(true);
     try {
-      await CoursesAPI.deleteMateria(subjectId);
-      setSubjects(prev => prev.filter(s => s.id !== subjectId));
+      await CoursesAPI.deleteMateria(confirmDeleteId);
+      setSubjects(prev => prev.filter(s => s.id !== confirmDeleteId));
+      toast.success("Materia eliminada exitosamente");
+      handleCancelDeleteSubject();
     } catch (e) {
       console.error(e);
       toast.error("Error al eliminar la materia");
+    }
+  }
+
+  const handleOnEditSubjectClick = (subject: Subject) => {
+    setEditingSubject(subject);
+    setIsEditModalOpen(true);
+  }
+
+  const handleCancelEditSubject = () => {
+    setIsEditModalOpen(false);
+    setEditingSubject(null);
+  }
+
+  const handleUpdateSubjectSubject = async (subjectData: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }) => {
+    try {
+      await CoursesAPI.updateMateria(subjectData.id, {
+        id: subjectData.id,
+        nombre: subjectData.nombre,
+        id_cursos: subjectData.id_cursos,
+        modulos: subjectData.modulos,
+      });
+
+      setSubjects(prev => prev.map(s =>
+        s.id === subjectData.id
+          ? { ...s, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
+          : s
+      ));
+      toast.success("Materia actualizada exitosamente");
+      handleCancelEditSubject();
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al actualizar la materia");
+      throw err;
     }
   }
 
@@ -237,15 +292,16 @@ export default function EditProduct() {
                   />
                 : ( 
                   <>
-                    <SubjectCreation courseId={createdCourseId} setNewSubjects={setNewSubjects} />
+                    <SubjectCreation courseId={createdCourseId} />
                     <div className="mt-5">
                       <SubjectList
                         subjects={subjects}
                         onDelete={handleOnDeleteSubject}
+                        onEdit={handleOnEditSubjectClick}
                       />
                     </div>
                   </>
-              )}
+                )}
             </CardContent>
           </Card>
 
@@ -303,6 +359,25 @@ export default function EditProduct() {
           </div>
         </form>
       </Form>
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onCancel={handleCancelDeleteSubject}
+        onConfirm={handleConfirmDeleteSubject}
+        deleteLoading={deleteLoading}
+        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"} id={""}      />
+
+      <SubjectModal
+        isOpen={isEditModalOpen}
+        onCancel={handleCancelEditSubject}
+        onSubjectCreated={async () => ({ id: "" })}
+        courseId={createdCourseId}
+        editingSubject={editingSubject}
+        onSubjectUpdated={handleUpdateSubjectSubject}
+        onGoToModules={(subjectId: string) => {
+          navigate(`/modules/create?subjectId=${subjectId}`);
+        }}
+      />
     </div>
   );
 }

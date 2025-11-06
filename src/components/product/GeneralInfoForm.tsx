@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Control } from "react-hook-form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Dispatch, SetStateAction } from "react";
 
 interface GeneralInfoFormProps {
@@ -190,6 +190,9 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
                       <DialogContent className="max-w-3xl">
                         <DialogHeader>
                           <DialogTitle>Vista previa</DialogTitle>
+                          <DialogDescription>
+                            Vista previa de la imagen que se mostrará en el curso
+                          </DialogDescription>
                         </DialogHeader>
                         <div className="w-full">
                           <img

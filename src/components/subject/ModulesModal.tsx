@@ -9,6 +9,8 @@ import {
     Dialog,
     DialogContent,
     DialogTrigger,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 
 import {
@@ -152,6 +154,14 @@ const ModulesModal = ({
         <Dialog open={isOpen} onOpenChange={onCancel}>
             <DialogTrigger></DialogTrigger>
             <DialogContent className='max-w-5xl'>
+                <DialogTitle className="sr-only">
+                    {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    {editingModule 
+                        ? 'Formulario para editar los datos del módulo' 
+                        : 'Formulario para crear un nuevo módulo'}
+                </DialogDescription>
                 <div
                     className="max-w-5xl w-full max-h-[90vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}

@@ -9,6 +9,8 @@ import {
     Dialog,
     DialogContent,
     DialogTrigger,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 
 import {
@@ -164,9 +166,17 @@ const SubjectModal = ({
     if (!isOpen) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onCancel}>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
             <DialogContent>
+                <DialogTitle className="sr-only">
+                    {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    {editingSubject 
+                        ? 'Formulario para editar los datos de la materia' 
+                        : 'Formulario para crear una nueva materia'}
+                </DialogDescription>
                 <div
                     className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
