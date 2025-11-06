@@ -1,11 +1,25 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
-import type { Module, Subject } from "@/types/types";
+import { type Subject, type Module } from "@/types/types";
+import { storage } from "../../config/firebase-client";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-// const API_URL =
-//   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-const API_URL = "http://localhost:3000"
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
+// Debug: Log de la configuración
+console.log('🔧 Configuración API:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  API_URL_FINAL: API_URL,
+  baseURL: `${API_URL}/api`
+});
+
+// Validar que la URL base no esté vacía
+if (!API_URL || API_URL.trim() === '') {
+  console.error('❌ VITE_API_BASE_URL está vacío o no está definido');
+  throw new Error('La URL base de la API no está configurada correctamente');
+}
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -26,6 +40,34 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// Interceptor de respuesta para manejar errores
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // El servidor respondió con un código de estado fuera del rango 2xx
+      console.error('❌ Error de respuesta:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: error.config?.baseURL + error.config?.url
+      });
+    } else if (error.request) {
+      // La petición fue hecha pero no se recibió respuesta
+      console.error('❌ Error de red - No se recibió respuesta:', {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: error.config?.baseURL + error.config?.url
+      });
+    } else {
+      // Algo pasó al configurar la petición
+      console.error('❌ Error al configurar la petición:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const CoursesAPI = {
   // Cursos CRUD
@@ -53,6 +95,20 @@ export const CoursesAPI = {
     await api.delete(`/cursos/${id}`);
     return { success: true };
   },
+
+  uploadImage: async (
+    image: File,
+    opts?: { directory?: string; filename?: string; contentType?: string }
+  ) => {
+    const directory = (opts?.directory ?? "Imagenes/Formaciones").replace(/\/+$/g, "");
+    const filename = opts?.filename ?? image.name;
+    const objectPath = `${directory}/${filename}`;
+
+    const storageRef = ref(storage, objectPath);
+    await uploadBytes(storageRef, image, { contentType: image.type });
+    const url = await getDownloadURL(storageRef);
+    return { url, path: objectPath };
+  },  
 
   // Materias CRUD
   getMateriaById: async (id: string) => {

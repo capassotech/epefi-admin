@@ -21,6 +21,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -245,6 +246,11 @@ export const CreateUserModal = ({
             <User className="w-5 h-5" />
             <span>{isEditing ? "Editar Usuario" : "Crear Nuevo Usuario"}</span>
           </DialogTitle>
+          <DialogDescription>
+            {isEditing 
+              ? "Modifica los datos del usuario" 
+              : "Completa el formulario para crear un nuevo usuario"}
+          </DialogDescription>
         </DialogHeader>
 
         <Card>

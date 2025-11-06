@@ -20,6 +20,7 @@ import {
   productFormSchema,
   type ProductFormData,
 } from "@/schemas/product-schema";
+import { slugify } from "@/lib/utils";
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import SubjectList from "@/components/subject/SubjectList";
@@ -46,6 +47,10 @@ export default function EditProduct() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
@@ -53,7 +58,7 @@ export default function EditProduct() {
       descripcion: "",
       precio: 0,
       estado: "activo",
-      imagen: "",
+      imagen: undefined,
       materias: [],
     },
     mode: "onChange",
@@ -74,12 +79,15 @@ export default function EditProduct() {
         setCreatedCourseId(id);
         setCourseCreated(true);
 
+        const imageUrl = data.imagen || "";
+        setCurrentImageUrl(imageUrl);
+        
         form.reset({
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
           precio: data.precio || 0,
           estado: data.estado || "activo",
-          imagen: data.imagen || "",
+          imagen: undefined, // Don't set file object, keep as undefined
           materias: Array.isArray(data.materias) ? data.materias : [],
         });
 
@@ -106,16 +114,30 @@ export default function EditProduct() {
     if (!id) return;
     setLoading(true);
 
-    const payload = {
-      titulo: data.titulo,
-      descripcion: data.descripcion,
-      precio: data.precio,
-      estado: data.estado,
-      imagen: data.imagen || "",
-      materias: data.materias || [],
-    };
-
     try {
+      let imageUrl = "";
+      
+      if (data.imagen instanceof File) {
+        const folder = `Imagenes/Formaciones/${slugify(data.titulo)}`;
+        const result = await CoursesAPI.uploadImage(data.imagen, {
+          directory: folder,
+          filename: data.imagen.name,
+          contentType: data.imagen.type,
+        });
+        imageUrl = result.url;
+      } else {
+        imageUrl = currentImageUrl || "";
+      }
+
+      const payload = {
+        titulo: data.titulo,
+        descripcion: data.descripcion,
+        precio: data.precio,
+        estado: data.estado,
+        imagen: imageUrl,
+        materias: data.materias || [],
+      };
+
       await CoursesAPI.update(id, payload);
       toast.success("Formación actualizada correctamente");
       handleNext();
@@ -210,7 +232,7 @@ export default function EditProduct() {
     <div className="space-y-6 max-w-4xl mx-auto p-4">
       <div className="flex items-center space-x-4">
         <Link to="/products">
-          <Button variant="outline" size="sm" className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" className="flex items-center space-x-2 cursor-pointer">
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
           </Button>
@@ -259,11 +281,18 @@ export default function EditProduct() {
         }} className="space-y-8">
           <Card>
             <CardContent className="p-6">
-              {currentTab < 1
-                ? <GeneralInfoForm control={form.control} />
-                : (
+              {currentTab < 1 
+                ? <GeneralInfoForm 
+                    control={form.control} 
+                    setImagePreviewUrl={setImagePreviewUrl}
+                    imagePreviewUrl={imagePreviewUrl}
+                    setIsDialogOpen={setIsDialogOpen}
+                    isDialogOpen={isDialogOpen}
+                    currentImageUrl={currentImageUrl}
+                  />
+                : ( 
                   <>
-                    <SubjectCreation courseId={createdCourseId} setNewSubjects={setNewSubjects} />
+                    <SubjectCreation courseId={createdCourseId} />
                     <div className="mt-5">
                       <SubjectList
                         subjects={subjects}
@@ -282,6 +311,7 @@ export default function EditProduct() {
               variant="outline"
               onClick={handleBack}
               disabled={currentTab === 0 || loading}
+              className="cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Anterior
@@ -290,6 +320,7 @@ export default function EditProduct() {
             {currentTab === 0 ? (
               <Button
                 type="button"
+                className="cursor-pointer"
                 onClick={async () => {
                   const isValid = await form.trigger();
                   if (!isValid) {
@@ -316,7 +347,7 @@ export default function EditProduct() {
                 )}
               </Button>
             ) : (
-              <Button onClick={form.handleSubmit(onSubmit)} disabled={loading}>
+              <Button className="cursor-pointer" onClick={form.handleSubmit(onSubmit)} disabled={loading}>
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -334,8 +365,7 @@ export default function EditProduct() {
         onCancel={handleCancelDeleteSubject}
         onConfirm={handleConfirmDeleteSubject}
         deleteLoading={deleteLoading}
-        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"}
-      />
+        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"} id={""}      />
 
       <SubjectModal
         isOpen={isEditModalOpen}

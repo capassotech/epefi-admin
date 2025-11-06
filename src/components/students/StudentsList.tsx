@@ -2,7 +2,7 @@
 import {
   Trash2,
   Mail,
-  Calendar,
+  // Calendar,
   CheckCircle,
   XCircle,
 } from "lucide-react";
@@ -34,16 +34,16 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
       return "Ocurrió un error inesperado";
     }
   };
-  const formatDate = (
-    timestamp: { _seconds: number; _nanoseconds: number } | undefined
-  ) => {
-    if (!timestamp || !timestamp._seconds) return "N/A";
-    return new Date(timestamp._seconds * 1000).toLocaleDateString("es-AR", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  // const formatDate = (
+  //   timestamp: { _seconds: number; _nanoseconds: number } | undefined
+  // ) => {
+  //   if (!timestamp || !timestamp._seconds) return "N/A";
+  //   return new Date(timestamp._seconds * 1000).toLocaleDateString("es-AR", {
+  //     year: "numeric",
+  //     month: "short",
+  //     day: "numeric",
+  //   });
+  // };
 
   const getFullName = (student: StudentDB) => {
     return (
@@ -63,18 +63,18 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 DNI
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              </th> */}
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Rol
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Registro
-              </th>
+              </th> */}
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
               </th>
@@ -97,25 +97,25 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                       </div>
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className=" font-medium text-gray-900">
                         {getFullName(student)}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm text-gray-500">
                         ID: {student.id.substring(0, 8)}...
                       </div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center text-sm text-gray-900">
+                  <div className="flex items-center text-gray-900">
                     <Mail className="w-4 h-4 mr-2 text-gray-400" />
                     {student.email || "Sin email"}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {student.dni || "N/A"}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </td> */}
+                <td className="px-1 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-1">
                     {student.role?.admin && (
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
@@ -129,7 +129,7 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-2 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     {student.activo ? (
                       <>
@@ -144,12 +144,12 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2 text-gray-400" />
                     {formatDate(student.fechaRegistro)}
                   </div>
-                </td>
+                </td> */}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex flex-col items-end justify-end">
                     <div className="flex items-center space-x-2">

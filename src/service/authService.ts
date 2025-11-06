@@ -15,10 +15,11 @@ import type {
   AuthResponse,
   UserProfile,
 } from "../types/types";
+import { safeSetItem, safeGetItem, safeRemoveItem } from "../utils/storage";
 
-// const API_BASE_URL =
-//   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-const API_BASE_URL = "http://localhost:3000"
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
 const FRONTEND_URL =
   import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";
 
@@ -61,7 +62,7 @@ class AuthService {
           registrationTime: new Date().toISOString(),
         };
 
-        localStorage.setItem("studentData", JSON.stringify(studentData));
+        safeSetItem("studentData", studentData);
       }
 
       return response.data;
@@ -169,8 +170,11 @@ class AuthService {
           loginTime: new Date().toISOString(),
         };
 
-        localStorage.setItem("studentData", JSON.stringify(studentData));
-        console.log("💾 Datos guardados:", studentData);
+        if (!safeSetItem("studentData", studentData)) {
+          console.warn("⚠️ No se pudieron guardar los datos en localStorage debido a falta de espacio");
+        } else {
+          console.log("💾 Datos guardados:", studentData);
+        }
       }
 
       return response.data;
@@ -282,7 +286,7 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       await signOut(auth);
-      localStorage.removeItem("studentData");
+      safeRemoveItem("studentData");
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -310,22 +314,14 @@ class AuthService {
   }
 
   getStudentDataFromStorage(): any {
-    try {
-      const studentData = localStorage.getItem("studentData");
-      return studentData ? JSON.parse(studentData) : null;
-    } catch (error) {
-      console.error("Error al obtener datos del estudiante:", error);
-      return null;
-    }
+    return safeGetItem("studentData");
   }
 
   updateStudentDataInStorage(data: any): void {
-    try {
-      const existingData = this.getStudentDataFromStorage() || {};
-      const updatedData = { ...existingData, ...data };
-      localStorage.setItem("studentData", JSON.stringify(updatedData));
-    } catch (error) {
-      console.error("Error al actualizar datos del estudiante:", error);
+    const existingData = this.getStudentDataFromStorage() || {};
+    const updatedData = { ...existingData, ...data };
+    if (!safeSetItem("studentData", updatedData)) {
+      console.error("Error al actualizar datos del estudiante: espacio de almacenamiento agotado");
     }
   }
 }

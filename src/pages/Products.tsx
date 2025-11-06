@@ -5,7 +5,6 @@ import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAn
 import { useNavigate } from 'react-router-dom';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
-import { mockProducts } from '@/data/mockData';
 import { type Course } from '@/types/types';
 import { Loader2 } from 'lucide-react';
 
@@ -17,13 +16,13 @@ export default function Products() {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
-    setFormaciones(mockProducts);
     const fetchFormaciones = async () => {
       try {
         const res = await CoursesAPI.getAll();
@@ -42,24 +41,26 @@ export default function Products() {
     fetchFormaciones();
   }, []);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = async (id: string) => {
     setConfirmDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteId) return;
+  const handleConfirmDelete = async (id: string) => {
+    if (!id) return;
 
     try {
-      await CoursesAPI.delete(confirmDeleteId);
+      setDeleteLoading(true);
+      await CoursesAPI.delete(id);
 
-      setFormaciones(prev => prev.filter(f => f.id !== confirmDeleteId));
-      setFilteredProducts(prev => prev.filter(f => f.id !== confirmDeleteId));
+      setFormaciones(prev => prev.filter(f => f.id !== id));
+      setFilteredProducts(prev => prev.filter(f => f.id !== id));
     } catch (err) {
       console.error("Error al eliminar formación:", err);
     } finally {
       setIsDeleteModalOpen(false);
       setConfirmDeleteId(null);
+      setDeleteLoading(false);
     }
   };
 
@@ -215,11 +216,12 @@ export default function Products() {
       )}
 
       <ConfirmDeleteModal
+        id={confirmDeleteId || ''}
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}  
         onConfirm={handleConfirmDelete}
         itemName={formaciones.find(f => f.id === confirmDeleteId)?.titulo || "este curso"}
-        deleteLoading={loading}
+        deleteLoading={deleteLoading}
       />
     </div>
   );

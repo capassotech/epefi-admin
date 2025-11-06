@@ -42,11 +42,12 @@ export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => 
 
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <p
-                      className="text-lg font-semibold text-gray-900 transition-colors duration-200 line-clamp-2"
+                    <div
+                      className="text-lg font-semibold text-gray-900 transition-colors duration-200"
                     >
-                      {m.titulo}
-                    </p>
+                      <p>{m.titulo}</p>
+                      <p className='text-sm text-gray-500 line-clamp-2'>{m.descripcion}</p>
+                    </div>
                   </div>
                 </div>
 

@@ -2,16 +2,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-// import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
 
 import { type Course } from '@/types/types';
-import { CoursesAPI } from '@/service/courses';
 
 interface ProductListProps {
   products: Course[];
-  onDelete?: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export const ProductList = ({ products, onDelete }: ProductListProps) => {
@@ -23,35 +21,10 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
   const closeToast = () => setToast(null);
 
   const handleDelete = async (id: string) => {
-    if (onDelete) {
-      onDelete(id);
-      await confirmDelete();
-    } else {
-      setSelectedId(id);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedId || isDeleting) return;
-
     setIsDeleting(true);
-
-    try {
-      if (onDelete) {
-        await onDelete(selectedId); 
-      } else {
-        await CoursesAPI.delete(selectedId);
-      }
-
-      setToast({ message: 'Formación eliminada con éxito', type: 'success' });
-
-      setSelectedId(null);
-    } catch (err) {
-      setToast({ message: 'Error al eliminar la formación', type: 'error' });
-      console.error('Error al eliminar:', err);
-    } finally {
-      setIsDeleting(false);
-    }
+    await onDelete(id);
+    setSelectedId(id);
+    setIsDeleting(false);
   };
 
   return (

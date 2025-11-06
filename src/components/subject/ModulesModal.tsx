@@ -2,11 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 // import { useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { app } from '@/firebase';
 
 import {
     Dialog,
     DialogContent,
     DialogTrigger,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 
 import {
@@ -50,6 +54,8 @@ const ModulesModal = ({
         id_materia: "",
     });
     const [videoUrlInput, setVideoUrlInput] = useState<string>("");
+    const [archivoFile, setArchivoFile] = useState<File | null>(null);
+    const storage = getStorage(app);
 
     useEffect(() => {
         if (isOpen) {
@@ -104,6 +110,17 @@ const ModulesModal = ({
         }
 
         try {
+            let uploadedFileUrl = moduleForm.url_archivo;
+
+            if (archivoFile) {
+                const safeMateria = (moduleForm.id_materia || 'unknown').trim() || 'unknown';
+                const stamp = Date.now();
+                const storagePath = `subjects/${safeMateria}/modules/${stamp}-${archivoFile.name}`;
+                const storageRef = ref(storage, storagePath);
+                await uploadBytes(storageRef, archivoFile);
+                uploadedFileUrl = await getDownloadURL(storageRef);
+            }
+
             const subjectDataToSend = {
                 id: moduleForm.id,
                 titulo: moduleForm.titulo,
@@ -112,7 +129,7 @@ const ModulesModal = ({
                 tipo_contenido: moduleForm.tipo_contenido,
                 bibliografia: moduleForm.bibliografia,
                 url_miniatura: moduleForm.url_miniatura,
-                url_archivo: moduleForm.url_archivo,
+                url_archivo: uploadedFileUrl,
                 url_video: moduleForm.url_video,
             };
 
@@ -137,6 +154,14 @@ const ModulesModal = ({
         <Dialog open={isOpen} onOpenChange={onCancel}>
             <DialogTrigger></DialogTrigger>
             <DialogContent className='max-w-5xl'>
+                <DialogTitle className="sr-only">
+                    {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    {editingModule 
+                        ? 'Formulario para editar los datos del módulo' 
+                        : 'Formulario para crear un nuevo módulo'}
+                </DialogDescription>
                 <div
                     className="max-w-5xl w-full max-h-[90vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
@@ -222,10 +247,8 @@ const ModulesModal = ({
                                         <SelectValue placeholder="Seleccionar tipo de contenido" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="video">VIDEO</SelectItem>
                                         <SelectItem value="pdf">PDF</SelectItem>
-                                        <SelectItem value="evaluacion">EVALUACION</SelectItem>
-                                        <SelectItem value="imagen">IMAGEN</SelectItem>
+                                        {/* <SelectItem value="imagen">IMAGEN</SelectItem> */}
                                         <SelectItem value="contenido_extra">CONTENIDO_EXTRA</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -270,21 +293,39 @@ const ModulesModal = ({
                             </div>
 
                             <div className='w-1/2'>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    URL de Archivo *
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Archivo del módulo (se subirá a Storage)
                                 </label>
-                                <input
-                                    type="text"
-                                    value={moduleForm.url_archivo}
-                                    onChange={(e) =>
-                                        setModuleForm((prev) => ({
-                                            ...prev,
-                                            url_archivo: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="https://..."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="file"
+                                        accept={moduleForm.tipo_contenido === 'pdf' ? 'application/pdf' : undefined}
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            setArchivoFile(file);
+                                        }}
+                                        className="cursor-pointer w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                                {editingModule && (
+                                    <>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Si no seleccionas archivo, se usará el valor de URL (opcional).
+                                        </p>
+                                        <input
+                                            type="text"
+                                            value={moduleForm.url_archivo}
+                                            onChange={(e) =>
+                                                setModuleForm((prev) => ({
+                                                    ...prev,
+                                                    url_archivo: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="URL directa (opcional)"
+                                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
 

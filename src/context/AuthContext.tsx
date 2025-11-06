@@ -10,6 +10,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../config/firebase-client";
 import authService from "@/service/authService";
 import type { UserProfile } from "../types/types";
+import { safeGetItem, safeRemoveItem } from "../utils/storage";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -59,17 +60,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (firebaseUser) {
         // ✅ Solo cargar del localStorage
-        const storedData = localStorage.getItem("studentData");
+        const storedData = safeGetItem<UserProfile>("studentData");
 
         if (storedData) {
-          try {
-            const parsedData = JSON.parse(storedData);
-            console.log("✅ Usuario cargado:", parsedData);
-            setUser(parsedData);
-          } catch (error) {
-            console.error("❌ Error parseando localStorage:", error);
-            setUser(null);
-          }
+          console.log("✅ Usuario cargado:", storedData);
+          setUser(storedData);
         } else {
           console.log("⚠️ No hay datos en localStorage");
           setUser(null);
@@ -95,11 +90,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Cargar del localStorage
-      const storedData = localStorage.getItem("studentData");
+      const storedData = safeGetItem<UserProfile>("studentData");
       if (storedData) {
-        const userData = JSON.parse(storedData);
-        setUser(userData);
-        console.log("✅ Usuario autenticado en context:", userData);
+        setUser(storedData);
+        console.log("✅ Usuario autenticado en context:", storedData);
       }
 
       setIsLoading(false);
@@ -125,9 +119,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const storedData = localStorage.getItem("studentData");
+      const storedData = safeGetItem<UserProfile>("studentData");
       if (storedData) {
-        setUser(JSON.parse(storedData));
+        setUser(storedData);
       }
 
       setIsLoading(false);
@@ -156,9 +150,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const storedData = localStorage.getItem("studentData");
+      const storedData = safeGetItem<UserProfile>("studentData");
       if (storedData) {
-        setUser(JSON.parse(storedData));
+        setUser(storedData);
       }
 
       setIsLoading(false);
@@ -176,9 +170,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const storedData = localStorage.getItem("studentData");
+      const storedData = safeGetItem<UserProfile>("studentData");
       if (storedData) {
-        setUser(JSON.parse(storedData));
+        setUser(storedData);
       }
 
       setIsLoading(false);
@@ -195,22 +189,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.logout();
       setUser(null);
       setFirebaseUser(null);
-      localStorage.removeItem("studentData");
+      safeRemoveItem("studentData");
       console.log("✅ Logout exitoso");
     } catch (error) {
       console.error("❌ Error durante logout:", error);
       setUser(null);
       setFirebaseUser(null);
-      localStorage.removeItem("studentData");
+      safeRemoveItem("studentData");
     }
   };
 
   const refreshUser = async () => {
     try {
       if (firebaseUser) {
-        const storedData = localStorage.getItem("studentData");
+        const storedData = safeGetItem<UserProfile>("studentData");
         if (storedData) {
-          setUser(JSON.parse(storedData));
+          setUser(storedData);
           console.log("🔄 Usuario refrescado");
         }
       }

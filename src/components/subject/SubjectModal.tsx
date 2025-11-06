@@ -3,11 +3,14 @@ import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, X } from 'lucide-react';
+import { safeSetItem } from '@/utils/storage';
 
 import {
     Dialog,
     DialogContent,
     DialogTrigger,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog"
 
 import {
@@ -146,7 +149,9 @@ const SubjectModal = ({
                     modulos: subjectForm.modulos,
                 };
 
-                localStorage.setItem('pendingSubjectData', JSON.stringify(subjectData));
+                if (!safeSetItem('pendingSubjectData', subjectData)) {
+                    console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                }
 
                 onCancel();
                 navigate('/modules/create');
@@ -164,6 +169,14 @@ const SubjectModal = ({
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
             <DialogContent>
+                <DialogTitle className="sr-only">
+                    {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    {editingSubject 
+                        ? 'Formulario para editar los datos de la materia' 
+                        : 'Formulario para crear una nueva materia'}
+                </DialogDescription>
                 <div
                     className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
                     onClick={(e) => e.stopPropagation()}
