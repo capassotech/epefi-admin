@@ -19,6 +19,7 @@ import {
   type ProductFormData,
 } from "@/schemas/product-schema";
 import { CoursesAPI } from "@/service/courses";
+import { slugify } from "@/lib/utils";
 
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
@@ -34,6 +35,9 @@ export default function CreateProduct() {
 
   const [courseAlreadyCreatedInSession, setCourseAlreadyCreatedInSession] = useState(false);
 
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
@@ -41,7 +45,7 @@ export default function CreateProduct() {
       descripcion: "",
       precio: 0,
       estado: "activo",
-      imagen: "",
+      imagen: undefined,
       materias: [],
     },
     mode: "onChange",
@@ -58,6 +62,14 @@ export default function CreateProduct() {
       return;
     }
 
+    const folder = `Imagenes/Formaciones/${slugify(data.titulo)}`;
+    const result = await CoursesAPI.uploadImage(data.imagen as File, {
+      directory: folder,
+      filename: data.imagen?.name || "",
+      contentType: data.imagen?.type || "",
+    });
+    const imageStorageUrl = result.url || "";
+
     setLoading(true);
 
     const payload = {
@@ -65,7 +77,7 @@ export default function CreateProduct() {
       descripcion: data.descripcion,
       precio: data.precio,
       estado: data.estado,
-      imagen: data.imagen || "",
+      imagen: imageStorageUrl,
       materias: data.materias || [],
     };
 
@@ -181,7 +193,16 @@ export default function CreateProduct() {
         <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
           <Card>
             <CardContent className="p-6">
-              {currentTab === 0 && <GeneralInfoForm control={form.control} />}
+              {currentTab === 0 && 
+                <GeneralInfoForm 
+                  control={form.control} 
+                  setImagePreviewUrl={setImagePreviewUrl} 
+                  imagePreviewUrl={imagePreviewUrl} 
+                  setIsDialogOpen={setIsDialogOpen} 
+                  isDialogOpen={isDialogOpen}
+                  currentImageUrl={null}
+                />
+              }
               {currentTab === 1 && <SubjectCreation courseId={createdCourseId} />}
             </CardContent>
           </Card>

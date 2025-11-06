@@ -5,7 +5,6 @@ import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAn
 import { useNavigate } from 'react-router-dom';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
-import { mockProducts } from '@/data/mockData';
 import { type Course } from '@/types/types';
 import { Loader2 } from 'lucide-react';
 
@@ -24,7 +23,6 @@ export default function Products() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
-    setFormaciones(mockProducts);
     const fetchFormaciones = async () => {
       try {
         const res = await CoursesAPI.getAll();

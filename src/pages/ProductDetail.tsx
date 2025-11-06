@@ -128,10 +128,10 @@ const ProductDetail = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="flex items-center mt-2">
+              <div className="flex items-center mt-2">
                 <Users className="w-4 h-4 mr-2 text-gray-500" />
                 <p><strong>Precio de la formación:</strong> <span className='text-gray-500'>${formacion.precio || "N/A"}</span></p>
-              </p>
+              </div>
               <p className="flex items-center mt-2">
                 <Tag className="w-4 h-4 mr-2 text-gray-500" />
                 <strong>Estado:</strong>{" "}

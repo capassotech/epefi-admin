@@ -6,7 +6,7 @@ export const productFormSchema = z.object({
   descripcion: z.string().min(1, "La descripción es obligatoria"),
   precio: z.number().min(0, "El precio debe ser positivo"),
   estado: z.enum(["activo", "inactivo"]),
-  imagen: z.string().optional(),
+  imagen: z.instanceof(File).optional(),
   materias: z.array(z.string()),
 });
 
