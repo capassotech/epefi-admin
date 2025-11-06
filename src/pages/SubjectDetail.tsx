@@ -82,15 +82,8 @@ export const SubjectDetail = () => {
         setConfirmDeleteId(null);
     };
 
-    const handleConfirmDelete = async () => {
-        if (!confirmDeleteId) return;
-        await confirmDelete(confirmDeleteId);
-        setIsDeleteModalOpen(false);
-        setConfirmDeleteId(null);
-        setDeleteLoading(false);
-    };
-
-    const confirmDelete = async (selectedId: string) => {    
+    const handleConfirmDelete = async (selectedId: string) => {
+        if (!selectedId) return;
         setDeleteLoading(true);
     
         try {
@@ -105,6 +98,7 @@ export const SubjectDetail = () => {
           console.error('Error al eliminar:', err);
         } finally {
           setDeleteLoading(false);
+          setIsDeleteModalOpen(false);
         }
       };
 
@@ -251,6 +245,7 @@ export const SubjectDetail = () => {
                 onConfirm={handleConfirmDelete}
                 deleteLoading={deleteLoading}
                 itemName={modulos.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
+                id={confirmDeleteId || ""}
             />  
         </div>
     );

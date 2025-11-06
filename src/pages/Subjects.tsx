@@ -49,16 +49,16 @@ export default function Subjects() {
         setIsDeleteModalOpen(true);
     };
 
-    const handleConfirmDelete = async () => {
-        if (!confirmDeleteId) return;
+    const handleConfirmDelete = async (id: string) => {
+        if (!id) return;
 
         setDeleteLoading(true);
 
         try {
-            await CoursesAPI.deleteMateria(confirmDeleteId);
+            await CoursesAPI.deleteMateria(id);
 
-            setMaterias(prev => prev.filter(m => m.id !== confirmDeleteId));
-            setFilteredSubjects(prev => prev.filter(m => m.id !== confirmDeleteId));
+            setMaterias(prev => prev.filter(m => m.id !== id));
+            setFilteredSubjects(prev => prev.filter(m => m.id !== id));
         } catch (err) {
             console.error("Error al eliminar materia:", err);
         } finally {
@@ -287,6 +287,7 @@ export default function Subjects() {
                 onConfirm={handleConfirmDelete}
                 deleteLoading={deleteLoading}
                 itemName={materias.find(m => m.id === confirmDeleteId)?.nombre || "esta materia"}
+                id={confirmDeleteId || ""}
             />
 
             <SubjectModal

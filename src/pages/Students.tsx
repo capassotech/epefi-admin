@@ -48,16 +48,16 @@ export default function Students() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteId) return;
+  const handleConfirmDelete = async (id: string) => {
+    if (!id) return;
     setDeleteLoading(true);
 
     try {
-      await StudentsAPI.delete(confirmDeleteId);
+      await StudentsAPI.delete(id);
 
-      setStudents((prev) => prev.filter((s) => s.id !== confirmDeleteId));
+      setStudents((prev) => prev.filter((s) => s.id !== id));
       setFilteredStudents((prev) =>
-        prev.filter((s) => s.id !== confirmDeleteId)
+        prev.filter((s) => s.id !== id)
       );
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
@@ -212,6 +212,7 @@ export default function Students() {
           }`.trim() || "este estudiante"
         }
         deleteLoading={deleteLoading}
+        id={confirmDeleteId || ""}
       />
     </div>
   );

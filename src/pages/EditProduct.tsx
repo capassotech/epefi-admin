@@ -39,7 +39,6 @@ export default function EditProduct() {
   const [courseCreated, setCourseCreated] = useState(true);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [newSubjects, setNewSubjects] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -108,7 +107,7 @@ export default function EditProduct() {
     };
 
     loadFormacion();
-  }, [id, form, navigate, newSubjects]);
+  }, [id, form, navigate]);
 
   const onSubmit = async (data: ProductFormData) => {
     if (!id) return;
@@ -160,12 +159,12 @@ export default function EditProduct() {
     setConfirmDeleteId(null);
   }
 
-  const handleConfirmDeleteSubject = async () => {
-    if (!confirmDeleteId) return;
+  const handleConfirmDeleteSubject = async (id: string) => {
+    if (!id) return;
     setDeleteLoading(true);
     try {
-      await CoursesAPI.deleteMateria(confirmDeleteId);
-      setSubjects(prev => prev.filter(s => s.id !== confirmDeleteId));
+      await CoursesAPI.deleteMateria(id);
+      setSubjects(prev => prev.filter(s => s.id !== id));
       toast.success("Materia eliminada exitosamente");
       handleCancelDeleteSubject();
     } catch (e) {
@@ -365,7 +364,9 @@ export default function EditProduct() {
         onCancel={handleCancelDeleteSubject}
         onConfirm={handleConfirmDeleteSubject}
         deleteLoading={deleteLoading}
-        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"} id={""}      />
+        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"}
+        id={confirmDeleteId || ""}
+      />
 
       <SubjectModal
         isOpen={isEditModalOpen}

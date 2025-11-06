@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import ModulesList from "@/components/subject/ModulesList";
 import ModulesModal from "@/components/subject/ModulesModal";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import { safeGetItem, safeRemoveItem, safeSetItem } from "@/utils/storage";
+import { safeGetItem, safeRemoveItem } from "@/utils/storage";
 
 interface PendingSubjectData {
     id: string;
@@ -199,25 +199,25 @@ export default function CreateModule() {
         setConfirmDeleteId(null);
     };
 
-    const handleConfirmDelete = async () => {
-        if (!confirmDeleteId) return;
+    const handleConfirmDelete = async (id: string) => {
+        if (!id) return;
         setDeleteLoading(true);
         try {
-            if (!confirmDeleteId.startsWith('temp-')) {
+            if (!id.startsWith('temp-')) {
                 if (!subjectFromQuery) {
                     throw new Error('No se encontró la materia asociada al módulo');
                 }
-                await CoursesAPI.deleteModule(confirmDeleteId, subjectFromQuery.id);
+                await CoursesAPI.deleteModule(id, subjectFromQuery.id);
                 if (subjectFromQuery) {
                     const updatedSubject: Subject = {
                         ...subjectFromQuery,
-                        modulos: (subjectFromQuery.modulos || []).filter(mid => mid !== confirmDeleteId),
+                        modulos: (subjectFromQuery.modulos || []).filter(mid => mid !== id),
                     };
                     await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
                     setSubjectFromQuery(updatedSubject);
                 }
             }
-            setModules(prev => prev.filter(m => m.id !== confirmDeleteId));
+            setModules(prev => prev.filter(m => m.id !== id));
         } catch (e) {
             console.error('Error al eliminar módulo:', e);
             toast.error('No se pudo eliminar el módulo');
@@ -348,6 +348,7 @@ export default function CreateModule() {
                 onConfirm={handleConfirmDelete}
                 deleteLoading={deleteLoading}
                 itemName={modules.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
+                id={confirmDeleteId || ""}
             />
         </div>
     );
