@@ -18,7 +18,7 @@ import type {
 import { safeSetItem, safeGetItem, safeRemoveItem } from "../utils/storage";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
 
 const FRONTEND_URL =
   import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";

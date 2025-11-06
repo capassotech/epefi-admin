@@ -4,7 +4,7 @@ import type { CreateUserFormData } from "@/types/types";
 import axios from "axios";
 
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
 
 // Debug: Log de la configuración
 console.log('🔧 Configuración API:', {
