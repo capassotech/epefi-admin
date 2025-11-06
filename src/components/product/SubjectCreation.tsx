@@ -19,38 +19,38 @@ import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
 interface SubjectCreationProps {
     courseId?: string | null;
-    setNewSubjects?: (newSubjects: boolean) => void;
 }
 
 
-export default function SubjectCreation({ courseId, setNewSubjects }: SubjectCreationProps) {
+export default function SubjectCreation({ courseId }: SubjectCreationProps) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
+    const [courseSubjectIds, setCourseSubjectIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             try {
-                const list = await CoursesAPI.getMaterias();
-                setAllSubjects(Array.isArray(list) ? list : []);
+                const [subjectsList, course] = await Promise.all([
+                    CoursesAPI.getMaterias(),
+                    courseId ? CoursesAPI.getById(String(courseId)) : Promise.resolve(null),
+                ]);
+                setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                const existingIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
+                setCourseSubjectIds(existingIds);
             } catch (e) {
                 console.error(e);
                 toast.error("No se pudieron cargar las materias");
             }
         };
         load();
-    }, []);
+    }, [courseId]);
 
     const subjectsAlreadyInCourse = useMemo(() => {
-        if (!courseId) return new Set<string>();
-        return new Set(
-            allSubjects
-                .filter((s) => Array.isArray(s.id_cursos) && s.id_cursos.includes(String(courseId)))
-                .map((s) => s.id)
-        );
-    }, [allSubjects, courseId]);
+        return new Set<string>(courseSubjectIds);
+    }, [courseSubjectIds]);
 
     const selectableSubjects = useMemo(() => {
         return allSubjects.filter((s) => !subjectsAlreadyInCourse.has(s.id));
@@ -120,26 +120,14 @@ export default function SubjectCreation({ courseId, setNewSubjects }: SubjectCre
         }
         setLoading(true);
         try {
-            const courseIdStr = String(courseId);
-            await Promise.all(
-                selectedSubjects.map(async (s) => {
-                    const currentCourses = Array.isArray(s.id_cursos) ? s.id_cursos : [];
-                    const updatedCourses = currentCourses.includes(courseIdStr)
-                        ? currentCourses
-                        : [...currentCourses, courseIdStr];
-                    await CoursesAPI.updateMateria(s.id, {
-                        ...s,
-                        id_cursos: updatedCourses,
-                    });
-                })
-            );
+            const course = await CoursesAPI.getById(String(courseId));
+            const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
+            const toAdd = selectedSubjects.map((s) => s.id);
+            const updatedIds = Array.from(new Set([...existingIds, ...toAdd]));
+            await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
             toast.success("Materias asociadas al curso");
-            setNewSubjects?.(true);
-            // Refresh lists
-            const refreshed = await CoursesAPI.getMaterias();
-            setAllSubjects(Array.isArray(refreshed) ? refreshed : []);
+            setCourseSubjectIds(updatedIds);
             setSelectedSubjects([]);
-            setNewSubjects?.(false);
         } catch (e) {
             console.error(e);
             toast.error("Error al asociar materias");
