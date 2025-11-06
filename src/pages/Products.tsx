@@ -16,8 +16,8 @@ export default function Products() {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -41,20 +41,20 @@ export default function Products() {
     fetchFormaciones();
   }, []);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = async (id: string) => {
     setConfirmDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteId) return;
+  const handleConfirmDelete = async (id: string) => {
+    if (!id) return;
 
     try {
       setDeleteLoading(true);
-      await CoursesAPI.delete(confirmDeleteId);
-      
-      setFormaciones(prev => prev.map(f => (f.id === confirmDeleteId ? { ...f, estado: 'inactivo' } : f)));
-      setFilteredProducts(prev => prev.map(f => (f.id === confirmDeleteId ? { ...f, estado: 'inactivo' } : f)));
+      await CoursesAPI.delete(id);
+
+      setFormaciones(prev => prev.filter(f => f.id !== id));
+      setFilteredProducts(prev => prev.filter(f => f.id !== id));
     } catch (err) {
       console.error("Error al eliminar formación:", err);
     } finally {
@@ -216,6 +216,7 @@ export default function Products() {
       )}
 
       <ConfirmDeleteModal
+        id={confirmDeleteId || ''}
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}  
         onConfirm={handleConfirmDelete}

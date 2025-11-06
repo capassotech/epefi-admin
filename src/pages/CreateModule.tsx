@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import ModulesList from "@/components/subject/ModulesList";
 import ModulesModal from "@/components/subject/ModulesModal";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
+import { safeGetItem, safeRemoveItem, safeSetItem } from "@/utils/storage";
 
 interface PendingSubjectData {
     id: string;
@@ -54,15 +55,9 @@ export default function CreateModule() {
             return;
         }
 
-        const savedSubjectData = localStorage.getItem('pendingSubjectData');
+        const savedSubjectData = safeGetItem<PendingSubjectData>('pendingSubjectData');
         if (savedSubjectData) {
-            try {
-                const subjectData = JSON.parse(savedSubjectData);
-                setPendingSubject(subjectData);
-            } catch (error) {
-                console.error('Error al parsear datos de materia:', error);
-                toast.error('Error al cargar datos de la materia');
-            }
+            setPendingSubject(savedSubjectData);
         }
     }, [location.search]);
 
@@ -103,7 +98,7 @@ export default function CreateModule() {
         try {
             if (pendingSubject && !subjectFromQuery) {
                 await CoursesAPI.deleteMateria(pendingSubject.id);
-                localStorage.removeItem('pendingSubjectData');
+                safeRemoveItem('pendingSubjectData');
             }
             navigate('/subjects');
         } finally {

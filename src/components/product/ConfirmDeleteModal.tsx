@@ -14,12 +14,13 @@ import { Button } from '@/components/ui/button';
 interface Props {
   isOpen: boolean;
   onCancel: () => void;       
-  onConfirm: () => void;
-  itemName?: string;
+  onConfirm: (id: string) => void;
+  itemName: string;
   deleteLoading: boolean;
+  id: string;
 }
 
-const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName = "esta formación", deleteLoading }: Props) => {
+const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName, deleteLoading, id }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onCancel}>
       <DialogContent className="sm:max-w-md">
@@ -45,7 +46,7 @@ const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName = "esta form
           <Button
             type="button"
             variant="destructive"
-            onClick={onConfirm}
+            onClick={() => onConfirm(id)}
             disabled={deleteLoading}
             className="flex-1 sm:flex-none cursor-pointer"
           >

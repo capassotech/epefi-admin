@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, X } from 'lucide-react';
+import { safeSetItem } from '@/utils/storage';
 
 import {
     Dialog,
@@ -146,7 +147,9 @@ const SubjectModal = ({
                     modulos: subjectForm.modulos,
                 };
 
-                localStorage.setItem('pendingSubjectData', JSON.stringify(subjectData));
+                if (!safeSetItem('pendingSubjectData', subjectData)) {
+                    console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                }
 
                 onCancel();
                 navigate('/modules/create');
