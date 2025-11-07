@@ -53,7 +53,7 @@ export const CoursesAsignStudentModal = ({
                 ...prev,
                 cursos_asignados: [...(prev.cursos_asignados || []), selectedCourseId]
             }) : prev);
-            toast.success('Formación asignada correctamente');
+            toast.success('Curso asignada correctamente');
             setAssignDialogOpen(false);
             setSelectedCourseId(null);
         } catch (e: unknown) {
@@ -74,7 +74,7 @@ export const CoursesAsignStudentModal = ({
                 cursos_asignados: updatedCursos,
             }) : prev);
             setCourses((prev) => prev.filter((c) => c.id !== courseId));
-            toast.success('Formación removida correctamente');
+            toast.success('Curso removido correctamente');
         } catch (e: unknown) {
             toast.error(getErrorMessage(e));
         } finally {
@@ -111,9 +111,9 @@ export const CoursesAsignStudentModal = ({
             )}
             <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
                 <DialogHeader>
-                    <DialogTitle>Asignar Formación</DialogTitle>
+                    <DialogTitle>Asignar Curso</DialogTitle>
                     <DialogDescription>
-                        Selecciona la formación que deseas asignar al estudiante.
+                        Selecciona el curso que deseas asignar al estudiante.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">

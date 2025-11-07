@@ -28,7 +28,7 @@ const navigation = [
     icon: BookOpen,
   },
   {
-    name: "Crear formación",
+    name: "Crear curso",
     href: "/products/create",
     icon: Plus,
   },

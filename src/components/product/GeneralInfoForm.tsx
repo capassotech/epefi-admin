@@ -65,7 +65,7 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
             <FormLabel>Descripción *</FormLabel>
             <FormControl>
               <Textarea
-                placeholder="Describe el contenido y objetivos de la formación..."
+                placeholder="Describe el contenido y objetivos del curso..."
                 rows={4}
                 {...field}
                 value={field.value || ""}

@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function Products() {
   const navigate = useNavigate();
-  const [formaciones, setFormaciones] = useState<Course[]>([]);
+  const [cursos, setCursos] = useState<Course[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
@@ -23,22 +23,22 @@ export default function Products() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
-    const fetchFormaciones = async () => {
+    const fetchCursos = async () => {
       try {
         const res = await CoursesAPI.getAll();
         const data = Array.isArray(res) ? res : res?.data || [];
-        setFormaciones(data);
+        setCursos(data);
         setFilteredProducts(data);
       } catch (err) {
-        console.error("Error al cargar formaciones:", err);
-        setError('No se pudieron cargar las formaciones');
-        setFormaciones([]);
+        console.error("Error al cargar cursos:", err);
+        setError('No se pudieron cargar los cursos');
+        setCursos([]);
         setFilteredProducts([]); 
       } finally {
         setLoading(false);
       }
     };
-    fetchFormaciones();
+    fetchCursos();
   }, []);
 
   const handleDeleteClick = async (id: string) => {
@@ -53,10 +53,10 @@ export default function Products() {
       setDeleteLoading(true);
       await CoursesAPI.delete(id);
 
-      setFormaciones(prev => prev.filter(f => f.id !== id));
+      setCursos(prev => prev.filter(f => f.id !== id));
       setFilteredProducts(prev => prev.filter(f => f.id !== id));
     } catch (err) {
-      console.error("Error al eliminar formación:", err);
+      console.error("Error al eliminar curso:", err);
     } finally {
       setIsDeleteModalOpen(false);
       setConfirmDeleteId(null);
@@ -80,7 +80,7 @@ export default function Products() {
   };
 
   const applyFilters = (query: string, filterOptions: FilterOptions) => {
-    let filtered = [...formaciones];
+    let filtered = [...cursos];
 
     if (query) {
       filtered = filtered.filter(f =>
@@ -160,7 +160,7 @@ export default function Products() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {formaciones.length} cursos
+          Mostrando {filteredProducts.length} de {cursos.length} cursos
         </p>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <span>Vista:</span>
@@ -205,7 +205,7 @@ export default function Products() {
             <span className="text-4xl">📚</span>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron cursos</h3>
-          <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear una nueva formación.</p>
+          <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear un nuevo curso.</p>
           <button
             onClick={() => navigate('/products/create')}
             className="admin-button"
@@ -220,7 +220,7 @@ export default function Products() {
         isOpen={isDeleteModalOpen}
         onCancel={handleCancelDelete}  
         onConfirm={handleConfirmDelete}
-        itemName={formaciones.find(f => f.id === confirmDeleteId)?.titulo || "este curso"}
+        itemName={cursos.find(f => f.id === confirmDeleteId)?.titulo || "este curso"}
         deleteLoading={deleteLoading}
       />
     </div>

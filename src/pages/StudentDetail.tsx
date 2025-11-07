@@ -31,7 +31,7 @@ export const StudentDetail = () => {
 
     useEffect(() => {
         if (!id) {
-            setError('ID de formación no proporcionado');
+            setError('ID de curso no proporcionado');
             setLoading(false);
             return;
         }
@@ -55,8 +55,8 @@ export const StudentDetail = () => {
                     }
                 }
             } catch (error: unknown) {
-                console.error("❌ Error al cargar formación:", error);
-                setError(error instanceof Error ? error.message : 'Error al cargar la formación');
+                console.error("❌ Error al cargar curso:", error);
+                setError(error instanceof Error ? error.message : 'Error al cargar el curso');
             } finally {
                 setLoading(false);
             }
@@ -71,7 +71,7 @@ export const StudentDetail = () => {
         </div>
     );
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
-    if (!student) return <div className="p-6">No se encontró la formación</div>;
+    if (!student) return <div className="p-6">No se encontró el curso</div>;
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto p-4">

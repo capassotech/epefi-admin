@@ -70,7 +70,7 @@ export default function EditProduct() {
       return;
     }
 
-    const loadFormacion = async () => {
+    const loadCurso = async () => {
       try {
         setLoading(true);
         const data = await CoursesAPI.getById(id);
@@ -99,14 +99,14 @@ export default function EditProduct() {
         }
       } catch (err) {
         console.error(err);
-        toast.error("No se pudo cargar la formación");
+        toast.error("No se pudo cargar el curso");
         navigate("/products");
       } finally {
         setLoading(false);
       }
     };
 
-    loadFormacion();
+    loadCurso();
   }, [id, form, navigate]);
 
   const onSubmit = async (data: ProductFormData) => {
@@ -138,11 +138,11 @@ export default function EditProduct() {
       };
 
       await CoursesAPI.update(id, payload);
-      toast.success("Formación actualizada correctamente");
+      toast.success("Curso actualizada correctamente");
       handleNext();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      const message = axiosErr.response?.data?.message || "Error al actualizar la formación";
+      const message = axiosErr.response?.data?.message || "Error al actualizar el curso";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -237,8 +237,8 @@ export default function EditProduct() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Editar Formación</h1>
-          <p className="text-gray-600 mt-1">Modifica los datos de esta formación.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Editar Curso</h1>
+          <p className="text-gray-600 mt-1">Modifica los datos de este curso.</p>
         </div>
       </div>
 
@@ -342,7 +342,7 @@ export default function EditProduct() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 ) : (
-                  "Actualizar Formación"
+                  "Actualizar Curso"
                 )}
               </Button>
             ) : (

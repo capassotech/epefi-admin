@@ -19,7 +19,7 @@ import type { Course, Subject } from '@/types/types';
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [formacion, setFormacion] = useState<Course | null>(null);
+  const [curso, setCurso] = useState<Course | null>(null);
   const [materias, setMaterias] = useState<Subject[]>([]); 
   const [loading, setLoading] = useState(true);
   const [loadingMaterias, setLoadingMaterias] = useState(false);
@@ -27,7 +27,7 @@ const ProductDetail = () => {
 
   useEffect(() => {
     if (!id) {
-      setError('ID de formación no proporcionado');
+      setError('ID de curso no proporcionado');
       setLoading(false);
       return;
     }
@@ -35,7 +35,7 @@ const ProductDetail = () => {
     const fetchData = async () => {
       try {
         const data = await CoursesAPI.getById(id);
-        setFormacion(data);
+        setCurso(data);
 
         if (data.materias && data.materias.length > 0) {
           setLoadingMaterias(true);
@@ -49,8 +49,8 @@ const ProductDetail = () => {
           }
         }
       } catch (error: any) {
-        console.error("❌ Error al cargar formación:", error);
-        setError(error.message || 'Error al cargar la formación');
+        console.error("❌ Error al cargar curso:", error);
+        setError(error.message || 'Error al cargar el curso');
       } finally {
         setLoading(false);
       }
@@ -66,7 +66,7 @@ const ProductDetail = () => {
   );
 
   if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
-  if (!formacion) return <div className="p-6">No se encontró la formación</div>;
+  if (!curso) return <div className="p-6">No se encontró el curso</div>;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4">
@@ -76,19 +76,19 @@ const ProductDetail = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">{formacion.titulo}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{curso.titulo}</h1>
         </div>
         <Button
           variant="outline"
           className='cursor-pointer'
-          onClick={() => navigate(`/products/${encodeURIComponent(formacion.id)}/edit`)}
+          onClick={() => navigate(`/products/${encodeURIComponent(curso.id)}/edit`)}
         >
           <PencilIcon className="w-4 h-4 mr-2" />
           Editar
         </Button>
       </div>
 
-      {formacion.image && (
+      {curso.image && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -98,8 +98,8 @@ const ProductDetail = () => {
           </CardHeader>
           <CardContent>
             <img
-              src={formacion.image || '/placeholder.svg'}
-              alt={formacion.titulo}
+              src={curso.image || '/placeholder.svg'}
+              alt={curso.titulo}
               className="max-w-full h-auto rounded-lg border"
             />
           </CardContent>
@@ -114,7 +114,7 @@ const ProductDetail = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-700 whitespace-pre-line">{formacion.descripcion || "Sin descripción"}</p>
+          <p className="text-gray-700 whitespace-pre-line">{curso.descripcion || "Sin descripción"}</p>
         </CardContent>
       </Card>
 
@@ -122,7 +122,7 @@ const ProductDetail = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Clock className="w-5 h-5 mr-2 text-gray-600" />
-            Detalles de la Formación
+            Detalles del curso
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -130,25 +130,25 @@ const ProductDetail = () => {
             <div>
               <div className="flex items-center mt-2">
                 <Users className="w-4 h-4 mr-2 text-gray-500" />
-                <p><strong>Precio de la formación:</strong> <span className='text-gray-500'>${formacion.precio || "N/A"}</span></p>
+                <p><strong>Precio del curso:</strong> <span className='text-gray-500'>${curso.precio || "N/A"}</span></p>
               </div>
               <p className="flex items-center mt-2">
                 <Tag className="w-4 h-4 mr-2 text-gray-500" />
                 <strong>Estado:</strong>{" "}
                 <span className={`ml-1 px-2 py-0.5 rounded text-xs ${
-                  formacion.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  curso.estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
-                  {formacion.estado}
+                  {curso.estado}
                 </span>
               </p>
             </div>
           </div>
 
-          {formacion.materias && formacion.materias.length > 0 && (
+          {curso.materias && curso.materias.length > 0 && (
             <div className="mt-6 pt-4 border-t">
               <CardTitle className="flex items-center mb-3">
                 <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
-                Materias ({formacion.materias.length})
+                Materias ({curso.materias.length})
               </CardTitle>
               {loadingMaterias ? (
                 <p>Cargando materias...</p> 

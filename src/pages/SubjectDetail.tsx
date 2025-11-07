@@ -34,7 +34,7 @@ export const SubjectDetail = () => {
 
     useEffect(() => {
         if (!id) {
-            setError('ID de formación no proporcionado');
+            setError('ID de curso no proporcionado');
             setLoading(false);
             return;
         }
@@ -57,8 +57,8 @@ export const SubjectDetail = () => {
                 }
             } catch (error) {
                 const err = error as { message?: string };
-                console.error("❌ Error al cargar formación:", err);
-                setError(err.message || 'Error al cargar la formación');
+                console.error("❌ Error al cargar curso:", err);
+                setError(err.message || 'Error al cargar el curso');
             } finally {
                 setLoading(false);
             }
@@ -165,7 +165,7 @@ export const SubjectDetail = () => {
         </div>
     );
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
-    if (!materia) return <div className="p-6">No se encontró la formación</div>;
+    if (!materia) return <div className="p-6">No se encontró el curso</div>;
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto p-4">
@@ -201,7 +201,7 @@ export const SubjectDetail = () => {
                 <CardHeader>
                     <CardTitle className="flex items-center">
                         <Clock className="w-5 h-5 mr-2 text-gray-600" />
-                        Detalles de la Formación
+                        Detalles del curso
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

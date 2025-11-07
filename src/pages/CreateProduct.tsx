@@ -92,7 +92,7 @@ export default function CreateProduct() {
     } catch (err: unknown) {
       const message = err instanceof Error && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data
         ? String(err.response.data.message)
-        : "Error al guardar la formación";
+        : "Error al guardar el curso";
       toast.error(message);
     } finally {
       setLoading(false);
