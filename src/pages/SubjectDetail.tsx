@@ -195,7 +195,7 @@ export const SubjectDetail = () => {
                     <CardHeader>
                         <CardTitle className="flex items-center">
                             <ImageIcon className="w-5 h-5 mr-2 text-gray-600" />
-                            Imagen Principal
+                            Portada
                         </CardTitle>
                     </CardHeader>
                     <CardContent>

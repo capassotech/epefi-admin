@@ -98,14 +98,14 @@ const ProductDetail = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <ImageIcon className="w-5 h-5 mr-2 text-gray-600" />
-              Imagen Principal
+              Portada
             </CardTitle>
           </CardHeader>
           <CardContent>
             <img
               src={curso.image || (curso as any).imagen || '/placeholder.svg'}
               alt={curso.titulo}
-              className="max-w-full h-auto rounded-lg border"
+              className="mx-auto w-full max-h-[200px] object-contain rounded-lg border"
             />
           </CardContent>
         </Card>
