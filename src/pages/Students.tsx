@@ -24,13 +24,70 @@ export default function Students() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const applyFilters = (query: string, filterOptions: FilterOptions) => {
+    let filtered = [...students];
+
+    if (query) {
+      filtered = filtered.filter(
+        (s) =>
+          s.nombre?.toLowerCase().includes(query.toLowerCase()) ||
+          s.apellido?.toLowerCase().includes(query.toLowerCase()) ||
+          s.email?.toLowerCase().includes(query.toLowerCase()) ||
+          s.dni?.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    if (filterOptions.status && filterOptions.status !== "all") {
+      const isActive = filterOptions.status === "active";
+      filtered = filtered.filter((s) => s.activo === isActive);
+    }
+
+    // Filtrar por rol
+    if (filterOptions.role && filterOptions.role !== "all") {
+      switch (filterOptions.role) {
+        case "student":
+          filtered = filtered.filter((s) => s.role?.student === true);
+          break;
+        case "admin":
+          filtered = filtered.filter((s) => s.role?.admin === true);
+          break;
+        case "both":
+          filtered = filtered.filter(
+            (s) => s.role?.student === true && s.role?.admin === true
+          );
+          break;
+      }
+    }
+
+    if (filterOptions.sortBy) {
+      switch (filterOptions.sortBy) {
+        case "name":
+          filtered.sort((a, b) =>
+            (a.nombre || "").localeCompare(b.nombre || "")
+          );
+          break;
+        case "email":
+          filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+          break;
+        case "date":
+          filtered.sort((a, b) => {
+            const dateA = a.fechaRegistro?._seconds || 0;
+            const dateB = b.fechaRegistro?._seconds || 0;
+            return dateB - dateA;
+          });
+          break;
+      }
+    }
+
+    setFilteredStudents(filtered);
+  };
+
   useEffect(() => {
     const fetchStudents = async () => {
       try {
         const res = await StudentsAPI.getAll();
         const data = Array.isArray(res) ? res : res?.data || [];
         setStudents(data);
-        setFilteredStudents(data);
       } catch (err) {
         console.error("Error al cargar estudiantes:", err);
         setError("No se pudieron cargar los estudiantes");
@@ -42,6 +99,11 @@ export default function Students() {
     };
     fetchStudents();
   }, []);
+
+  // Aplicar filtros cuando cambien los estudiantes, la búsqueda o los filtros
+  useEffect(() => {
+    applyFilters(searchQuery, filters);
+  }, [students, filters, searchQuery]);
 
   const handleDeleteClick = (id: string) => {
     setConfirmDeleteId(id);
@@ -78,7 +140,7 @@ export default function Students() {
       const res = await StudentsAPI.getAll();
       const data = Array.isArray(res) ? res : res?.data || [];
       setStudents(data);
-      setFilteredStudents(data);
+      // Los filtros se aplicarán automáticamente mediante el useEffect
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
     }
@@ -86,53 +148,10 @@ export default function Students() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    applyFilters(query, filters);
   };
 
   const handleFilter = (newFilters: FilterOptions) => {
     setFilters(newFilters);
-    applyFilters(searchQuery, newFilters);
-  };
-
-  const applyFilters = (query: string, filterOptions: FilterOptions) => {
-    let filtered = [...students];
-
-    if (query) {
-      filtered = filtered.filter(
-        (s) =>
-          s.nombre?.toLowerCase().includes(query.toLowerCase()) ||
-          s.apellido?.toLowerCase().includes(query.toLowerCase()) ||
-          s.email?.toLowerCase().includes(query.toLowerCase()) ||
-          s.dni?.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-
-    if (filterOptions.status && filterOptions.status !== "all") {
-      const isActive = filterOptions.status === "active";
-      filtered = filtered.filter((s) => s.activo === isActive);
-    }
-
-    if (filterOptions.sortBy) {
-      switch (filterOptions.sortBy) {
-        case "name":
-          filtered.sort((a, b) =>
-            (a.nombre || "").localeCompare(b.nombre || "")
-          );
-          break;
-        case "email":
-          filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
-          break;
-        case "date":
-          filtered.sort((a, b) => {
-            const dateA = a.fechaRegistro?._seconds || 0;
-            const dateB = b.fechaRegistro?._seconds || 0;
-            return dateB - dateA;
-          });
-          break;
-      }
-    }
-
-    setFilteredStudents(filtered);
   };
 
   const filterOptions = {
@@ -159,9 +178,9 @@ export default function Students() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Estudiantes</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
         <p className="text-gray-600 mt-2">
-          Gestiona todos los estudiantes registrados en la plataforma.
+          Gestiona todos los usuarios registrados en la plataforma.
         </p>
       </div>
 
@@ -170,13 +189,14 @@ export default function Students() {
         onFilter={handleFilter}
         isStudentPage={true}
         onCreateNew={() => navigate("/students")}
-        createButtonText="Crear estudiante"
+        createButtonText="Crear usuario"
         filterOptions={filterOptions}
+        currentFilters={filters}
       />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredStudents.length} de {students.length} estudiantes
+          Mostrando {filteredStudents.length} de {students.length} usuarios
         </p>
       </div>
 
@@ -188,7 +208,7 @@ export default function Students() {
             <span className="text-4xl">👨‍🎓</span>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No se encontraron estudiantes
+            No se encontraron usuarios
           </h3>
           <p className="text-gray-600 mb-4">
             Intenta ajustar los filtros o crear un nuevo estudiante.

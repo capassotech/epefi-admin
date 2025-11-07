@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,13 +40,15 @@ interface CreateUserModalProps {
   triggerText?: string;
   isEditing?: boolean;
   editingUser?: StudentDB;
+  children?: ReactNode;
 }
 
 export const CreateUserModal = ({
   onUserCreated,
-  triggerText = "Crear Estudiante",
+  triggerText = "Crear Usuario",
   isEditing = false,
   editingUser,
+  children,
 }: CreateUserModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -226,10 +228,12 @@ export const CreateUserModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        {isEditing ? (
+        {children ? (
+          children
+        ) : isEditing ? (
           <button
             className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Editar estudiante"
+            title="Editar usuario"
           >
             <Edit2 className="w-4 h-4 cursor-pointer" />
           </button>

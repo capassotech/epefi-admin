@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
+import { Edit2, Trash2, Loader2 } from 'lucide-react';
 
 import { type Course } from '@/types/types';
 
@@ -44,9 +45,13 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
               >
                 {/* Imagen */}
                 <img
-                  src={f.image ?? f.image ?? '/placeholder.svg'}
+                  src={f.image || (f as any).imagen || '/placeholder.svg'}
                   className="w-24 h-24 object-cover rounded-md border"
                   alt={f.titulo}
+                  onError={(e) => {
+                    // Si la imagen falla al cargar, usar placeholder
+                    (e.target as HTMLImageElement).src = '/placeholder.svg';
+                  }}
                 />
 
                 {/* Contenido */}
@@ -82,11 +87,11 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex flex-col space-y-2">
+                <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
-                    className='cursor-pointer'
+                    className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       const id = f.id;
@@ -100,19 +105,30 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                       navigate(`/products/${encodeURIComponent(id)}/edit`);
                     }}
                   >
+                    <Edit2 className="w-4 h-4 mr-1.5" />
                     Editar
                   </Button>
                   <Button
                     size="sm"
-                    variant="destructive"
-                    className='cursor-pointer'
+                    variant="outline"
+                    className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(f.id);
                     }}
                     disabled={isDeleting && selectedId === f.id}
                   >
-                    {isDeleting && selectedId === f.id ? "Eliminando..." : "Eliminar"}
+                    {isDeleting && selectedId === f.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                        Eliminando...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-1.5" />
+                        Eliminar
+                      </>
+                    )}
                   </Button>
                 </div>
               </li>

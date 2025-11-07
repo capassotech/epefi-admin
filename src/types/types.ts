@@ -45,6 +45,7 @@ export interface Course {
 
 export interface StudentDB {
   id: string;
+  uid?: string;
   nombre: string;
   apellido: string;
   email: string;

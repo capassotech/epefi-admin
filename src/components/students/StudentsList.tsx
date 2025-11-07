@@ -5,6 +5,9 @@ import {
   // Calendar,
   CheckCircle,
   XCircle,
+  Edit2,
+  UserPlus,
+  Loader2,
 } from "lucide-react";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
@@ -23,7 +26,8 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
   const navigate = useNavigate();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getErrorMessage = (e: unknown) => {
     if (e instanceof Error) return e.message;
@@ -58,7 +62,7 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estudiante
+                Nombre
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Email
@@ -99,9 +103,6 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                     <div className="ml-4">
                       <div className=" font-medium text-gray-900">
                         {getFullName(student)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        ID: {student.id.substring(0, 8)}...
                       </div>
                     </div>
                   </div>
@@ -151,37 +152,60 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                   </div>
                 </td> */}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex flex-col items-end justify-end">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex flex-col items-end justify-end gap-2">
+                    <div className="flex items-center gap-2">
                       <div onClick={(e) => e.stopPropagation()}>
                         <CreateUserModal
                           onUserCreated={onUserUpdated}
-                          triggerText="Editar"
+                          triggerText=""
                           isEditing={true}
                           editingUser={student}
-                        />
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm"
+                            title="Editar usuario"
+                          >
+                            <Edit2 className="w-4 h-4 mr-1.5" />
+                            Editar
+                          </Button>
+                        </CreateUserModal>
                       </div>
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setDeletingId(student.id);
                           onDelete(student.id);
+                          setTimeout(() => setDeletingId(null), 1000);
                         }}
-                        className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Eliminar estudiante"
+                        disabled={deletingId === student.id}
+                        className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm disabled:opacity-50"
+                        title="Eliminar usuario"
                       >
-                        <Trash2 className="w-4 h-4 cursor-pointer" />
-                      </button>
+                        {deletingId === student.id ? (
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-1.5" />
+                        )}
+                        Eliminar
+                      </Button>
                     </div>
                     <Button
-                      variant="outline"
+                      variant="default"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedStudentId(student.id);
+                        setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className="p-2 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md"
                       title="Asignar cursos"
                     >
+                      <UserPlus className="w-4 h-4 mr-1.5" />
                       Asignar cursos
                     </Button>
                   </div>
@@ -197,12 +221,12 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
         setAssignDialogOpen={(open) => {
           setAssignDialogOpen(open);
           if (!open) {
-            setSelectedCourseId(null);
+            setSelectedCourseIds([]);
             setSelectedStudentId(null);
           }
         }}
-        selectedCourseId={selectedCourseId}
-        setSelectedCourseId={setSelectedCourseId}
+        selectedCourseIds={selectedCourseIds}
+        setSelectedCourseIds={setSelectedCourseIds}
         getErrorMessage={getErrorMessage}
         setCourses={(/* _courses */) => { }}
         showTrigger={false}

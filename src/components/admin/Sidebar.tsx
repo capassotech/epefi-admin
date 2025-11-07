@@ -13,7 +13,7 @@ const navigation = [
     icon: BookOpen,
   },
   {
-    name: "Estudiantes",
+    name: "Usuarios",
     href: "/students",
     icon: Users,
   },

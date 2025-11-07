@@ -97,7 +97,7 @@ export const StudentsAPI = {
       const errorMessage =
         axiosError.response?.data?.error ||
         axiosError.message ||
-        "Error al obtener estudiante";
+        "Error al obtener usuario";
       throw new Error(errorMessage);
     }
   },
@@ -108,7 +108,7 @@ export const StudentsAPI = {
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
-      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error al crear estudiante";
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error al crear usuario";
       throw new Error(errorMessage);
     }
   },
@@ -123,7 +123,7 @@ export const StudentsAPI = {
     }
   },
 
-  updateStudent: async (id: string, userData: Partial<CreateUserFormData>) => {
+  updateStudent: async (id: string, userData: Partial<CreateUserFormData & { uid?: string }>) => {
     try {
       console.log(id, userData)
       const res = await api.put(`/usuarios/${id}`, userData);

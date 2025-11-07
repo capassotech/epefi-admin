@@ -29,11 +29,12 @@ export default function Products() {
         const res = await CoursesAPI.getAll();
         const data = Array.isArray(res) ? res : res?.data || [];
         
-        // Normalizar IDs a string para consistencia
-        const normalizedData = data.map((c: Course) => ({
+        // Normalizar IDs a string y mapear imagen a image para consistencia
+        const normalizedData = data.map((c: any) => ({
           ...c,
-          id: String(c.id)
-        }));
+          id: String(c.id),
+          image: c.imagen || c.image || '', // Mapear 'imagen' del backend a 'image'
+        } as Course));
         
         setCursos(normalizedData);
         setFilteredProducts(normalizedData);
@@ -81,11 +82,12 @@ export default function Products() {
       console.log("Cursos recargados del servidor:", data.length, "cursos");
       console.log("IDs de cursos recargados:", data.map((c: Course) => c.id));
       
-      // Convertir todos los IDs a string para consistencia
-      const normalizedData = data.map((c: Course) => ({
+      // Convertir todos los IDs a string y mapear imagen a image para consistencia
+      const normalizedData = data.map((c: any) => ({
         ...c,
-        id: String(c.id)
-      }));
+        id: String(c.id),
+        image: c.imagen || c.image || '', // Mapear 'imagen' del backend a 'image'
+      } as Course));
       
       console.log("Cursos normalizados:", normalizedData.map((c: Course) => ({ id: c.id, titulo: c.titulo })));
       console.log("Verificando que el curso eliminado no esté en la lista:", normalizedData.find((c: Course) => c.id === normalizedId));

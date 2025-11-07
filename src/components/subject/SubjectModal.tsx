@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, X, BookOpen, Settings } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
+import { toast } from 'sonner';
 
 import {
     Dialog,
@@ -207,7 +208,7 @@ const SubjectModal = ({
         setLoading(true);
         const error = validateForm();
         if (error) {
-            alert(error);
+            toast.error(error);
             setLoading(false);
             return;
         }
@@ -224,8 +225,10 @@ const SubjectModal = ({
                     id: editingSubject.id,
                     ...subjectDataToSend
                 });
+                toast.success("Materia actualizada exitosamente");
                 onCancel();
             } else {
+                // Crear la materia en el backend - esto la guarda automáticamente
                 const res = await onSubjectCreated(subjectDataToSend);
 
                 // Si estamos en el flujo de creación de curso, NO navegar
@@ -239,24 +242,40 @@ const SubjectModal = ({
                     onCancel();
                     // Nota: Los módulos se pueden agregar después desde la edición de la materia
                 } else {
-                    // Flujo original: navegar a la página de módulos
-                    const subjectData = {
-                        id: res.id,
-                        nombre: subjectForm.nombre,
-                        id_cursos: selectedCourses,
-                        modulos: subjectForm.modulos,
-                    };
+                    // Flujo desde la página de materias: la materia ya está guardada en el backend
+                    // La materia se guarda automáticamente al llamar a onSubjectCreated
+                    // Mostrar mensaje de éxito y luego navegar a módulos
+                    toast.success("Materia guardada exitosamente. Redirigiendo a módulos...");
+                    
+                    // Usar onGoToModules si está disponible (pasa el subjectId como query param)
+                    if (onGoToModules) {
+                        // La materia ya está guardada en el backend, navegar con el ID
+                        onCancel();
+                        // Pequeño delay para que se vea el toast antes de navegar
+                        setTimeout(() => {
+                            onGoToModules(res.id, Array.isArray(res.modulos) ? res.modulos : []);
+                        }, 500);
+                    } else {
+                        // Fallback al flujo antiguo con localStorage (para compatibilidad)
+                        const subjectData = {
+                            id: res.id,
+                            nombre: subjectForm.nombre,
+                            id_cursos: selectedCourses,
+                            modulos: subjectForm.modulos,
+                        };
 
-                    if (!safeSetItem('pendingSubjectData', subjectData)) {
-                        console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                        if (!safeSetItem('pendingSubjectData', subjectData)) {
+                            console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                        }
+
+                        onCancel();
+                        navigate('/modules/create');
                     }
-
-                    onCancel();
-                    navigate('/modules/create');
                 }
             }
         } catch (error) {
             console.error('Error al procesar materia:', error);
+            toast.error('Error al guardar la materia. Por favor, inténtalo de nuevo.');
         } finally {
             setLoading(false);
         }
@@ -477,7 +496,7 @@ const SubjectModal = ({
                                 setShowConfirmSaveDialog(false);
                                 
                                 // Si estamos creando una nueva materia, guardarla primero
-                                if (!editingSubject && fromCourseCreation) {
+                                if (!editingSubject) {
                                     setLoading(true);
                                     try {
                                         const subjectDataToSend = {
@@ -486,22 +505,35 @@ const SubjectModal = ({
                                             modulos: subjectForm.modulos,
                                         };
                                         
+                                        // Guardar la materia en el backend
                                         const res = await onSubjectCreated(subjectDataToSend);
                                         
-                                        // Llamar al callback para actualizar el estado
-                                        if (onSubjectCreatedComplete) {
-                                            await onSubjectCreatedComplete(res.id);
+                                        // Si estamos en el flujo de creación de curso
+                                        if (fromCourseCreation) {
+                                            // Llamar al callback para actualizar el estado
+                                            if (onSubjectCreatedComplete) {
+                                                await onSubjectCreatedComplete(res.id);
+                                            }
+                                            // No cerrar el modal todavía, se cerrará cuando se cierre el modal de módulos
+                                            // Ahora abrir el modal de módulos con el ID de la materia recién creada
+                                            if (onGoToModules) {
+                                                onGoToModules(res.id, []);
+                                            }
+                                        } else {
+                                            // Flujo desde la página de materias: la materia ya está guardada
+                                            // La materia se guarda automáticamente al llamar a onSubjectCreated
+                                            toast.success("Materia guardada exitosamente. Redirigiendo a módulos...");
+                                            onCancel();
+                                            if (onGoToModules) {
+                                                // Pequeño delay para que se vea el toast antes de navegar
+                                                setTimeout(() => {
+                                                    onGoToModules(res.id, Array.isArray(res.modulos) ? res.modulos : []);
+                                                }, 500);
+                                            }
                                         }
-                                        
-                                        // No cerrar el modal todavía, se cerrará cuando se cierre el modal de módulos
-                                        // Ahora abrir el modal de módulos con el ID de la materia recién creada
-                                        if (onGoToModules) {
-                                            onGoToModules(res.id, []);
-                                        }
-                                        // El modal se cerrará automáticamente cuando se cierre el modal de módulos
                                     } catch (error) {
                                         console.error('Error al guardar materia:', error);
-                                        alert('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+                                        toast.error('Error al guardar la materia. Por favor, inténtalo de nuevo.');
                                     } finally {
                                         setLoading(false);
                                     }

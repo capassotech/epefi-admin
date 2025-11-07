@@ -35,7 +35,12 @@ const ProductDetail = () => {
     const fetchData = async () => {
       try {
         const data = await CoursesAPI.getById(id);
-        setCurso(data);
+        // Normalizar: mapear 'imagen' del backend a 'image' para el tipo Course
+        const normalizedCourse: Course = {
+          ...data,
+          image: data.imagen || data.image || '',
+        };
+        setCurso(normalizedCourse);
 
         if (data.materias && data.materias.length > 0) {
           setLoadingMaterias(true);
@@ -88,7 +93,7 @@ const ProductDetail = () => {
         </Button>
       </div>
 
-      {curso.image && (
+      {(curso.image || (curso as any).imagen) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -98,7 +103,7 @@ const ProductDetail = () => {
           </CardHeader>
           <CardContent>
             <img
-              src={curso.image || '/placeholder.svg'}
+              src={curso.image || (curso as any).imagen || '/placeholder.svg'}
               alt={curso.titulo}
               className="max-w-full h-auto rounded-lg border"
             />

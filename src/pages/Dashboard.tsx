@@ -23,8 +23,21 @@ export default function Dashboard() {
       try {
         setLoading(true);
 
-        // Obtener estudiantes
-        const studentsCount = await StudentsAPI.getCount();
+        // Obtener todos los usuarios y filtrar solo los que tienen rol de estudiante
+        const allUsers = await StudentsAPI.getAll();
+        const studentsData = Array.isArray(allUsers) ? allUsers : [];
+        
+        // Filtrar solo usuarios con rol de estudiante
+        const studentsWithStudentRole = studentsData.filter((user: any) => 
+          user.role?.student === true
+        );
+        
+        const studentsCount = studentsWithStudentRole.length;
+        
+        // Contar estudiantes activos (que tienen rol de estudiante y están activos)
+        const activeStudentsCount = studentsWithStudentRole.filter((user: any) => 
+          user.activo !== false // Considerar activos si activo es true o undefined
+        ).length;
 
         // Obtener cursos
         const courses = await CoursesAPI.getAll();
@@ -38,7 +51,7 @@ export default function Dashboard() {
           totalUsers: studentsCount,
           totalProducts: coursesCount,
           totalRevenue: 0,
-          activeUsers: studentsCount,
+          activeUsers: activeStudentsCount,
           totalStudents: studentsCount,
           popularProducts: latestCourses.slice(0, 5)
         });

@@ -78,7 +78,7 @@ export default function Subjects() {
             const payload = {
                 nombre: subjectData.nombre,
                 id_cursos: subjectData.id_cursos,
-                modulos: subjectData.modulos,
+                modulos: subjectData.modulos || [],
             };
 
             const response = await CoursesAPI.createMateria({
@@ -87,17 +87,18 @@ export default function Subjects() {
                 modulos: payload.modulos,
             });
 
+            // La respuesta del backend puede incluir todos los campos, usarla directamente si está disponible
             const newSubject: Subject = {
                 id: response.id,
-                nombre: payload.nombre,
-                id_cursos: payload.id_cursos,
-                modulos: payload.modulos,
+                nombre: response.nombre || payload.nombre,
+                id_cursos: response.id_cursos || payload.id_cursos,
+                modulos: response.modulos || payload.modulos,
             };
 
             setMaterias(prev => [newSubject, ...prev]);
             setFilteredSubjects(prev => [newSubject, ...prev]);
 
-            toast.success("Materia creada exitosamente");
+            // No mostrar toast aquí porque se mostrará en SubjectModal después de guardar
             return newSubject;
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Error desconocido';

@@ -72,7 +72,8 @@ export default function EditProduct() {
 
         setCreatedCourseId(id);
 
-        const imageUrl = data.imagen || "";
+        // El backend puede devolver 'imagen' o 'image', normalizar a 'image'
+        const imageUrl = data.imagen || data.image || "";
         setCurrentImageUrl(imageUrl);
         
         const formData = {

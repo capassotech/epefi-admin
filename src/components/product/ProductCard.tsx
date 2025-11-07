@@ -29,9 +29,13 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden relative">
         <img
-          src={product.image ?? product.image ?? '/placeholder.svg'}
+          src={product.image || (product as any).imagen || '/placeholder.svg'}
           alt={product.titulo}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+          onError={(e) => {
+            // Si la imagen falla al cargar, usar placeholder
+            (e.target as HTMLImageElement).src = '/placeholder.svg';
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         
