@@ -30,7 +30,7 @@ export default function Products() {
         const data = Array.isArray(res) ? res : res?.data || [];
         
         // Normalizar IDs a string para consistencia
-        const normalizedData = data.map(c => ({
+        const normalizedData = data.map((c: Course) => ({
           ...c,
           id: String(c.id)
         }));
@@ -79,19 +79,19 @@ export default function Products() {
       const res = await CoursesAPI.getAll();
       const data = Array.isArray(res) ? res : res?.data || [];
       console.log("Cursos recargados del servidor:", data.length, "cursos");
-      console.log("IDs de cursos recargados:", data.map(c => c.id));
+      console.log("IDs de cursos recargados:", data.map((c: Course) => c.id));
       
       // Convertir todos los IDs a string para consistencia
-      const normalizedData = data.map(c => ({
+      const normalizedData = data.map((c: Course) => ({
         ...c,
         id: String(c.id)
       }));
       
-      console.log("Cursos normalizados:", normalizedData.map(c => ({ id: c.id, titulo: c.titulo })));
-      console.log("Verificando que el curso eliminado no esté en la lista:", normalizedData.find(c => c.id === normalizedId));
+      console.log("Cursos normalizados:", normalizedData.map((c: Course) => ({ id: c.id, titulo: c.titulo })));
+      console.log("Verificando que el curso eliminado no esté en la lista:", normalizedData.find((c: Course) => c.id === normalizedId));
       
       // Verificar que el curso realmente fue eliminado
-      const cursoEliminadoAunPresente = normalizedData.find(c => String(c.id) === normalizedId);
+      const cursoEliminadoAunPresente = normalizedData.find((c: Course) => c.id === normalizedId);
       if (cursoEliminadoAunPresente) {
         console.warn("⚠️ El curso eliminado todavía aparece en la respuesta del servidor");
       } else {

@@ -34,7 +34,6 @@ export default function EditProduct() {
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [courseCreated, setCourseCreated] = useState(true);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -72,7 +71,6 @@ export default function EditProduct() {
         const data = await CoursesAPI.getById(id);
 
         setCreatedCourseId(id);
-        setCourseCreated(true);
 
         const imageUrl = data.imagen || "";
         setCurrentImageUrl(imageUrl);

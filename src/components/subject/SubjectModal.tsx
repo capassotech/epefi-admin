@@ -94,7 +94,7 @@ const SubjectModal = ({
         
         // Agregar los cursos cargados al caché
         const newCache: Record<string, string> = {};
-        courses.forEach(course => {
+        courses.forEach((course: Course) => {
             if (course.titulo) {
                 newCache[course.id] = course.titulo;
             }
