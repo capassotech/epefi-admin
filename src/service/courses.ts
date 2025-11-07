@@ -92,20 +92,43 @@ export const CoursesAPI = {
   },
 
   delete: async (id: string) => {
-    await api.delete(`/cursos/${id}`);
-    return { success: true };
+    try {
+      console.log("Eliminando curso con ID:", id);
+      const response = await api.delete(`/cursos/${id}`);
+      console.log("Respuesta de eliminación exitosa:", response.status);
+      return { success: true };
+    } catch (error: unknown) {
+      console.error("Error en delete curso:", error);
+      const axiosError = error as {
+        response?: { 
+          data?: { message?: string; error?: string }; 
+          status?: number;
+        };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al eliminar el curso";
+      throw new Error(errorMessage);
+    }
   },
 
   uploadImage: async (
     image: File,
     opts?: { directory?: string; filename?: string; contentType?: string }
   ) => {
+    if (!image || !(image instanceof File)) {
+      throw new Error("El archivo de imagen es requerido");
+    }
+
     const directory = (opts?.directory ?? "Imagenes/Formaciones").replace(/\/+$/g, "");
     const filename = opts?.filename ?? image.name;
     const objectPath = `${directory}/${filename}`;
 
     const storageRef = ref(storage, objectPath);
-    await uploadBytes(storageRef, image, { contentType: image.type });
+    await uploadBytes(storageRef, image, { contentType: image.type || "image/jpeg" });
     const url = await getDownloadURL(storageRef);
     return { url, path: objectPath };
   },  
@@ -202,18 +225,54 @@ export const CoursesAPI = {
     );
   },
 
-  createModule: async (data: Module) => {
+  createModule: async (data: Omit<Module, "id">) => {
     try {
-      const res = await api.post("/modulos", data);
-      console.log(res.data);
+      // Preparar datos: asegurar que tipo_contenido sea "pdf" en minúsculas (el backend lo requiere así)
+      // y que todos los campos tengan valores válidos
+      const cleanedData: any = {
+        titulo: data.titulo?.trim() || "",
+        descripcion: data.descripcion?.trim() || "",
+        id_materia: data.id_materia?.trim() || "",
+        tipo_contenido: "pdf", // El backend espera minúsculas: "pdf", "video", etc.
+        bibliografia: data.bibliografia?.trim() || "",
+        url_miniatura: data.url_miniatura?.trim() || "",
+        url_archivo: data.url_archivo?.trim() || "",
+        url_video: Array.isArray(data.url_video) ? data.url_video : [],
+      };
+      
+      // Eliminar campos vacíos que podrían causar problemas
+      Object.keys(cleanedData).forEach(key => {
+        if (cleanedData[key] === "" && key !== "titulo" && key !== "descripcion" && key !== "id_materia" && key !== "tipo_contenido" && key !== "url_archivo") {
+          delete cleanedData[key];
+        }
+      });
+      
+      console.log("Enviando datos al backend:", JSON.stringify(cleanedData, null, 2));
+      const res = await api.post("/modulos", cleanedData);
+      console.log("Respuesta del backend:", res.data);
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
-        response?: { data?: { message?: string } };
+        response?: { 
+          data?: { 
+            message?: string;
+            error?: string;
+            errors?: any;
+          };
+          status?: number;
+        };
         message?: string;
       };
+      
+      console.error("Error completo al crear módulo:", axiosError);
+      console.error("Datos enviados:", JSON.stringify(data, null, 2));
+      console.error("Respuesta del servidor:", JSON.stringify(axiosError.response?.data, null, 2));
+      console.error("Status code:", axiosError.response?.status);
+      
       const errorMessage =
         axiosError.response?.data?.message ||
+        axiosError.response?.data?.error ||
+        JSON.stringify(axiosError.response?.data?.errors) ||
         axiosError.message ||
         "Error al crear módulo";
       throw new Error(errorMessage);

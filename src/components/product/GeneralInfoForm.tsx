@@ -10,11 +10,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Control } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect } from "react";
+import type { ProductFormData } from "@/schemas/product-schema";
 
 interface GeneralInfoFormProps {
-  control: Control<{ titulo: string; descripcion: string; precio: number; estado: "activo" | "inactivo"; materias: string[]; imagen?: File | undefined; }>;
+  control: Control<ProductFormData>;
   setImagePreviewUrl: Dispatch<SetStateAction<string | null>>;
   imagePreviewUrl: string | null;
   setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
@@ -23,6 +26,21 @@ interface GeneralInfoFormProps {
 }
 
 const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDialogOpen, isDialogOpen, currentImageUrl }: GeneralInfoFormProps) => {
+  const precioValue = useWatch({ control, name: "precio" });
+  const [precioInput, setPrecioInput] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Inicializar el valor del input cuando se carga el formulario
+  useEffect(() => {
+    if (!isEditing) {
+      if (precioValue === 0) {
+        setPrecioInput("");
+      } else {
+        setPrecioInput(String(precioValue));
+      }
+    }
+  }, [precioValue, isEditing]);
+
   const hasValidImage = (url: string | null | undefined): boolean => {
     return url != null && url.trim() !== "";
   };
@@ -84,14 +102,49 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
             <FormLabel>Precio *</FormLabel>
             <FormControl>
               <Input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 placeholder="299.99"
-                {...field}
-                value={field.value || 0}
-                onChange={(e) =>
-                  field.onChange(parseFloat(e.target.value) || 0)
-                }
+                value={precioInput}
+                onFocus={() => {
+                  setIsEditing(true);
+                  // Cuando se enfoca, mostrar el valor actual o campo vacío si es 0
+                  if (precioValue === 0) {
+                    setPrecioInput("");
+                  } else {
+                    setPrecioInput(String(precioValue));
+                  }
+                }}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Permitir solo números, punto decimal y campo vacío
+                  if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                    setPrecioInput(value);
+                  }
+                }}
+                onBlur={(e) => {
+                  setIsEditing(false);
+                  // Al perder el foco, normalizar y actualizar el formulario
+                  const value = e.target.value.trim();
+                  
+                  if (value === "" || value === ".") {
+                    // Campo vacío o solo punto -> establecer a 0
+                    setPrecioInput("");
+                    field.onChange(0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0) {
+                      // Valor válido -> actualizar formulario y mostrar formato limpio
+                      setPrecioInput(String(numValue));
+                      field.onChange(numValue);
+                    } else {
+                      // Valor inválido -> establecer a 0
+                      setPrecioInput("");
+                      field.onChange(0);
+                    }
+                  }
+                  field.onBlur();
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -101,33 +154,10 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
 
       <FormField
         control={control}
-        name="estado"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base">Estado Activo</FormLabel>
-              <div className="text-sm text-muted-foreground">
-                Determina si el curso está disponible para los estudiantes
-              </div>
-            </div>
-            <FormControl>
-              <input
-                type="checkbox"
-                checked={field.value === "activo"}
-                onChange={(e) => field.onChange(e.target.checked ? "activo" : "inactivo")}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
         name="imagen"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Imagen * (Tamaño recomendado: 1920x1080px | 16:9)</FormLabel>
+            <FormLabel>Imagen de portada * (Tamaño recomendado: 1920x1080px | 16:9)</FormLabel>
             <FormControl>
               <div className="space-y-3">
                 <Input

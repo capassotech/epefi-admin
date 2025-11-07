@@ -9,12 +9,17 @@ interface SubjectListProps {
   subjects: Subject[];
   onDelete?: (id: string) => void;
   onEdit?: (subject: Subject) => void;
+  onUnassign?: (id: string) => void; // Nueva función para desasignar materia del curso
+  showUnassign?: boolean; // Flag para mostrar el botón de desasignar
+  showTitle?: boolean; // Flag para mostrar/ocultar el título
 }
 
-export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) => {
+export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassign = false, showTitle = true }: SubjectListProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUnassigning, setIsUnassigning] = useState(false);
+  const [unassigningId, setUnassigningId] = useState<string | null>(null);
 
   const closeToast = () => setToast(null);
 
@@ -52,9 +57,11 @@ export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) =>
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Gestión de Materias</h2>
-      </div>
+      {showTitle && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">Materias asociadas</h2>
+        </div>
+      )}
 
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <ul role="list" className="divide-y divide-gray-200">
@@ -98,6 +105,29 @@ export const SubjectList = ({ subjects, onDelete, onEdit }: SubjectListProps) =>
                   >
                     Editar
                   </Button>
+                  {showUnassign && onUnassign && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className='cursor-pointer border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400'
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setUnassigningId(m.id);
+                        setIsUnassigning(true);
+                        try {
+                          await onUnassign(m.id);
+                        } catch (err) {
+                          console.error('Error al desasignar:', err);
+                        } finally {
+                          setIsUnassigning(false);
+                          setUnassigningId(null);
+                        }
+                      }}
+                      disabled={isUnassigning && unassigningId === m.id}
+                    >
+                      {isUnassigning && unassigningId === m.id ? "Desasignando..." : "Desasignar"}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="destructive"

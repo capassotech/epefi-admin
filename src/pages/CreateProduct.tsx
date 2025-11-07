@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -44,7 +44,7 @@ export default function CreateProduct() {
       titulo: "",
       descripcion: "",
       precio: 0,
-      estado: "activo",
+      estado: "inactivo",
       imagen: undefined,
       materias: [],
     },
@@ -57,39 +57,68 @@ export default function CreateProduct() {
     setCourseAlreadyCreatedInSession(false);
   }, []);
 
+  // Establecer estado activo por defecto cuando se cambia a la pestaña de materias
+  useEffect(() => {
+    if (currentTab === 1 && createdCourseId) {
+      const currentEstado = form.getValues("estado");
+      if (currentEstado === "inactivo") {
+        form.setValue("estado", "activo");
+      }
+    }
+  }, [currentTab, createdCourseId, form]);
+
   const createCourse = async (data: ProductFormData) => {
-    if (courseAlreadyCreatedInSession) {
+    // Si el curso ya fue creado en esta sesión, solo avanzar a la siguiente pestaña
+    if (courseAlreadyCreatedInSession && createdCourseId) {
+      console.log("Curso ya creado, avanzando a la siguiente pestaña");
+      handleNext();
       return;
     }
 
-    const folder = `Imagenes/Formaciones/${slugify(data.titulo)}`;
-    const result = await CoursesAPI.uploadImage(data.imagen as File, {
-      directory: folder,
-      filename: data.imagen?.name || "",
-      contentType: data.imagen?.type || "",
-    });
-    const imageStorageUrl = result.url || "";
+    // Validar que la imagen existe
+    if (!data.imagen || !(data.imagen instanceof File)) {
+      toast.error("Por favor selecciona una imagen para el curso");
+      return;
+    }
+
+    // Prevenir doble clic mientras se está creando
+    if (loading) {
+      console.log("Ya se está creando el curso, esperando...");
+      return;
+    }
 
     setLoading(true);
 
-    const payload = {
-      titulo: data.titulo,
-      descripcion: data.descripcion,
-      precio: data.precio,
-      estado: data.estado,
-      imagen: imageStorageUrl,
-      materias: data.materias || [],
-    };
-
     try {
+      const folder = `Imagenes/Formaciones/${slugify(data.titulo)}`;
+      const result = await CoursesAPI.uploadImage(data.imagen, {
+        directory: folder,
+        filename: data.imagen.name || "",
+        contentType: data.imagen.type || "image/jpeg",
+      });
+      const imageStorageUrl = result.url || "";
+
+      const payload = {
+        titulo: data.titulo,
+        descripcion: data.descripcion,
+        precio: data.precio,
+        estado: data.estado,
+        imagen: imageStorageUrl,
+        materias: data.materias || [],
+      };
+
+      console.log("Creando curso con payload:", payload);
       const response = await CoursesAPI.create(payload);
       const newCourseId = String(response.id);
+      
+      console.log("Curso creado con ID:", newCourseId);
       setCreatedCourseId(newCourseId);
       setCourseCreated(true);
       setCourseAlreadyCreatedInSession(true);
       toast.success("Curso creado exitosamente");
       handleNext();
     } catch (err: unknown) {
+      console.error("Error al crear curso:", err);
       const message = err instanceof Error && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'message' in err.response.data
         ? String(err.response.data.message)
         : "Error al guardar el curso";
@@ -100,22 +129,82 @@ export default function CreateProduct() {
   };
 
   const finalizeCourse = async () => {
-    console.log("createdCourseId", createdCourseId);
-    if (!createdCourseId) return;
+    console.log("finalizeCourse - createdCourseId:", createdCourseId);
+    
+    if (!createdCourseId) {
+      toast.error("No se puede finalizar: el curso no ha sido creado");
+      return;
+    }
+
+    // Prevenir doble clic
+    if (loading) {
+      console.log("Ya se está guardando el curso, esperando...");
+      return;
+    }
 
     setLoading(true);
     try {
       const currentFormData = form.getValues();
-      await CoursesAPI.update(createdCourseId, {
-        ...currentFormData,
-        materias: currentFormData.materias || [],
-      });
+      
+      // Obtener el curso actual para obtener la imagen existente y las materias
+      const course = await CoursesAPI.getById(createdCourseId);
+      
+      if (!course) {
+        toast.error("No se pudo encontrar el curso para actualizar");
+        setLoading(false);
+        return;
+      }
+      
+      const hasMaterias = Array.isArray(course?.materias) && course.materias.length > 0;
+      
+      // Si hay materias cargadas, activar el curso automáticamente
+      const estadoFinal = hasMaterias ? "activo" : currentFormData.estado;
+      
+      // Manejar la imagen: si hay una nueva imagen en el formulario, subirla; si no, usar la existente
+      let imageUrl = course?.imagen || "";
+      
+      if (currentFormData.imagen && currentFormData.imagen instanceof File) {
+        // Si hay una nueva imagen, subirla
+        try {
+          const folder = `Imagenes/Formaciones/${slugify(currentFormData.titulo)}`;
+          const result = await CoursesAPI.uploadImage(currentFormData.imagen, {
+            directory: folder,
+            filename: currentFormData.imagen.name || "",
+            contentType: currentFormData.imagen.type || "image/jpeg",
+          });
+          imageUrl = result.url || "";
+        } catch (imageError) {
+          console.error("Error al subir imagen:", imageError);
+          // Si falla, usar la imagen existente
+          imageUrl = course?.imagen || "";
+        }
+      }
+      
+      // Usar las materias del curso actual, no las del formulario (que pueden estar desactualizadas)
+      const materiasIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
+      
+      // Preparar el payload sin incluir el campo imagen como File
+      const payload = {
+        titulo: currentFormData.titulo,
+        descripcion: currentFormData.descripcion,
+        precio: currentFormData.precio,
+        estado: estadoFinal,
+        imagen: imageUrl,
+        materias: materiasIds,
+      };
+      
+      console.log("Actualizando curso existente (ID:", createdCourseId, ") con payload:", payload);
+      
+      // IMPORTANTE: Usar update, nunca create
+      await CoursesAPI.update(createdCourseId, payload);
 
       toast.success("Curso completado exitosamente");
       navigate("/products");
     } catch (err) {
       console.error("Error al finalizar curso:", err);
-      toast.error("Error al finalizar curso");
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const message = axiosErr.response?.data?.message || "Error al finalizar curso";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -145,7 +234,7 @@ export default function CreateProduct() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Crear Nuevo Curso
+            Crear nuevo curso
           </h1>
           <p className="text-gray-600 mt-1">
             Completa los datos para crear este curso.
@@ -162,34 +251,91 @@ export default function CreateProduct() {
                 <p className="font-medium text-green-800">
                   Curso creado exitosamente
                 </p>
-                <p className="text-xs text-green-600">ID: {createdCourseId}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-1 overflow-x-auto pb-2 scrollbar-hide">
-          {tabs.map((tab, index) => (
-            <button
-              key={tab.id}
-              onClick={() => setCurrentTab(index)}
-              disabled={index === 1 && !createdCourseId || index === 2 && !createdCourseId}
-              className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
-                ? "border-blue-500 text-blue-600"
-                : index === 1 && !createdCourseId || index === 2 && !createdCourseId
-                  ? "border-transparent text-gray-300 cursor-not-allowed"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
       <Form {...form}>
+        <div className="border-b border-gray-200">
+          <div className="flex items-center justify-between pb-2">
+            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(index)}
+                  disabled={index === 1 && !createdCourseId || index === 2 && !createdCourseId}
+                  className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
+                    ? "border-blue-500 text-blue-600"
+                    : index === 1 && !createdCourseId || index === 2 && !createdCourseId
+                      ? "border-transparent text-gray-300 cursor-not-allowed"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            
+            {/* Checkbox de estado - siempre visible de forma sutil */}
+            <FormField
+              control={form.control}
+              name="estado"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-gray-200/50 hover:bg-gray-100/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={field.value === "activo"}
+                        onChange={async (e) => {
+                          const newEstado = e.target.checked ? "activo" : "inactivo";
+                          const oldEstado = field.value;
+                          field.onChange(newEstado);
+                          
+                          // Guardar automáticamente si el curso ya fue creado
+                          if (courseAlreadyCreatedInSession && createdCourseId) {
+                            try {
+                              const course = await CoursesAPI.getById(createdCourseId);
+                              
+                              if (course) {
+                                await CoursesAPI.update(createdCourseId, {
+                                  ...course,
+                                  estado: newEstado,
+                                });
+                                toast.success(`Curso ${newEstado === "activo" ? "activado" : "desactivado"} exitosamente`);
+                              }
+                            } catch (error) {
+                              console.error("Error al actualizar estado del curso:", error);
+                              toast.error("Error al actualizar el estado del curso");
+                              // Revertir el cambio si falla
+                              field.onChange(oldEstado);
+                            }
+                          }
+                        }}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <FormLabel className="text-xs font-medium text-gray-600 cursor-pointer">
+                        {field.value === "activo" ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                            Inactivo
+                          </span>
+                        )}
+                      </FormLabel>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
         <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
           <Card>
             <CardContent className="p-6">
@@ -203,7 +349,7 @@ export default function CreateProduct() {
                   currentImageUrl={null}
                 />
               }
-              {currentTab === 1 && <SubjectCreation courseId={createdCourseId} />}
+              {currentTab === 1 && <SubjectCreation courseId={createdCourseId} control={form.control} courseTitle={form.getValues("titulo") || null} />}
             </CardContent>
           </Card>
 
@@ -218,50 +364,63 @@ export default function CreateProduct() {
               Anterior
             </Button>
 
-            {currentTab === 0 && !createdCourseId ? (
+            {currentTab === 0 ? (
               <Button
                 type="button"
                 className="cursor-pointer"
                 onClick={async () => {
+                  // Si el curso ya está creado, solo avanzar
+                  if (createdCourseId && courseAlreadyCreatedInSession) {
+                    handleNext();
+                    return;
+                  }
+
+                  // Validar formulario antes de crear
                   const isValid = await form.trigger();
                   if (!isValid) {
                     toast.error("Por favor completa todos los campos requeridos.");
                     return;
                   }
+                  
+                  // Prevenir múltiples clics
+                  if (loading) {
+                    return;
+                  }
+                  
                   await createCourse(form.getValues());
                 }}
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (!courseCreated) ? (
-                  <Save className="w-4 h-4 mr-2" />
-                ) : null}
-
-                {!courseCreated ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {createdCourseId ? "Actualizando..." : "Creando..."}
+                  </>
+                ) : createdCourseId ? (
                   <>
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
-                ) : courseCreated ? (
-                  courseCreated ? (
-                    <>
-                      Siguiente
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  ) : (
-                    "Crear Curso"
-                  )
-                ) : null}
+                ) : (
+                  <>
+                    Crear y Continuar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </Button>
             ) : (
               <Button type="button" onClick={finalizeCourse} disabled={loading}>
                 {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
                 ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Finalizar Curso
+                  </>
                 )}
-                Finalizar Curso
               </Button>
             )}
           </div>

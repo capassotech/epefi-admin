@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,6 +12,8 @@ import {
   Save,
   Loader2,
   CheckCircle,
+  X,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,11 +25,7 @@ import {
 import { slugify } from "@/lib/utils";
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
-import SubjectList from "@/components/subject/SubjectList";
-import type { Subject } from "@/types/types";
 import SubjectCreation from "@/components/product/SubjectCreation";
-import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import SubjectModal from "@/components/subject/SubjectModal";
 
 
 export default function EditProduct() {
@@ -38,17 +36,15 @@ export default function EditProduct() {
 
   const [courseCreated, setCourseCreated] = useState(true);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  
+  // Estados para el mensaje de cambios guardados
+  const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [originalCourseData, setOriginalCourseData] = useState<ProductFormData | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -81,22 +77,20 @@ export default function EditProduct() {
         const imageUrl = data.imagen || "";
         setCurrentImageUrl(imageUrl);
         
-        form.reset({
+        const formData = {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
           precio: data.precio || 0,
           estado: data.estado || "activo",
           imagen: undefined, // Don't set file object, keep as undefined
           materias: Array.isArray(data.materias) ? data.materias : [],
-        });
+        };
+        
+        form.reset(formData);
+        setOriginalCourseData(formData);
+        setShowSaveMessage(false); // Ocultar mensaje al cargar
 
-        try {
-          const allSubjects = await CoursesAPI.getMaterias();
-          const associated = (allSubjects || []).filter((s: Subject) => Array.isArray(s.id_cursos) && s.id_cursos.includes(id));
-          setSubjects(associated);
-        } catch (e) {
-          console.warn("No se pudieron cargar las materias del curso", e);
-        }
+        // Las materias se cargan automáticamente en SubjectCreation
       } catch (err) {
         console.error(err);
         toast.error("No se pudo cargar el curso");
@@ -109,8 +103,30 @@ export default function EditProduct() {
     loadCurso();
   }, [id, form, navigate]);
 
+  // Función para comparar si hay cambios
+  const hasChanges = (currentData: ProductFormData): boolean => {
+    if (!originalCourseData) return false;
+    
+    // Comparar campos principales (ignorar imagen ya que es un File)
+    return (
+      currentData.titulo !== originalCourseData.titulo ||
+      currentData.descripcion !== originalCourseData.descripcion ||
+      currentData.precio !== originalCourseData.precio ||
+      currentData.estado !== originalCourseData.estado ||
+      JSON.stringify(currentData.materias) !== JSON.stringify(originalCourseData.materias) ||
+      currentData.imagen instanceof File // Si hay una nueva imagen, hay cambios
+    );
+  };
+
   const onSubmit = async (data: ProductFormData) => {
     if (!id) return;
+    
+    // Verificar si realmente hay cambios
+    if (!hasChanges(data)) {
+      // No hay cambios, no hacer nada
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -138,7 +154,18 @@ export default function EditProduct() {
       };
 
       await CoursesAPI.update(id, payload);
-      toast.success("Curso actualizada correctamente");
+      
+      // Actualizar los datos originales con los nuevos datos
+      setOriginalCourseData({
+        ...data,
+        imagen: undefined, // Mantener undefined después de guardar
+      });
+      
+      // Mostrar mensaje de cambios guardados (sin toast, solo el Card)
+      setLastSaveTime(new Date());
+      setShowSaveMessage(true);
+      setCurrentImageUrl(imageUrl); // Actualizar la URL de la imagen actual
+      
       handleNext();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -149,62 +176,7 @@ export default function EditProduct() {
     }
   };
 
-  const handleOnDeleteSubject = (subjectId: string) => {
-    setConfirmDeleteId(subjectId);
-    setIsDeleteModalOpen(true);
-  }
-
-  const handleCancelDeleteSubject = () => {
-    setIsDeleteModalOpen(false);
-    setConfirmDeleteId(null);
-  }
-
-  const handleConfirmDeleteSubject = async (id: string) => {
-    if (!id) return;
-    setDeleteLoading(true);
-    try {
-      await CoursesAPI.deleteMateria(id);
-      setSubjects(prev => prev.filter(s => s.id !== id));
-      toast.success("Materia eliminada exitosamente");
-      handleCancelDeleteSubject();
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al eliminar la materia");
-    }
-  }
-
-  const handleOnEditSubjectClick = (subject: Subject) => {
-    setEditingSubject(subject);
-    setIsEditModalOpen(true);
-  }
-
-  const handleCancelEditSubject = () => {
-    setIsEditModalOpen(false);
-    setEditingSubject(null);
-  }
-
-  const handleUpdateSubjectSubject = async (subjectData: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }) => {
-    try {
-      await CoursesAPI.updateMateria(subjectData.id, {
-        id: subjectData.id,
-        nombre: subjectData.nombre,
-        id_cursos: subjectData.id_cursos,
-        modulos: subjectData.modulos,
-      });
-
-      setSubjects(prev => prev.map(s =>
-        s.id === subjectData.id
-          ? { ...s, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
-          : s
-      ));
-      toast.success("Materia actualizada exitosamente");
-      handleCancelEditSubject();
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al actualizar la materia");
-      throw err;
-    }
-  }
+  // Las funciones de gestión de materias están en SubjectCreation
 
   const tabs = [
     { id: "general", label: "Información General" },
@@ -242,38 +214,129 @@ export default function EditProduct() {
         </div>
       </div>
 
-      {courseCreated && createdCourseId && (
+      {showSaveMessage && lastSaveTime && (
         <Card className="border-l-4 border-l-green-500 bg-green-50">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="font-medium text-green-800">Curso cargado exitosamente</p>
-                <p className="text-sm text-green-600">ID: {createdCourseId}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-green-800">Cambios guardados</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Clock className="w-3 h-3 text-green-600" />
+                    <p className="text-xs text-green-700">
+                      {lastSaveTime.toLocaleTimeString('es-AR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        second: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
               </div>
+              <button
+                onClick={() => setShowSaveMessage(false)}
+                className="text-green-700 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-100"
+                aria-label="Cerrar mensaje"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-1 overflow-x-auto pb-2 scrollbar-hide">
-          {tabs.map((tab, index) => (
-            <button
-              key={tab.id}
-              onClick={() => setCurrentTab(index)}
-              className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-
       <Form {...form}>
+        <div className="border-b border-gray-200">
+          <div className="flex items-center justify-between pb-2">
+            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
+              {tabs.map((tab, index) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(index)}
+                  className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            
+            {/* Checkbox de estado - siempre visible de forma sutil */}
+            <FormField
+              control={form.control}
+              name="estado"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-gray-200/50 hover:bg-gray-100/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={field.value === "activo"}
+                        onChange={async (e) => {
+                          const newEstado = e.target.checked ? "activo" : "inactivo";
+                          const oldEstado = field.value;
+                          field.onChange(newEstado);
+                          
+                          // Guardar automáticamente el cambio de estado
+                          if (id) {
+                            try {
+                              setLoading(true);
+                              const course = await CoursesAPI.getById(id);
+                              
+                              if (course) {
+                                await CoursesAPI.update(id, {
+                                  ...course,
+                                  estado: newEstado,
+                                });
+                                
+                                // Actualizar los datos originales
+                                if (originalCourseData) {
+                                  setOriginalCourseData({
+                                    ...originalCourseData,
+                                    estado: newEstado,
+                                  });
+                                }
+                                
+                                // Mostrar mensaje de cambios guardados
+                                setLastSaveTime(new Date());
+                                setShowSaveMessage(true);
+                              }
+                            } catch (error) {
+                              console.error("Error al actualizar estado del curso:", error);
+                              toast.error("Error al actualizar el estado del curso");
+                              // Revertir el cambio si falla
+                              field.onChange(oldEstado);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={loading}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <FormLabel className="text-xs font-medium text-gray-600 cursor-pointer">
+                        {field.value === "activo" ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Activo
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                            Inactivo
+                          </span>
+                        )}
+                      </FormLabel>
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
         <form onSubmit={(e) => {
           e.preventDefault()
           form.handleSubmit(onSubmit)
@@ -290,16 +353,7 @@ export default function EditProduct() {
                     currentImageUrl={currentImageUrl}
                   />
                 : ( 
-                  <>
-                    <SubjectCreation courseId={createdCourseId} />
-                    <div className="mt-5">
-                      <SubjectList
-                        subjects={subjects}
-                        onDelete={handleOnDeleteSubject}
-                        onEdit={handleOnEditSubjectClick}
-                      />
-                    </div>
-                  </>
+                  <SubjectCreation courseId={createdCourseId} />
                 )}
             </CardContent>
           </Card>
@@ -326,6 +380,14 @@ export default function EditProduct() {
                     toast.error("Por favor completa todos los campos requeridos.");
                     return;
                   }
+                  
+                  const currentData = form.getValues();
+                  if (!hasChanges(currentData)) {
+                    // Si no hay cambios, solo avanzar a la siguiente pestaña
+                    handleNext();
+                    return;
+                  }
+                  
                   form.handleSubmit(onSubmit)();
                 }}
                 disabled={loading}
@@ -346,7 +408,18 @@ export default function EditProduct() {
                 )}
               </Button>
             ) : (
-              <Button className="cursor-pointer" onClick={form.handleSubmit(onSubmit)} disabled={loading}>
+              <Button 
+                className="cursor-pointer" 
+                onClick={() => {
+                  const currentData = form.getValues();
+                  if (!hasChanges(currentData)) {
+                    toast.info("No hay cambios para guardar");
+                    return;
+                  }
+                  form.handleSubmit(onSubmit)();
+                }} 
+                disabled={loading}
+              >
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -359,26 +432,7 @@ export default function EditProduct() {
         </form>
       </Form>
 
-      <ConfirmDeleteModal
-        isOpen={isDeleteModalOpen}
-        onCancel={handleCancelDeleteSubject}
-        onConfirm={handleConfirmDeleteSubject}
-        deleteLoading={deleteLoading}
-        itemName={subjects.find(s => s.id === confirmDeleteId)?.nombre || "esta materia"}
-        id={confirmDeleteId || ""}
-      />
-
-      <SubjectModal
-        isOpen={isEditModalOpen}
-        onCancel={handleCancelEditSubject}
-        onSubjectCreated={async () => ({ id: "" })}
-        courseId={createdCourseId}
-        editingSubject={editingSubject}
-        onSubjectUpdated={handleUpdateSubjectSubject}
-        onGoToModules={(subjectId: string) => {
-          navigate(`/modules/create?subjectId=${subjectId}`);
-        }}
-      />
+          {/* Los modales de materias están en SubjectCreation */}
     </div>
   );
 }

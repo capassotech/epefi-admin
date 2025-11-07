@@ -29,10 +29,6 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Gestión de Cursos</h2>
-      </div>
-
       {/* Lista */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <ul role="list" className="divide-y divide-gray-200">

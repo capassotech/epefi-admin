@@ -50,7 +50,7 @@ const ModulesModal = ({
         url_miniatura: "",
         url_archivo: "",
         url_video: [],
-        tipo_contenido: "video",
+        tipo_contenido: "pdf",
         id_materia: "",
     });
     const [videoUrlInput, setVideoUrlInput] = useState<string>("");
@@ -65,7 +65,7 @@ const ModulesModal = ({
                     titulo: editingModule.titulo,
                     descripcion: editingModule.descripcion || "",
                     id_materia: editingModule.id_materia || "",
-                    tipo_contenido: editingModule.tipo_contenido || "VIDEO",
+                    tipo_contenido: "pdf", // Siempre PDF, incluso al editar
                     bibliografia: editingModule.bibliografia || "",
                     url_miniatura: editingModule.url_miniatura || "",
                     url_archivo: editingModule.url_archivo || "",
@@ -77,7 +77,7 @@ const ModulesModal = ({
                     titulo: "",
                     descripcion: "",
                     id_materia: (Array.isArray(courseId) ? courseId[0] : courseId) || "",
-                    tipo_contenido: "video",
+                    tipo_contenido: "pdf",
                     bibliografia: "",
                     url_miniatura: "",
                     url_archivo: "",
@@ -94,6 +94,10 @@ const ModulesModal = ({
         }
         if (!moduleForm.id_materia.trim()) {
             return "El ID de la materia es obligatorio";
+        }
+        // Validar que haya un archivo o una URL
+        if (!archivoFile && !moduleForm.url_archivo.trim() && !editingModule) {
+            return "Debes subir un archivo PDF o proporcionar una URL";
         }
         return null;
     };
@@ -121,24 +125,36 @@ const ModulesModal = ({
                 uploadedFileUrl = await getDownloadURL(storageRef);
             }
 
-            const subjectDataToSend = {
-                id: moduleForm.id,
-                titulo: moduleForm.titulo,
-                descripcion: moduleForm.descripcion,
+            // Preparar datos para enviar
+            // Si es creación, no incluir el campo 'id'
+            // Si es edición, incluir todos los campos incluyendo 'id'
+            // El backend espera tipo_contenido en minúsculas: "pdf", "video", etc.
+            // Siempre usar "pdf" (minúsculas) ya que es el único tipo permitido ahora
+            const tipoContenidoNormalized = "pdf";
+            
+            const baseData = {
+                titulo: moduleForm.titulo.trim(),
+                descripcion: (moduleForm.descripcion || "").trim(),
                 id_materia: moduleForm.id_materia,
-                tipo_contenido: moduleForm.tipo_contenido,
-                bibliografia: moduleForm.bibliografia,
-                url_miniatura: moduleForm.url_miniatura,
-                url_archivo: uploadedFileUrl,
-                url_video: moduleForm.url_video,
+                tipo_contenido: tipoContenidoNormalized as any, // Siempre "pdf" en minúsculas
+                bibliografia: (moduleForm.bibliografia || "").trim(),
+                url_miniatura: (moduleForm.url_miniatura || "").trim(),
+                url_archivo: (uploadedFileUrl || "").trim(),
+                url_video: Array.isArray(moduleForm.url_video) ? moduleForm.url_video : [],
             };
+            
+            console.log("Datos preparados en ModulesModal:", baseData);
+
+            const subjectDataToSend = editingModule
+                ? { ...baseData, id: moduleForm.id }
+                : baseData;
 
             if (editingModule && onModuleUpdated) {
                 console.log(subjectDataToSend);
-                await onModuleUpdated(subjectDataToSend);
+                await onModuleUpdated(subjectDataToSend as Module);
                 onCancel();
             } else {
-                await onModuleCreated(subjectDataToSend);
+                await onModuleCreated(subjectDataToSend as Module);
                 onCancel();
             }
         } catch (error) {
@@ -174,7 +190,7 @@ const ModulesModal = ({
 
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
                         <div className='flex gap-4 w-full'>
-                            <div className='w-1/2'>
+                            <div className='w-full'>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Título del Módulo *
                                 </label>
@@ -188,26 +204,6 @@ const ModulesModal = ({
                                         }))
                                     }
                                     placeholder="Ej: Introducción al tema"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-
-                            <div className='w-1/2'>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    ID de la Materia
-                                </label>
-                                <input
-                                    type="text"
-                                    disabled
-                                    value={moduleForm.id_materia}
-                                    onChange={(e) =>
-                                        setModuleForm((prev) => ({
-                                            ...prev,
-                                            id_materia: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="ID de la materia a la que pertenece"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     required
                                 />
@@ -238,73 +234,31 @@ const ModulesModal = ({
                                     Tipo de Contenido *
                                 </label>
                                 <Select
-                                    onValueChange={(value: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra") =>
-                                        setModuleForm((prev) => ({ ...prev, tipo_contenido: value }))
-                                    }
-                                    value={moduleForm.tipo_contenido}
+                                    value="pdf"
+                                    disabled
                                 >
                                     <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Seleccionar tipo de contenido" />
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="pdf">PDF</SelectItem>
-                                        {/* <SelectItem value="imagen">IMAGEN</SelectItem> */}
-                                        <SelectItem value="contenido_extra">CONTENIDO_EXTRA</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className='w-1/2'>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Bibliografía / Referencias
-                                </label>
-                                <textarea
-                                    value={moduleForm.bibliografia}
-                                    onChange={(e) =>
-                                        setModuleForm((prev) => ({
-                                            ...prev,
-                                            bibliografia: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Opcional: referencias para el módulo"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    rows={2}
-                                />
-                            </div>
-                        </div>
-
-                        <div className='flex gap-4 w-full'>
-                            <div className='w-1/2'>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    URL de Miniatura
-                                </label>
-                                <input
-                                    type="text"
-                                    value={moduleForm.url_miniatura}
-                                    onChange={(e) =>
-                                        setModuleForm((prev) => ({
-                                            ...prev,
-                                            url_miniatura: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="https://..."
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
-
-                            <div className='w-1/2'>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Archivo del módulo (se subirá a Storage)
+                                    Material de lectura
                                 </label>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="file"
-                                        accept={moduleForm.tipo_contenido === 'pdf' ? 'application/pdf' : undefined}
+                                        accept="application/pdf"
                                         onChange={(e) => {
                                             const file = e.target.files?.[0] || null;
                                             setArchivoFile(file);
                                         }}
-                                        className="cursor-pointer w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="cursor-pointer w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
                                 {editingModule && (

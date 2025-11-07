@@ -123,10 +123,19 @@ export default function CreateModule() {
             const moduleIds: string[] = [];
             
             for (const moduleData of modules) {
-                const createdModule = await CoursesAPI.createModule({
-                    ...moduleData,
-                    id_materia: pendingSubject.id
-                });
+                // Remover el campo 'id' al crear un nuevo módulo
+                // El backend espera tipo_contenido en minúsculas: "pdf", "video", etc.
+                // Siempre usar "pdf" (minúsculas) ya que es el único tipo permitido ahora
+                const { id, ...moduleDataWithoutId } = moduleData;
+                
+                const modulePayload = {
+                    ...moduleDataWithoutId,
+                    id_materia: pendingSubject.id,
+                    tipo_contenido: "pdf" as any, // Siempre "pdf" en minúsculas
+                } as Omit<Module, "id">;
+                
+                console.log("Payload en CreateModule:", modulePayload);
+                const createdModule = await CoursesAPI.createModule(modulePayload);
                 moduleIds.push(createdModule.id);
             }
 

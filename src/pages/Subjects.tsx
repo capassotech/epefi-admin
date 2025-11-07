@@ -262,7 +262,7 @@ export default function Subjects() {
                             ))}
                         </div>
                     ) : (
-                        <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} />
+                        <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} showTitle={false} />
                     )}
                 </>
             ) : (

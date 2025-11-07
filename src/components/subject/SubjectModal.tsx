@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, BookOpen, Settings } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
 
 import {
@@ -12,6 +12,17 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog"
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 import {
     Select,
@@ -29,9 +40,12 @@ interface SubjectModalProps {
     onCancel: () => void;
     onSubjectCreated: (subjectData: { nombre: string; id_cursos: string[], modulos: string[] }) => Promise<{ id: string }>;
     courseId?: string | null;
+    courseTitle?: string | null; // Título del curso para mostrar cuando no está en la lista
     editingSubject?: Subject | null;
     onSubjectUpdated?: (subjectData: { id: string; nombre: string; id_cursos: string[], modulos: string[] }) => Promise<void>;
     onGoToModules?: (subjectId: string, moduleIds: string[]) => void;
+    fromCourseCreation?: boolean; // Indica si se está creando desde el flujo de creación de curso
+    onSubjectCreatedComplete?: (subjectId: string) => void; // Callback cuando se completa la creación (materia + módulos)
 }
 
 
@@ -39,21 +53,54 @@ const SubjectModal = ({
     isOpen,
     onCancel,
     courseId,
+    courseTitle,
     onSubjectCreated,
     editingSubject,
     onSubjectUpdated,
-    onGoToModules
+    onGoToModules,
+    fromCourseCreation = false,
+    onSubjectCreatedComplete
 }: SubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [currentCourseTitle, setCurrentCourseTitle] = useState<string | null>(courseTitle || null);
     const location = useLocation();
     const [subjectForm, setSubjectForm] = useState({
         nombre: "",
         id_cursos: Array.isArray(courseId) ? courseId : courseId ? [courseId] : [] as string[],
         modulos: [] as string[],
     });
+    const [showConfirmSaveDialog, setShowConfirmSaveDialog] = useState(false);
+    const [courseNamesCache, setCourseNamesCache] = useState<Record<string, string>>({});
+
+    const loadCourseById = async (id: string) => {
+        try {
+            const course = await CoursesAPI.getById(id);
+            if (course && course.titulo) {
+                setCurrentCourseTitle(course.titulo);
+                // Agregar al caché
+                setCourseNamesCache(prev => ({ ...prev, [id]: course.titulo }));
+            }
+        } catch (error) {
+            console.error('Error al cargar el curso:', error);
+        }
+    };
+
+    const loadExistingCourses = async () => {
+        const courses = await CoursesAPI.getAll();
+        setCourses(courses);
+        
+        // Agregar los cursos cargados al caché
+        const newCache: Record<string, string> = {};
+        courses.forEach(course => {
+            if (course.titulo) {
+                newCache[course.id] = course.titulo;
+            }
+        });
+        setCourseNamesCache(prev => ({ ...prev, ...newCache }));
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -74,14 +121,19 @@ const SubjectModal = ({
                 setSelectedCourses(initialCourses);
             }
 
+            // Si hay courseTitle, usarlo directamente
+            if (courseTitle) {
+                setCurrentCourseTitle(courseTitle);
+            } else if (courseId && !courseTitle) {
+                // Si no hay courseTitle pero hay courseId, intentar cargar el curso
+                loadCourseById(courseId);
+            }
+
+            // Cargar todos los cursos existentes
+            // Esto carga todos los cursos y los agrega automáticamente al caché
             loadExistingCourses();
         }
-    }, [isOpen, courseId, editingSubject]);
-
-    const loadExistingCourses = async () => {
-        const courses = await CoursesAPI.getAll();
-        setCourses(courses);
-    };
+    }, [isOpen, courseId, courseTitle, editingSubject]);
 
     const handleCourseSelect = (courseId: string) => {
         if (!selectedCourses.includes(courseId)) {
@@ -103,9 +155,43 @@ const SubjectModal = ({
         }));
     };
 
-    const getCourseName = (courseId: string) => {
-        const course = courses.find(c => c.id === courseId);
-        return course ? course.titulo : courseId;
+    const getCourseName = (id: string) => {
+        // Primero buscar en el caché
+        if (courseNamesCache[id]) {
+            return courseNamesCache[id];
+        }
+        
+        // Si es el curso actual (el que se está creando) y tenemos el título, usarlo
+        if (id === courseId && currentCourseTitle) {
+            return currentCourseTitle;
+        }
+        
+        // Buscar en la lista de cursos cargados (que debería tener todos los cursos)
+        const course = courses.find(c => c.id === id);
+        if (course && course.titulo) {
+            // Agregar al caché y retornar el título
+            setCourseNamesCache(prev => {
+                if (!prev[id]) {
+                    return { ...prev, [id]: course.titulo };
+                }
+                return prev;
+            });
+            return course.titulo;
+        }
+        
+        // Si no se encuentra en la lista de cursos cargados, intentar cargarlo individualmente
+        // Solo si no está ya en proceso de carga
+        if (id && !courseNamesCache[id] && courses.length > 0) {
+            // Si ya se cargaron todos los cursos y no está en la lista, 
+            // probablemente el curso no existe o fue eliminado
+            // Pero intentemos cargarlo de todas formas
+            loadCourseById(id).catch(() => {
+                // Si falla, no hacer nada, simplemente mostrar el ID
+            });
+        }
+        
+        // Retornar el ID como fallback mientras se carga o si no se encuentra
+        return id;
     };
 
     const validateForm = () => {
@@ -142,19 +228,32 @@ const SubjectModal = ({
             } else {
                 const res = await onSubjectCreated(subjectDataToSend);
 
-                const subjectData = {
-                    id: res.id,
-                    nombre: subjectForm.nombre,
-                    id_cursos: selectedCourses,
-                    modulos: subjectForm.modulos,
-                };
+                // Si estamos en el flujo de creación de curso, NO navegar
+                // La materia ya está creada y asociada al curso automáticamente
+                if (fromCourseCreation) {
+                    // Si hay callback, llamarlo para que el padre maneje la actualización
+                    if (onSubjectCreatedComplete) {
+                        onSubjectCreatedComplete(res.id);
+                    }
+                    // Cerrar el modal de materia
+                    onCancel();
+                    // Nota: Los módulos se pueden agregar después desde la edición de la materia
+                } else {
+                    // Flujo original: navegar a la página de módulos
+                    const subjectData = {
+                        id: res.id,
+                        nombre: subjectForm.nombre,
+                        id_cursos: selectedCourses,
+                        modulos: subjectForm.modulos,
+                    };
 
-                if (!safeSetItem('pendingSubjectData', subjectData)) {
-                    console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                    if (!safeSetItem('pendingSubjectData', subjectData)) {
+                        console.error('Error al guardar datos de materia pendiente: espacio de almacenamiento agotado');
+                    }
+
+                    onCancel();
+                    navigate('/modules/create');
                 }
-
-                onCancel();
-                navigate('/modules/create');
             }
         } catch (error) {
             console.error('Error al procesar materia:', error);
@@ -269,23 +368,56 @@ const SubjectModal = ({
                             </>
                         ) : (
                             <div>
-                                <h1>Esta materia se asociará a:</h1>
+                                <h1 className="text-sm font-medium text-gray-700 mb-2">Esta materia se asociará al curso:</h1>
                                 <Badge key={courseId} variant="default" className="flex items-center gap-1 w-fit mt-3">
-                                    {getCourseName(courseId || '')}
+                                    {currentCourseTitle || (courseId ? getCourseName(courseId) : 'Sin curso')}
                                 </Badge>
                             </div>
                         )}
 
+                        {/* Sección para gestionar módulos - Parte del contenido del modal */}
+                        {(editingSubject || (fromCourseCreation && subjectForm.nombre.trim())) && (
+                            <div className="pt-6 border-t border-gray-200">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-shrink-0">
+                                            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                <BookOpen className="w-6 h-6 text-blue-600" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-base font-semibold text-gray-900 mb-1">
+                                                Gestión de Módulos
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mb-4">
+                                                {editingSubject 
+                                                    ? "Gestiona los módulos de esta materia. Puedes agregar, editar o eliminar módulos."
+                                                    : "Guarda esta materia para comenzar a gestionar sus módulos. Podrás agregar, editar o eliminar módulos después de guardar."
+                                                }
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"
+                                                onClick={() => {
+                                                    const error = validateForm();
+                                                    if (error) {
+                                                        alert(error);
+                                                        return;
+                                                    }
+                                                    setShowConfirmSaveDialog(true);
+                                                }}
+                                                disabled={loading}
+                                            >
+                                                <Settings className="w-4 h-4 mr-2" />
+                                                {editingSubject ? "Gestionar Módulos" : "Guardar y Gestionar Módulos"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-end space-x-3 pt-4 border-t">
-                            {editingSubject && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => onGoToModules?.(editingSubject.id, editingSubject.modulos || [])}
-                                >
-                                    Gestionar módulos
-                                </Button>
-                            )}
                             <Button
                                 type="button"
                                 variant="outline"
@@ -302,6 +434,8 @@ const SubjectModal = ({
                                     <Loader2 className='h-4 w-4 animate-spin' />
                                 ) : editingSubject ? (
                                     'Guardar Cambios'
+                                ) : fromCourseCreation ? (
+                                    'Crear Materia'
                                 ) : (
                                     'Continuar con Módulos'
                                 )}
@@ -310,6 +444,109 @@ const SubjectModal = ({
                     </form>
                 </div>
             </DialogContent>
+            
+            {/* Dialog de confirmación para guardar y gestionar módulos */}
+            <AlertDialog open={showConfirmSaveDialog} onOpenChange={setShowConfirmSaveDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Settings className="h-5 w-5 text-blue-600" />
+                            {editingSubject ? "Gestionar Módulos" : "Guardar y Gestionar Módulos"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-left pt-2">
+                            {editingSubject ? (
+                                <>
+                                    Se guardarán los cambios realizados en la materia <strong>"{subjectForm.nombre}"</strong> y se abrirá el gestor de módulos.
+                                    <br /><br />
+                                    ¿Deseas continuar?
+                                </>
+                            ) : (
+                                <>
+                                    Se guardará la materia <strong>"{subjectForm.nombre}"</strong> con los datos ingresados y se abrirá el gestor de módulos.
+                                    <br /><br />
+                                    ¿Deseas continuar?
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="cursor-pointer">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="cursor-pointer bg-blue-600 hover:bg-blue-700"
+                            onClick={async () => {
+                                setShowConfirmSaveDialog(false);
+                                
+                                // Si estamos creando una nueva materia, guardarla primero
+                                if (!editingSubject && fromCourseCreation) {
+                                    setLoading(true);
+                                    try {
+                                        const subjectDataToSend = {
+                                            nombre: subjectForm.nombre,
+                                            id_cursos: selectedCourses,
+                                            modulos: subjectForm.modulos,
+                                        };
+                                        
+                                        const res = await onSubjectCreated(subjectDataToSend);
+                                        
+                                        // Llamar al callback para actualizar el estado
+                                        if (onSubjectCreatedComplete) {
+                                            await onSubjectCreatedComplete(res.id);
+                                        }
+                                        
+                                        // No cerrar el modal todavía, se cerrará cuando se cierre el modal de módulos
+                                        // Ahora abrir el modal de módulos con el ID de la materia recién creada
+                                        if (onGoToModules) {
+                                            onGoToModules(res.id, []);
+                                        }
+                                        // El modal se cerrará automáticamente cuando se cierre el modal de módulos
+                                    } catch (error) {
+                                        console.error('Error al guardar materia:', error);
+                                        alert('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                } else if (editingSubject) {
+                                    // Si estamos editando, guardar cambios primero
+                                    setLoading(true);
+                                    try {
+                                        const subjectDataToSend = {
+                                            nombre: subjectForm.nombre,
+                                            id_cursos: selectedCourses,
+                                            modulos: subjectForm.modulos,
+                                        };
+                                        
+                                        if (onSubjectUpdated) {
+                                            await onSubjectUpdated({
+                                                id: editingSubject.id,
+                                                ...subjectDataToSend
+                                            });
+                                        }
+                                        
+                                        // Abrir el modal de módulos
+                                        if (onGoToModules) {
+                                            onGoToModules(editingSubject.id, editingSubject.modulos || []);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error al guardar materia:', error);
+                                        alert('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }
+                            }}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    Guardando...
+                                </>
+                            ) : (
+                                editingSubject ? "Guardar y Continuar" : "Guardar y Continuar"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     );
 };

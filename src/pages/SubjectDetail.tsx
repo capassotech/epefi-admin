@@ -109,7 +109,18 @@ export const SubjectDetail = () => {
 
     const handleModuleCreated = async (subjectData: Module): Promise<{ id: string }> => {
         try {
-            const created = await CoursesAPI.createModule(subjectData);
+            // Remover el campo 'id' al crear un nuevo módulo
+            // El backend espera tipo_contenido en minúsculas: "pdf", "video", etc.
+            // Siempre usar "pdf" (minúsculas) ya que es el único tipo permitido ahora
+            const { id, ...moduleDataWithoutId } = subjectData;
+            
+            const modulePayload = {
+                ...moduleDataWithoutId,
+                tipo_contenido: "pdf" as any, // Siempre "pdf" en minúsculas
+            } as Omit<Module, "id">;
+            
+            console.log("Payload en SubjectDetail:", modulePayload);
+            const created = await CoursesAPI.createModule(modulePayload);
             const newModuleId: string = created.id;
 
             // Actualizar la materia con el nuevo módulo
