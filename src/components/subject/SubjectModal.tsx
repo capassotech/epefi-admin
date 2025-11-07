@@ -253,7 +253,8 @@ const SubjectModal = ({
                         onCancel();
                         // Pequeño delay para que se vea el toast antes de navegar
                         setTimeout(() => {
-                            onGoToModules(res.id, Array.isArray(res.modulos) ? res.modulos : []);
+                            const resModulos = Array.isArray((res as { modulos?: any })?.modulos) ? (res as { modulos?: any }).modulos : [];
+                            onGoToModules(res.id, resModulos);
                         }, 500);
                     } else {
                         // Fallback al flujo antiguo con localStorage (para compatibilidad)
@@ -527,7 +528,8 @@ const SubjectModal = ({
                                             if (onGoToModules) {
                                                 // Pequeño delay para que se vea el toast antes de navegar
                                                 setTimeout(() => {
-                                                    onGoToModules(res.id, Array.isArray(res.modulos) ? res.modulos : []);
+                                                    const resModulos = Array.isArray((res as { modulos?: any })?.modulos) ? (res as { modulos?: any }).modulos : [];
+                                                    onGoToModules(res.id, resModulos);
                                                 }, 500);
                                             }
                                         }

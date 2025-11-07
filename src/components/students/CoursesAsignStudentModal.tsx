@@ -16,7 +16,7 @@ interface CoursesAsignStudentModalProps {
     assignDialogOpen: boolean;
     setAssignDialogOpen: (open: boolean) => void;
     selectedCourseIds: string[];
-    setSelectedCourseIds: (courseIds: string[]) => void;
+    setSelectedCourseIds: Dispatch<SetStateAction<string[]>>;
     getErrorMessage: (e: unknown) => string;
     setCourses: Dispatch<SetStateAction<Course[]>>;
     showTrigger?: boolean;
@@ -79,7 +79,7 @@ export const CoursesAsignStudentModal = ({
 
             await StudentsAPI.updateStudent(payload.uid, payload);
 
-            const newlyAssignedCourses = allCourses.filter((c) => newAssignments.includes(c.id));
+            const newlyAssignedCourses = allCourses.filter((c: Course) => newAssignments.includes(c.id));
             if (newlyAssignedCourses.length > 0) {
                 setCourses((prev) => {
                     const existingIds = new Set(prev.map((c) => c.id));
@@ -145,7 +145,7 @@ export const CoursesAsignStudentModal = ({
             if (removedCourse) {
                 setAvailableCourses((prev) => [...prev, removedCourse]);
             }
-            setSelectedCourseIds((prev) => prev.filter((cid) => cid !== courseId));
+            setSelectedCourseIds((prev) => prev.filter((cid: string) => cid !== courseId));
 
             toast.success('Curso removido correctamente');
         } catch (e: unknown) {
@@ -172,8 +172,8 @@ export const CoursesAsignStudentModal = ({
                 setAllCourses(coursesData);
 
                 const assignedIds = new Set(normalizedStudent?.cursos_asignados || []);
-                setAssignedCourses(coursesData.filter((course) => assignedIds.has(course.id)));
-                setAvailableCourses(coursesData.filter((course) => !assignedIds.has(course.id)));
+                setAssignedCourses(coursesData.filter((course: Course) => assignedIds.has(course.id)));
+                setAvailableCourses(coursesData.filter((course: Course) => !assignedIds.has(course.id)));
             } catch (e) {
                 toast.error(getErrorMessage(e));
             } finally {
@@ -281,7 +281,7 @@ export const CoursesAsignStudentModal = ({
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {availableCourses.map((curso) => {
+                                            {availableCourses.map((curso: Course) => {
                                                 const isSelected = selectedCourseIds.includes(curso.id);
                                                 return (
                                                     <button
@@ -290,7 +290,7 @@ export const CoursesAsignStudentModal = ({
                                                         onClick={() => {
                                                             setSelectedCourseIds((prev) =>
                                                                 prev.includes(curso.id)
-                                                                    ? prev.filter((idCurso) => idCurso !== curso.id)
+                                                                    ? prev.filter((idCurso: string) => idCurso !== curso.id)
                                                                     : [...prev, curso.id]
                                                             );
                                                         }}
