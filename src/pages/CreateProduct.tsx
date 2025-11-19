@@ -47,6 +47,8 @@ export default function CreateProduct() {
       estado: "inactivo",
       imagen: undefined,
       materias: [],
+      fechaInicioDictado: undefined,
+      fechaFinDictado: undefined,
     },
     mode: "onChange",
   });
@@ -98,7 +100,7 @@ export default function CreateProduct() {
       });
       const imageStorageUrl = result.url || "";
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: data.precio,
@@ -106,6 +108,10 @@ export default function CreateProduct() {
         imagen: imageStorageUrl,
         materias: data.materias || [],
       };
+      
+      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
+      payload.fechaInicioDictado = data.fechaInicioDictado || null;
+      payload.fechaFinDictado = data.fechaFinDictado || null;
 
       console.log("Creando curso con payload:", payload);
       const response = await CoursesAPI.create(payload);
@@ -184,7 +190,7 @@ export default function CreateProduct() {
       const materiasIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
       
       // Preparar el payload sin incluir el campo imagen como File
-      const payload = {
+      const payload: Record<string, unknown> = {
         titulo: currentFormData.titulo,
         descripcion: currentFormData.descripcion,
         precio: currentFormData.precio,
@@ -193,6 +199,14 @@ export default function CreateProduct() {
         materias: materiasIds,
       };
       
+      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
+      payload.fechaInicioDictado = currentFormData.fechaInicioDictado || null;
+      payload.fechaFinDictado = currentFormData.fechaFinDictado || null;
+      
+      console.log("📅 Fechas en el payload final:", {
+        fechaInicioDictado: payload.fechaInicioDictado,
+        fechaFinDictado: payload.fechaFinDictado
+      });
       console.log("Actualizando curso existente (ID:", createdCourseId, ") con payload:", payload);
       
       // IMPORTANTE: Usar update, nunca create

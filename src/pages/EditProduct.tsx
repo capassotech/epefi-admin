@@ -54,6 +54,8 @@ export default function EditProduct() {
       estado: "activo",
       imagen: undefined,
       materias: [],
+      fechaInicioDictado: undefined,
+      fechaFinDictado: undefined,
     },
     mode: "onChange",
   });
@@ -76,6 +78,22 @@ export default function EditProduct() {
         const imageUrl = data.imagen || data.image || "";
         setCurrentImageUrl(imageUrl);
         
+        // Función helper para convertir fecha ISO a formato YYYY-MM-DD
+        const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
+          if (!dateValue) return undefined;
+          try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return undefined;
+            // Convertir a formato YYYY-MM-DD
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          } catch {
+            return undefined;
+          }
+        };
+
         const formData = {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
@@ -83,6 +101,8 @@ export default function EditProduct() {
           estado: data.estado || "activo",
           imagen: undefined, // Don't set file object, keep as undefined
           materias: Array.isArray(data.materias) ? data.materias : [],
+          fechaInicioDictado: formatDateForInput(data.fechaInicioDictado),
+          fechaFinDictado: formatDateForInput(data.fechaFinDictado),
         };
         
         form.reset(formData);
@@ -106,15 +126,44 @@ export default function EditProduct() {
   const hasChanges = (currentData: ProductFormData): boolean => {
     if (!originalCourseData) return false;
     
+    // Normalizar fechas para comparación (convertir a formato YYYY-MM-DD si vienen en ISO)
+    const normalizeDate = (dateValue: string | undefined | null): string | undefined => {
+      if (!dateValue) return undefined;
+      // Si ya está en formato YYYY-MM-DD, devolverlo tal cual
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        return dateValue;
+      }
+      // Si está en formato ISO, convertir a YYYY-MM-DD
+      try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return undefined;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch {
+        return undefined;
+      }
+    };
+
+    const currentFechaInicio = normalizeDate(currentData.fechaInicioDictado);
+    const originalFechaInicio = normalizeDate(originalCourseData.fechaInicioDictado);
+    const currentFechaFin = normalizeDate(currentData.fechaFinDictado);
+    const originalFechaFin = normalizeDate(originalCourseData.fechaFinDictado);
+    
     // Comparar campos principales (ignorar imagen ya que es un File)
-    return (
+    const hasChangesResult = (
       currentData.titulo !== originalCourseData.titulo ||
       currentData.descripcion !== originalCourseData.descripcion ||
       currentData.precio !== originalCourseData.precio ||
       currentData.estado !== originalCourseData.estado ||
       JSON.stringify(currentData.materias) !== JSON.stringify(originalCourseData.materias) ||
+      currentFechaInicio !== originalFechaInicio ||
+      currentFechaFin !== originalFechaFin ||
       currentData.imagen instanceof File // Si hay una nueva imagen, hay cambios
     );
+    
+    return hasChangesResult;
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -143,7 +192,7 @@ export default function EditProduct() {
         imageUrl = currentImageUrl || "";
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: data.precio,
@@ -151,21 +200,66 @@ export default function EditProduct() {
         imagen: imageUrl,
         materias: data.materias || [],
       };
-
+      
+      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
+      // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
+      if (data.fechaInicioDictado) {
+        const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
+        payload.fechaInicioDictado = fechaInicio.toISOString();
+      } else {
+        payload.fechaInicioDictado = null;
+      }
+      
+      if (data.fechaFinDictado) {
+        const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
+        payload.fechaFinDictado = fechaFin.toISOString();
+      } else {
+        payload.fechaFinDictado = null;
+      }
+      
       await CoursesAPI.update(id, payload);
       
-      // Actualizar los datos originales con los nuevos datos
-      setOriginalCourseData({
-        ...data,
-        imagen: undefined, // Mantener undefined después de guardar
-      });
+      // Recargar los datos del curso desde el backend para obtener el formato correcto
+      const updatedCourse = await CoursesAPI.getById(id);
       
-      // Mostrar mensaje de cambios guardados (sin toast, solo el Card)
-      setLastSaveTime(new Date());
-      setShowSaveMessage(true);
+      // Formatear fechas para el formulario
+      const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
+        if (!dateValue) return undefined;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) return undefined;
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        } catch {
+          return undefined;
+        }
+      };
+      
+      // Actualizar los datos originales con los datos recargados del backend
+      const updatedFormData = {
+        titulo: updatedCourse.titulo || "",
+        descripcion: updatedCourse.descripcion || "",
+        precio: updatedCourse.precio || 0,
+        estado: updatedCourse.estado || "activo",
+        imagen: undefined,
+        materias: Array.isArray(updatedCourse.materias) ? updatedCourse.materias : [],
+        fechaInicioDictado: formatDateForInput(updatedCourse.fechaInicioDictado),
+        fechaFinDictado: formatDateForInput(updatedCourse.fechaFinDictado),
+      };
+      
+      setOriginalCourseData(updatedFormData);
       setCurrentImageUrl(imageUrl); // Actualizar la URL de la imagen actual
       
-      handleNext();
+      // Si estamos en la pestaña de Materias, redirigir después de guardar
+      if (currentTab === 1) {
+        toast.success("Curso actualizado exitosamente");
+        navigate("/products");
+      } else {
+        // En la pestaña de Información General, solo avanzar sin mostrar mensaje
+        handleNext();
+      }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message = axiosErr.response?.data?.message || "Error al actualizar el curso";
@@ -409,13 +503,21 @@ export default function EditProduct() {
             ) : (
               <Button 
                 className="cursor-pointer" 
-                onClick={() => {
+                onClick={async () => {
+                  // En la pestaña de Materias, siempre guardar y redirigir (los cambios de la pestaña anterior ya se guardaron)
                   const currentData = form.getValues();
-                  if (!hasChanges(currentData)) {
-                    toast.info("No hay cambios para guardar");
-                    return;
+                  
+                  // Verificar si hay cambios en las materias u otros campos
+                  const hasChangesInCurrentTab = hasChanges(currentData);
+                  
+                  if (hasChangesInCurrentTab) {
+                    // Si hay cambios, guardarlos
+                    form.handleSubmit(onSubmit)();
+                  } else {
+                    // Si no hay cambios, simplemente redirigir (los cambios ya se guardaron al hacer clic en "Siguiente")
+                    toast.success("Curso actualizado exitosamente");
+                    navigate("/products");
                   }
-                  form.handleSubmit(onSubmit)();
                 }} 
                 disabled={loading}
               >

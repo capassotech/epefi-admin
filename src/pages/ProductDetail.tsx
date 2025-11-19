@@ -11,6 +11,7 @@ import {
   Tag,
   Users,
   Image as ImageIcon,
+  Calendar,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject } from '@/types/types';
@@ -147,6 +148,37 @@ const ProductDetail = () => {
                 </span>
               </p>
             </div>
+            
+            {(curso.fechaInicioDictado || curso.fechaFinDictado) && (
+              <div>
+                <div className="flex items-center mt-2">
+                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
+                  <p className="text-sm">
+                    <strong>Período de dictado:</strong>
+                  </p>
+                </div>
+                <div className="ml-6 mt-1">
+                  {curso.fechaInicioDictado && (
+                    <p className="text-sm text-gray-600">
+                      <strong>Fecha inicio:</strong> {new Date(curso.fechaInicioDictado).toLocaleDateString('es-AR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                      })}
+                    </p>
+                  )}
+                  {curso.fechaFinDictado && (
+                    <p className="text-sm text-gray-600">
+                      <strong>Fecha fin:</strong> {new Date(curso.fechaFinDictado).toLocaleDateString('es-AR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {curso.materias && curso.materias.length > 0 && (
