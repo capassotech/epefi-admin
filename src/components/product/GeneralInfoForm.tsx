@@ -9,12 +9,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import type { Control } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Dispatch, SetStateAction } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ProductFormData } from "@/schemas/product-schema";
+import { FileText, X, Download } from "lucide-react";
+import { toast } from "sonner";
 
 interface GeneralInfoFormProps {
   control: Control<ProductFormData>;
@@ -23,12 +26,27 @@ interface GeneralInfoFormProps {
   setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
   isDialogOpen: boolean;
   currentImageUrl?: string | null;
+  currentPlanDeEstudiosUrl?: string | null;
+  currentFechasDeExamenesUrl?: string | null;
 }
 
-const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDialogOpen, isDialogOpen, currentImageUrl }: GeneralInfoFormProps) => {
+const GeneralInfoForm = ({ 
+  control, 
+  setImagePreviewUrl, 
+  imagePreviewUrl, 
+  setIsDialogOpen, 
+  isDialogOpen, 
+  currentImageUrl,
+  currentPlanDeEstudiosUrl,
+  currentFechasDeExamenesUrl
+}: GeneralInfoFormProps) => {
   const precioValue = useWatch({ control, name: "precio" });
   const [precioInput, setPrecioInput] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
+  const planDeEstudiosValue = useWatch({ control, name: "planDeEstudios" });
+  const fechasDeExamenesValue = useWatch({ control, name: "fechasDeExamenes" });
+  const planDeEstudiosInputRef = useRef<HTMLInputElement>(null);
+  const fechasDeExamenesInputRef = useRef<HTMLInputElement>(null);
 
   // Inicializar el valor del input cuando se carga el formulario
   useEffect(() => {
@@ -53,6 +71,31 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
 
   const shouldShowImage = (): boolean => {
     return imagePreviewUrl != null || hasValidImage(currentImageUrl);
+  };
+
+  const validatePDF = (file: File): boolean => {
+    // Validar tipo
+    if (file.type !== "application/pdf") {
+      toast.error("El archivo debe ser un PDF");
+      return false;
+    }
+
+    // Validar tamaño (10 MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("El archivo PDF no puede exceder 10 MB");
+      return false;
+    }
+
+    return true;
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
   };
 
   return (
@@ -241,6 +284,167 @@ const GeneralInfoForm = ({ control, setImagePreviewUrl, imagePreviewUrl, setIsDi
           </FormItem>
         )}
       />
+
+      <div className="space-y-4 pt-4 border-t">
+        <h3 className="text-lg font-semibold">Documentos del Curso</h3>
+        
+        <FormField
+          control={control}
+          name="planDeEstudios"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Plan de Estudios (PDF)</FormLabel>
+              <FormControl>
+                <div className="space-y-3">
+                  <Input
+                    type="file"
+                    accept="application/pdf"
+                    className="cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (validatePDF(file)) {
+                          field.onChange(file);
+                        } else {
+                          e.target.value = "";
+                        }
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    }}
+                  />
+                  
+                  {(planDeEstudiosValue || currentPlanDeEstudiosUrl) && (
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                      <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {planDeEstudiosValue?.name || "Plan de Estudios.pdf"}
+                        </p>
+                        {planDeEstudiosValue && (
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(planDeEstudiosValue.size)}
+                          </p>
+                        )}
+                        {currentPlanDeEstudiosUrl && !planDeEstudiosValue && (
+                          <p className="text-xs text-gray-500">Archivo actual</p>
+                        )}
+                      </div>
+                      {planDeEstudiosValue && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            field.onChange(undefined);
+                            if (planDeEstudiosInputRef.current) {
+                              planDeEstudiosInputRef.current.value = "";
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {currentPlanDeEstudiosUrl && !planDeEstudiosValue && (
+                        <a
+                          href={currentPlanDeEstudiosUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </FormControl>
+              <FormMessage />
+              <p className="text-xs text-gray-500">Tamaño máximo: 10 MB</p>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="fechasDeExamenes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fechas de Exámenes (PDF)</FormLabel>
+              <FormControl>
+                <div className="space-y-3">
+                  <Input
+                    ref={fechasDeExamenesInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (validatePDF(file)) {
+                          field.onChange(file);
+                        } else {
+                          e.target.value = "";
+                        }
+                      } else {
+                        field.onChange(undefined);
+                      }
+                    }}
+                  />
+                  
+                  {(fechasDeExamenesValue || currentFechasDeExamenesUrl) && (
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                      <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {fechasDeExamenesValue?.name || "Fechas de Exámenes.pdf"}
+                        </p>
+                        {fechasDeExamenesValue && (
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(fechasDeExamenesValue.size)}
+                          </p>
+                        )}
+                        {currentFechasDeExamenesUrl && !fechasDeExamenesValue && (
+                          <p className="text-xs text-gray-500">Archivo actual</p>
+                        )}
+                      </div>
+                      {fechasDeExamenesValue && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            field.onChange(undefined);
+                            if (fechasDeExamenesInputRef.current) {
+                              fechasDeExamenesInputRef.current.value = "";
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {currentFechasDeExamenesUrl && !fechasDeExamenesValue && (
+                        <a
+                          href={currentFechasDeExamenesUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </FormControl>
+              <FormMessage />
+              <p className="text-xs text-gray-500">Tamaño máximo: 10 MB</p>
+            </FormItem>
+          )}
+        />
+      </div>
     </div>
   );
 };

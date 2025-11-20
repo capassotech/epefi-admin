@@ -39,6 +39,8 @@ export default function EditProduct() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [currentPlanDeEstudiosUrl, setCurrentPlanDeEstudiosUrl] = useState<string | null>(null);
+  const [currentFechasDeExamenesUrl, setCurrentFechasDeExamenesUrl] = useState<string | null>(null);
   
   // Estados para el mensaje de cambios guardados
   const [showSaveMessage, setShowSaveMessage] = useState(false);
@@ -54,6 +56,8 @@ export default function EditProduct() {
       estado: "activo",
       imagen: undefined,
       materias: [],
+      planDeEstudios: undefined,
+      fechasDeExamenes: undefined,
     },
     mode: "onChange",
   });
@@ -76,6 +80,10 @@ export default function EditProduct() {
         const imageUrl = data.imagen || data.image || "";
         setCurrentImageUrl(imageUrl);
         
+        // Cargar URLs de PDFs si existen
+        setCurrentPlanDeEstudiosUrl(data.planDeEstudiosUrl || null);
+        setCurrentFechasDeExamenesUrl(data.fechasDeExamenesUrl || null);
+        
         const formData = {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
@@ -83,6 +91,8 @@ export default function EditProduct() {
           estado: data.estado || "activo",
           imagen: undefined, // Don't set file object, keep as undefined
           materias: Array.isArray(data.materias) ? data.materias : [],
+          planDeEstudios: undefined,
+          fechasDeExamenes: undefined,
         };
         
         form.reset(formData);
@@ -113,7 +123,9 @@ export default function EditProduct() {
       currentData.precio !== originalCourseData.precio ||
       currentData.estado !== originalCourseData.estado ||
       JSON.stringify(currentData.materias) !== JSON.stringify(originalCourseData.materias) ||
-      currentData.imagen instanceof File // Si hay una nueva imagen, hay cambios
+      currentData.imagen instanceof File || // Si hay una nueva imagen, hay cambios
+      currentData.planDeEstudios instanceof File || // Si hay un nuevo PDF de plan de estudios
+      currentData.fechasDeExamenes instanceof File // Si hay un nuevo PDF de fechas
     );
   };
 
@@ -143,7 +155,9 @@ export default function EditProduct() {
         imageUrl = currentImageUrl || "";
       }
 
-      const payload = {
+      // Manejar PDFs
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = {
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: data.precio,
@@ -152,13 +166,70 @@ export default function EditProduct() {
         materias: data.materias || [],
       };
 
+      // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
+      const course = await CoursesAPI.getById(id);
+
+      if (data.planDeEstudios instanceof File) {
+        try {
+          const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
+          const planResult = await CoursesAPI.uploadPDF(data.planDeEstudios, {
+            directory: pdfFolder,
+            filename: `plan-de-estudios-${Date.now()}.pdf`,
+          });
+          payload.planDeEstudiosUrl = planResult.url;
+          payload.planDeEstudiosActualizado = now;
+        } catch (pdfError) {
+          console.error("Error al subir plan de estudios:", pdfError);
+          if (course?.planDeEstudiosUrl) {
+            payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
+          }
+        }
+      } else if (course?.planDeEstudiosUrl) {
+        payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
+        if (course.planDeEstudiosActualizado) {
+          payload.planDeEstudiosActualizado = course.planDeEstudiosActualizado;
+        }
+      }
+
+      if (data.fechasDeExamenes instanceof File) {
+        try {
+          const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
+          const fechasResult = await CoursesAPI.uploadPDF(data.fechasDeExamenes, {
+            directory: pdfFolder,
+            filename: `fechas-examenes-${Date.now()}.pdf`,
+          });
+          payload.fechasDeExamenesUrl = fechasResult.url;
+          payload.fechasDeExamenesActualizado = now;
+        } catch (pdfError) {
+          console.error("Error al subir fechas de exámenes:", pdfError);
+          if (course?.fechasDeExamenesUrl) {
+            payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
+          }
+        }
+      } else if (course?.fechasDeExamenesUrl) {
+        payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
+        if (course.fechasDeExamenesActualizado) {
+          payload.fechasDeExamenesActualizado = course.fechasDeExamenesActualizado;
+        }
+      }
+
       await CoursesAPI.update(id, payload);
       
       // Actualizar los datos originales con los nuevos datos
       setOriginalCourseData({
         ...data,
         imagen: undefined, // Mantener undefined después de guardar
+        planDeEstudios: undefined,
+        fechasDeExamenes: undefined,
       });
+      
+      // Actualizar URLs de PDFs si se subieron nuevos
+      if (payload.planDeEstudiosUrl) {
+        setCurrentPlanDeEstudiosUrl(payload.planDeEstudiosUrl as string);
+      }
+      if (payload.fechasDeExamenesUrl) {
+        setCurrentFechasDeExamenesUrl(payload.fechasDeExamenesUrl as string);
+      }
       
       // Mostrar mensaje de cambios guardados (sin toast, solo el Card)
       setLastSaveTime(new Date());
@@ -350,6 +421,8 @@ export default function EditProduct() {
                     setIsDialogOpen={setIsDialogOpen}
                     isDialogOpen={isDialogOpen}
                     currentImageUrl={currentImageUrl}
+                    currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
+                    currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
                   />
                 : ( 
                   <SubjectCreation courseId={createdCourseId} />
@@ -387,23 +460,22 @@ export default function EditProduct() {
                     return;
                   }
                   
-                  form.handleSubmit(onSubmit)();
+                  // Si hay cambios, guardar y luego avanzar (onSubmit ya llama a handleNext)
+                  await form.handleSubmit(onSubmit)();
                 }}
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-
-                {currentTab === 0 ? (
                   <>
-                    Siguiente
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
                   </>
                 ) : (
-                  "Actualizar Curso"
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Guardar y Continuar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
                 )}
               </Button>
             ) : (

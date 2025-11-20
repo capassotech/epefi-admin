@@ -8,6 +8,8 @@ export const productFormSchema = z.object({
   estado: z.enum(["activo", "inactivo"]),
   imagen: z.instanceof(File, { message: "La imagen es obligatoria" }).optional(),
   materias: z.array(z.string()),
+  planDeEstudios: z.instanceof(File).optional(),
+  fechasDeExamenes: z.instanceof(File).optional(),
 });
 
 export type ProductFormData = z.infer<typeof productFormSchema>;
