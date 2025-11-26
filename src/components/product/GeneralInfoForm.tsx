@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import type { Dispatch, SetStateAction } from "react";
 import { useState, useEffect, useRef } from "react";
 import type { ProductFormData } from "@/schemas/product-schema";
-import { FileText, X, Download } from "lucide-react";
+import { FileText, X, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface GeneralInfoFormProps {
@@ -28,6 +28,10 @@ interface GeneralInfoFormProps {
   currentImageUrl?: string | null;
   currentPlanDeEstudiosUrl?: string | null;
   currentFechasDeExamenesUrl?: string | null;
+  onDeletePlanDeEstudios?: () => void;
+  onDeleteFechasDeExamenes?: () => void;
+  planDeEstudiosDeleted?: boolean;
+  fechasDeExamenesDeleted?: boolean;
 }
 
 const GeneralInfoForm = ({ 
@@ -38,7 +42,11 @@ const GeneralInfoForm = ({
   isDialogOpen, 
   currentImageUrl,
   currentPlanDeEstudiosUrl,
-  currentFechasDeExamenesUrl
+  currentFechasDeExamenesUrl,
+  onDeletePlanDeEstudios,
+  onDeleteFechasDeExamenes,
+  planDeEstudiosDeleted = false,
+  fechasDeExamenesDeleted = false
 }: GeneralInfoFormProps) => {
   const precioValue = useWatch({ control, name: "precio" });
   const [precioInput, setPrecioInput] = useState<string>("");
@@ -47,6 +55,20 @@ const GeneralInfoForm = ({
   const fechasDeExamenesValue = useWatch({ control, name: "fechasDeExamenes" });
   const planDeEstudiosInputRef = useRef<HTMLInputElement>(null);
   const fechasDeExamenesInputRef = useRef<HTMLInputElement>(null);
+
+  // Limpiar input cuando se elimina el PDF
+  useEffect(() => {
+    if (planDeEstudiosDeleted && planDeEstudiosInputRef.current) {
+      planDeEstudiosInputRef.current.value = "";
+    }
+  }, [planDeEstudiosDeleted]);
+
+  useEffect(() => {
+    if (fechasDeExamenesDeleted && fechasDeExamenesInputRef.current) {
+      fechasDeExamenesInputRef.current.value = "";
+    }
+  }, [fechasDeExamenesDeleted]);
+
 
   // Inicializar el valor del input cuando se carga el formulario
   useEffect(() => {
@@ -297,6 +319,7 @@ const GeneralInfoForm = ({
               <FormControl>
                 <div className="space-y-3">
                   <Input
+                    ref={planDeEstudiosInputRef}
                     type="file"
                     accept="application/pdf"
                     className="cursor-pointer"
@@ -314,7 +337,7 @@ const GeneralInfoForm = ({
                     }}
                   />
                   
-                  {(planDeEstudiosValue || currentPlanDeEstudiosUrl) && (
+                  {(planDeEstudiosValue || (currentPlanDeEstudiosUrl && !planDeEstudiosDeleted)) && (
                     <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
                       <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -330,32 +353,56 @@ const GeneralInfoForm = ({
                           <p className="text-xs text-gray-500">Archivo actual</p>
                         )}
                       </div>
-                      {planDeEstudiosValue && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            field.onChange(undefined);
-                            if (planDeEstudiosInputRef.current) {
-                              planDeEstudiosInputRef.current.value = "";
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {currentPlanDeEstudiosUrl && !planDeEstudiosValue && (
-                        <a
-                          href={currentPlanDeEstudiosUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {planDeEstudiosValue ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              field.onChange(undefined);
+                              if (planDeEstudiosInputRef.current) {
+                                planDeEstudiosInputRef.current.value = "";
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                            title="Quitar archivo seleccionado"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        ) : currentPlanDeEstudiosUrl ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Descargar"
+                            >
+                              <a
+                                href={currentPlanDeEstudiosUrl}
+                                download
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </Button>
+                            {onDeletePlanDeEstudios && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={onDeletePlanDeEstudios}
+                                className="text-red-600 hover:text-red-700"
+                                title="Eliminar archivo"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -393,7 +440,7 @@ const GeneralInfoForm = ({
                     }}
                   />
                   
-                  {(fechasDeExamenesValue || currentFechasDeExamenesUrl) && (
+                  {(fechasDeExamenesValue || (currentFechasDeExamenesUrl && !fechasDeExamenesDeleted)) && (
                     <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
                       <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -409,32 +456,56 @@ const GeneralInfoForm = ({
                           <p className="text-xs text-gray-500">Archivo actual</p>
                         )}
                       </div>
-                      {fechasDeExamenesValue && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            field.onChange(undefined);
-                            if (fechasDeExamenesInputRef.current) {
-                              fechasDeExamenesInputRef.current.value = "";
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {currentFechasDeExamenesUrl && !fechasDeExamenesValue && (
-                        <a
-                          href={currentFechasDeExamenesUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {fechasDeExamenesValue ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              field.onChange(undefined);
+                              if (fechasDeExamenesInputRef.current) {
+                                fechasDeExamenesInputRef.current.value = "";
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                            title="Quitar archivo seleccionado"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        ) : currentFechasDeExamenesUrl ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Descargar"
+                            >
+                              <a
+                                href={currentFechasDeExamenesUrl}
+                                download
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </Button>
+                            {onDeleteFechasDeExamenes && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={onDeleteFechasDeExamenes}
+                                className="text-red-600 hover:text-red-700"
+                                title="Eliminar archivo"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   )}
                 </div>

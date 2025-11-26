@@ -26,6 +26,7 @@ import { slugify } from "@/lib/utils";
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import SubjectCreation from "@/components/product/SubjectCreation";
+import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 
 
 export default function EditProduct() {
@@ -41,6 +42,13 @@ export default function EditProduct() {
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [currentPlanDeEstudiosUrl, setCurrentPlanDeEstudiosUrl] = useState<string | null>(null);
   const [currentFechasDeExamenesUrl, setCurrentFechasDeExamenesUrl] = useState<string | null>(null);
+  const [planDeEstudiosDeleted, setPlanDeEstudiosDeleted] = useState(false);
+  const [fechasDeExamenesDeleted, setFechasDeExamenesDeleted] = useState(false);
+  const [pdfsVersion, setPdfsVersion] = useState(0); // Para forzar re-render cuando cambien los PDFs
+  
+  // Estados para modales de confirmación de eliminación
+  const [isDeletePlanModalOpen, setIsDeletePlanModalOpen] = useState(false);
+  const [isDeleteFechasModalOpen, setIsDeleteFechasModalOpen] = useState(false);
   
   // Estados para el mensaje de cambios guardados
   const [showSaveMessage, setShowSaveMessage] = useState(false);
@@ -83,6 +91,9 @@ export default function EditProduct() {
         // Cargar URLs de PDFs si existen
         setCurrentPlanDeEstudiosUrl(data.planDeEstudiosUrl || null);
         setCurrentFechasDeExamenesUrl(data.fechasDeExamenesUrl || null);
+        // Resetear flags de eliminación al cargar
+        setPlanDeEstudiosDeleted(false);
+        setFechasDeExamenesDeleted(false);
         
         const formData = {
           titulo: data.titulo || "",
@@ -116,7 +127,6 @@ export default function EditProduct() {
   const hasChanges = (currentData: ProductFormData): boolean => {
     if (!originalCourseData) return false;
     
-    // Comparar campos principales (ignorar imagen ya que es un File)
     return (
       currentData.titulo !== originalCourseData.titulo ||
       currentData.descripcion !== originalCourseData.descripcion ||
@@ -125,8 +135,44 @@ export default function EditProduct() {
       JSON.stringify(currentData.materias) !== JSON.stringify(originalCourseData.materias) ||
       currentData.imagen instanceof File || // Si hay una nueva imagen, hay cambios
       currentData.planDeEstudios instanceof File || // Si hay un nuevo PDF de plan de estudios
-      currentData.fechasDeExamenes instanceof File // Si hay un nuevo PDF de fechas
+      currentData.fechasDeExamenes instanceof File || // Si hay un nuevo PDF de fechas
+      planDeEstudiosDeleted || // Si se eliminó el plan de estudios
+      fechasDeExamenesDeleted // Si se eliminaron las fechas de exámenes
     );
+  };
+
+  const handleDeletePlanDeEstudios = () => {
+    setIsDeletePlanModalOpen(true);
+  };
+
+  const handleDeleteFechasDeExamenes = () => {
+    setIsDeleteFechasModalOpen(true);
+  };
+
+  const handleConfirmDeletePlanDeEstudios = (_id: string) => {
+    setPlanDeEstudiosDeleted(true);
+    setCurrentPlanDeEstudiosUrl(null);
+    setIsDeletePlanModalOpen(false);
+    // Limpiar el campo del formulario para permitir cargar un nuevo archivo
+    form.setValue("planDeEstudios", undefined);
+    toast.success("Plan de Estudios eliminado. Puedes cargar un nuevo archivo.");
+  };
+
+  const handleConfirmDeleteFechasDeExamenes = (_id: string) => {
+    setFechasDeExamenesDeleted(true);
+    setCurrentFechasDeExamenesUrl(null);
+    setIsDeleteFechasModalOpen(false);
+    // Limpiar el campo del formulario para permitir cargar un nuevo archivo
+    form.setValue("fechasDeExamenes", undefined);
+    toast.success("Fechas de Exámenes eliminado. Puedes cargar un nuevo archivo.");
+  };
+
+  const handleCancelDeletePlan = () => {
+    setIsDeletePlanModalOpen(false);
+  };
+
+  const handleCancelDeleteFechas = () => {
+    setIsDeleteFechasModalOpen(false);
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -169,6 +215,9 @@ export default function EditProduct() {
       // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
       const course = await CoursesAPI.getById(id);
 
+      // Manejar Plan de Estudios
+      let newPlanDeEstudiosUrl: string | null = null;
+      // Si hay un nuevo archivo, tiene prioridad sobre la eliminación y resetea el flag
       if (data.planDeEstudios instanceof File) {
         try {
           const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
@@ -176,21 +225,33 @@ export default function EditProduct() {
             directory: pdfFolder,
             filename: `plan-de-estudios-${Date.now()}.pdf`,
           });
+          newPlanDeEstudiosUrl = planResult.url;
           payload.planDeEstudiosUrl = planResult.url;
           payload.planDeEstudiosActualizado = now;
+          // Si se cargó un nuevo archivo, resetear el flag de eliminación
+          setPlanDeEstudiosDeleted(false);
         } catch (pdfError) {
           console.error("Error al subir plan de estudios:", pdfError);
-          if (course?.planDeEstudiosUrl) {
-            payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
-          }
+          toast.error("Error al subir el Plan de Estudios");
+          throw pdfError; // Re-lanzar el error para que se maneje en el catch
         }
+      } else if (planDeEstudiosDeleted) {
+        // Si se marcó para eliminar y no hay nuevo archivo, enviar null
+        newPlanDeEstudiosUrl = null;
+        payload.planDeEstudiosUrl = null;
+        payload.planDeEstudiosActualizado = null;
       } else if (course?.planDeEstudiosUrl) {
+        // Mantener el existente si no hay cambios
+        newPlanDeEstudiosUrl = course.planDeEstudiosUrl;
         payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
         if (course.planDeEstudiosActualizado) {
           payload.planDeEstudiosActualizado = course.planDeEstudiosActualizado;
         }
       }
 
+      // Manejar Fechas de Exámenes
+      let newFechasDeExamenesUrl: string | null = null;
+      // Si hay un nuevo archivo, tiene prioridad sobre la eliminación
       if (data.fechasDeExamenes instanceof File) {
         try {
           const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
@@ -198,15 +259,24 @@ export default function EditProduct() {
             directory: pdfFolder,
             filename: `fechas-examenes-${Date.now()}.pdf`,
           });
+          newFechasDeExamenesUrl = fechasResult.url;
           payload.fechasDeExamenesUrl = fechasResult.url;
           payload.fechasDeExamenesActualizado = now;
+          // Si se cargó un nuevo archivo, resetear el flag de eliminación
+          setFechasDeExamenesDeleted(false);
         } catch (pdfError) {
           console.error("Error al subir fechas de exámenes:", pdfError);
-          if (course?.fechasDeExamenesUrl) {
-            payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
-          }
+          toast.error("Error al subir las Fechas de Exámenes");
+          throw pdfError; // Re-lanzar el error para que se maneje en el catch
         }
+      } else if (fechasDeExamenesDeleted) {
+        // Si se marcó para eliminar y no hay nuevo archivo, enviar null
+        newFechasDeExamenesUrl = null;
+        payload.fechasDeExamenesUrl = null;
+        payload.fechasDeExamenesActualizado = null;
       } else if (course?.fechasDeExamenesUrl) {
+        // Mantener el existente si no hay cambios
+        newFechasDeExamenesUrl = course.fechasDeExamenesUrl;
         payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
         if (course.fechasDeExamenesActualizado) {
           payload.fechasDeExamenesActualizado = course.fechasDeExamenesActualizado;
@@ -215,28 +285,76 @@ export default function EditProduct() {
 
       await CoursesAPI.update(id, payload);
       
-      // Actualizar los datos originales con los nuevos datos
+      // Esperar un momento para que el backend procese la actualización
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Recargar el curso para obtener las materias y PDFs actualizados
+      const updatedCourse = await CoursesAPI.getById(id);
+      
+      // Actualizar URLs de PDFs: usar la URL que acabamos de subir si existe, sino usar la del curso recargado
+      // Esto asegura que tenemos la URL correcta incluso si el backend tarda en actualizar
+      const finalPlanDeEstudiosUrl = newPlanDeEstudiosUrl !== null 
+        ? newPlanDeEstudiosUrl 
+        : (updatedCourse.planDeEstudiosUrl || null);
+      
+      const finalFechasDeExamenesUrl = newFechasDeExamenesUrl !== null 
+        ? newFechasDeExamenesUrl 
+        : (updatedCourse.fechasDeExamenesUrl || null);
+      
+      // Actualizar estados de PDFs - esto se hace antes para que el estado esté actualizado
+      if (finalPlanDeEstudiosUrl === null || finalPlanDeEstudiosUrl === undefined || finalPlanDeEstudiosUrl === "") {
+        setCurrentPlanDeEstudiosUrl(null);
+        setPlanDeEstudiosDeleted(false);
+      } else {
+        setCurrentPlanDeEstudiosUrl(finalPlanDeEstudiosUrl);
+        setPlanDeEstudiosDeleted(false);
+      }
+      
+      if (finalFechasDeExamenesUrl === null || finalFechasDeExamenesUrl === undefined || finalFechasDeExamenesUrl === "") {
+        setCurrentFechasDeExamenesUrl(null);
+        setFechasDeExamenesDeleted(false);
+      } else {
+        setCurrentFechasDeExamenesUrl(finalFechasDeExamenesUrl);
+        setFechasDeExamenesDeleted(false);
+      }
+      
+      // Incrementar versión para forzar re-render del componente
+      setPdfsVersion(prev => prev + 1);
+      
+      // Pequeño delay para asegurar que React procese los cambios de estado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Limpiar los campos del formulario después de guardar
+      form.setValue("planDeEstudios", undefined);
+      form.setValue("fechasDeExamenes", undefined);
+      
+      // Actualizar los datos originales con los nuevos datos, incluyendo materias y PDFs actualizados
       setOriginalCourseData({
-        ...data,
+        titulo: data.titulo,
+        descripcion: data.descripcion,
+        precio: data.precio,
+        estado: data.estado,
         imagen: undefined, // Mantener undefined después de guardar
+        materias: Array.isArray(updatedCourse?.materias) ? updatedCourse.materias : data.materias || [],
         planDeEstudios: undefined,
         fechasDeExamenes: undefined,
       });
       
-      // Actualizar URLs de PDFs si se subieron nuevos
-      if (payload.planDeEstudiosUrl) {
-        setCurrentPlanDeEstudiosUrl(payload.planDeEstudiosUrl as string);
-      }
-      if (payload.fechasDeExamenesUrl) {
-        setCurrentFechasDeExamenesUrl(payload.fechasDeExamenesUrl as string);
-      }
-      
-      // Mostrar mensaje de cambios guardados (sin toast, solo el Card)
+      // Mostrar mensaje de cambios guardados
       setLastSaveTime(new Date());
       setShowSaveMessage(true);
       setCurrentImageUrl(imageUrl); // Actualizar la URL de la imagen actual
       
-      handleNext();
+      // Si estamos en la pestaña de información general, avanzar a materias
+      // Si estamos en la pestaña de materias, redirigir al inicio
+      if (currentTab === 0) {
+        handleNext();
+      } else {
+        toast.success("Curso actualizado exitosamente");
+        setTimeout(() => {
+          navigate("/products");
+        }, 1500);
+      }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message = axiosErr.response?.data?.message || "Error al actualizar el curso";
@@ -415,6 +533,7 @@ export default function EditProduct() {
             <CardContent className="p-6">
               {currentTab < 1 
                 ? <GeneralInfoForm 
+                    key={`general-form-${pdfsVersion}-${currentPlanDeEstudiosUrl}-${currentFechasDeExamenesUrl}`}
                     control={form.control} 
                     setImagePreviewUrl={setImagePreviewUrl}
                     imagePreviewUrl={imagePreviewUrl}
@@ -423,6 +542,10 @@ export default function EditProduct() {
                     currentImageUrl={currentImageUrl}
                     currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
                     currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
+                    onDeletePlanDeEstudios={handleDeletePlanDeEstudios}
+                    onDeleteFechasDeExamenes={handleDeleteFechasDeExamenes}
+                    planDeEstudiosDeleted={planDeEstudiosDeleted}
+                    fechasDeExamenesDeleted={fechasDeExamenesDeleted}
                   />
                 : ( 
                   <SubjectCreation courseId={createdCourseId} />
@@ -481,13 +604,52 @@ export default function EditProduct() {
             ) : (
               <Button 
                 className="cursor-pointer" 
-                onClick={() => {
+                onClick={async () => {
                   const currentData = form.getValues();
-                  if (!hasChanges(currentData)) {
-                    toast.info("No hay cambios para guardar");
-                    return;
+                  
+                  // Si hay cambios en los campos del formulario, guardarlos
+                  if (hasChanges(currentData)) {
+                    await form.handleSubmit(onSubmit)();
+                  } else {
+                    // Si no hay cambios en el formulario, verificar si hay cambios en materias
+                    // Las materias se actualizan automáticamente en SubjectCreation,
+                    // pero necesitamos actualizar originalCourseData para reflejar el estado actual
+                    try {
+                      setLoading(true);
+                      const course = await CoursesAPI.getById(id!);
+                      
+                      // Actualizar URLs de PDFs desde el curso actualizado
+                      setCurrentPlanDeEstudiosUrl(course.planDeEstudiosUrl || null);
+                      setCurrentFechasDeExamenesUrl(course.fechasDeExamenesUrl || null);
+                      
+                      // Actualizar originalCourseData con los datos actuales del curso
+                      const updatedFormData = {
+                        titulo: course.titulo || "",
+                        descripcion: course.descripcion || "",
+                        precio: course.precio || 0,
+                        estado: course.estado || "activo",
+                        imagen: undefined,
+                        materias: Array.isArray(course.materias) ? course.materias : [],
+                        planDeEstudios: undefined,
+                        fechasDeExamenes: undefined,
+                      };
+                      
+                      setOriginalCourseData(updatedFormData);
+                      
+                      // Mostrar mensaje de éxito y redirigir
+                      setLastSaveTime(new Date());
+                      setShowSaveMessage(true);
+                      toast.success("Curso actualizado exitosamente");
+                      setTimeout(() => {
+                        navigate("/products");
+                      }, 1500);
+                    } catch (err) {
+                      console.error("Error al verificar cambios:", err);
+                      toast.error("Error al verificar el estado del curso");
+                    } finally {
+                      setLoading(false);
+                    }
                   }
-                  form.handleSubmit(onSubmit)();
                 }} 
                 disabled={loading}
               >
@@ -504,6 +666,25 @@ export default function EditProduct() {
       </Form>
 
           {/* Los modales de materias están en SubjectCreation */}
+
+      {/* Modales de confirmación de eliminación de PDFs */}
+      <ConfirmDeleteModal
+        isOpen={isDeletePlanModalOpen}
+        onCancel={handleCancelDeletePlan}
+        onConfirm={handleConfirmDeletePlanDeEstudios}
+        itemName="Plan de Estudios"
+        deleteLoading={false}
+        id="plan-de-estudios"
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteFechasModalOpen}
+        onCancel={handleCancelDeleteFechas}
+        onConfirm={handleConfirmDeleteFechasDeExamenes}
+        itemName="Fechas de Exámenes"
+        deleteLoading={false}
+        id="fechas-de-examenes"
+      />
     </div>
   );
 }
