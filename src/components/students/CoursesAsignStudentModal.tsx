@@ -36,7 +36,7 @@ export const CoursesAsignStudentModal = ({
     const [assignedCourses, setAssignedCourses] = useState<Course[]>([]);
     const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
     const [student, setStudent] = useState<StudentDB | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
 
     const buildUpdatePayload = (cursosAsignados: string[]) => {
@@ -157,6 +157,7 @@ export const CoursesAsignStudentModal = ({
 
     useEffect(() => {
         const loadData = async () => {
+            setLoading(true);
             if (!id) return;
             try {
                 const [found, coursesData] = await Promise.all([
