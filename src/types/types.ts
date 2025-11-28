@@ -41,6 +41,10 @@ export interface Course {
   estado: "activo" | "inactivo";
   materias: string[];
   precio: number;
+  planDeEstudiosUrl?: string;
+  fechasDeExamenesUrl?: string;
+  planDeEstudiosActualizado?: string;
+  fechasDeExamenesActualizado?: string;
 }
 
 export interface StudentDB {

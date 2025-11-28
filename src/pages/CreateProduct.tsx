@@ -37,6 +37,8 @@ export default function CreateProduct() {
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentPlanDeEstudiosUrl, setCurrentPlanDeEstudiosUrl] = useState<string | null>(null);
+  const [currentFechasDeExamenesUrl, setCurrentFechasDeExamenesUrl] = useState<string | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -47,6 +49,8 @@ export default function CreateProduct() {
       estado: "inactivo",
       imagen: undefined,
       materias: [],
+      planDeEstudios: undefined,
+      fechasDeExamenes: undefined,
     },
     mode: "onChange",
   });
@@ -98,7 +102,30 @@ export default function CreateProduct() {
       });
       const imageStorageUrl = result.url || "";
 
-      const payload = {
+      // Subir PDFs si están presentes
+      let planDeEstudiosUrl = "";
+      let fechasDeExamenesUrl = "";
+      const now = new Date().toISOString();
+
+      if (data.planDeEstudios instanceof File) {
+        const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
+        const planResult = await CoursesAPI.uploadPDF(data.planDeEstudios, {
+          directory: pdfFolder,
+          filename: `plan-de-estudios-${Date.now()}.pdf`,
+        });
+        planDeEstudiosUrl = planResult.url;
+      }
+
+      if (data.fechasDeExamenes instanceof File) {
+        const pdfFolder = `Documentos/Cursos/${slugify(data.titulo)}`;
+        const fechasResult = await CoursesAPI.uploadPDF(data.fechasDeExamenes, {
+          directory: pdfFolder,
+          filename: `fechas-examenes-${Date.now()}.pdf`,
+        });
+        fechasDeExamenesUrl = fechasResult.url;
+      }
+
+      const payload: Record<string, unknown> = {
         titulo: data.titulo,
         descripcion: data.descripcion,
         precio: data.precio,
@@ -106,6 +133,16 @@ export default function CreateProduct() {
         imagen: imageStorageUrl,
         materias: data.materias || [],
       };
+
+      if (planDeEstudiosUrl) {
+        payload.planDeEstudiosUrl = planDeEstudiosUrl;
+        payload.planDeEstudiosActualizado = now;
+      }
+
+      if (fechasDeExamenesUrl) {
+        payload.fechasDeExamenesUrl = fechasDeExamenesUrl;
+        payload.fechasDeExamenesActualizado = now;
+      }
 
       console.log("Creando curso con payload:", payload);
       const response = await CoursesAPI.create(payload);
@@ -180,18 +217,64 @@ export default function CreateProduct() {
         }
       }
       
-      // Usar las materias del curso actual, no las del formulario (que pueden estar desactualizadas)
-      const materiasIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
-      
-      // Preparar el payload sin incluir el campo imagen como File
-      const payload = {
+      // Manejar PDFs
+      let planDeEstudiosUrl = course?.planDeEstudiosUrl || "";
+      let fechasDeExamenesUrl = course?.fechasDeExamenesUrl || "";
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = {
         titulo: currentFormData.titulo,
         descripcion: currentFormData.descripcion,
         precio: currentFormData.precio,
         estado: estadoFinal,
         imagen: imageUrl,
-        materias: materiasIds,
+        materias: Array.isArray(course?.materias) ? course.materias.map(String) : [],
       };
+
+      if (currentFormData.planDeEstudios instanceof File) {
+        try {
+          const pdfFolder = `Documentos/Cursos/${slugify(currentFormData.titulo)}`;
+          const planResult = await CoursesAPI.uploadPDF(currentFormData.planDeEstudios, {
+            directory: pdfFolder,
+            filename: `plan-de-estudios-${Date.now()}.pdf`,
+          });
+          planDeEstudiosUrl = planResult.url;
+          payload.planDeEstudiosUrl = planDeEstudiosUrl;
+          payload.planDeEstudiosActualizado = now;
+        } catch (pdfError) {
+          console.error("Error al subir plan de estudios:", pdfError);
+          if (course?.planDeEstudiosUrl) {
+            payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
+          }
+        }
+      } else if (course?.planDeEstudiosUrl) {
+        payload.planDeEstudiosUrl = course.planDeEstudiosUrl;
+        if (course.planDeEstudiosActualizado) {
+          payload.planDeEstudiosActualizado = course.planDeEstudiosActualizado;
+        }
+      }
+
+      if (currentFormData.fechasDeExamenes instanceof File) {
+        try {
+          const pdfFolder = `Documentos/Cursos/${slugify(currentFormData.titulo)}`;
+          const fechasResult = await CoursesAPI.uploadPDF(currentFormData.fechasDeExamenes, {
+            directory: pdfFolder,
+            filename: `fechas-examenes-${Date.now()}.pdf`,
+          });
+          fechasDeExamenesUrl = fechasResult.url;
+          payload.fechasDeExamenesUrl = fechasDeExamenesUrl;
+          payload.fechasDeExamenesActualizado = now;
+        } catch (pdfError) {
+          console.error("Error al subir fechas de exámenes:", pdfError);
+          if (course?.fechasDeExamenesUrl) {
+            payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
+          }
+        }
+      } else if (course?.fechasDeExamenesUrl) {
+        payload.fechasDeExamenesUrl = course.fechasDeExamenesUrl;
+        if (course.fechasDeExamenesActualizado) {
+          payload.fechasDeExamenesActualizado = course.fechasDeExamenesActualizado;
+        }
+      }
       
       console.log("Actualizando curso existente (ID:", createdCourseId, ") con payload:", payload);
       
@@ -347,6 +430,8 @@ export default function CreateProduct() {
                   setIsDialogOpen={setIsDialogOpen} 
                   isDialogOpen={isDialogOpen}
                   currentImageUrl={null}
+                  currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
+                  currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
                 />
               }
               {currentTab === 1 && <SubjectCreation courseId={createdCourseId} control={form.control} courseTitle={form.getValues("titulo") || null} />}
