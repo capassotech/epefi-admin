@@ -131,7 +131,36 @@ export const CoursesAPI = {
     await uploadBytes(storageRef, image, { contentType: image.type || "image/jpeg" });
     const url = await getDownloadURL(storageRef);
     return { url, path: objectPath };
-  },  
+  },
+
+  uploadPDF: async (
+    pdf: File,
+    opts?: { directory?: string; filename?: string }
+  ) => {
+    if (!pdf || !(pdf instanceof File)) {
+      throw new Error("El archivo PDF es requerido");
+    }
+
+    // Validar tipo de archivo
+    if (pdf.type !== "application/pdf") {
+      throw new Error("El archivo debe ser un PDF");
+    }
+
+    // Validar tamaño (10 MB = 10 * 1024 * 1024 bytes)
+    const maxSize = 10 * 1024 * 1024;
+    if (pdf.size > maxSize) {
+      throw new Error("El archivo PDF no puede exceder 10 MB");
+    }
+
+    const directory = (opts?.directory ?? "Documentos/Cursos").replace(/\/+$/g, "");
+    const filename = opts?.filename ?? pdf.name;
+    const objectPath = `${directory}/${filename}`;
+
+    const storageRef = ref(storage, objectPath);
+    await uploadBytes(storageRef, pdf, { contentType: "application/pdf" });
+    const url = await getDownloadURL(storageRef);
+    return { url, path: objectPath };
+  },
 
   // Materias CRUD
   getMateriaById: async (id: string) => {

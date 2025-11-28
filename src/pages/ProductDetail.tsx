@@ -12,6 +12,9 @@ import {
   Users,
   Image as ImageIcon,
   Calendar,
+  FileText,
+  Download,
+  ExternalLink,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject } from '@/types/types';
@@ -40,6 +43,10 @@ const ProductDetail = () => {
         const normalizedCourse: Course = {
           ...data,
           image: data.imagen || data.image || '',
+          planDeEstudiosUrl: data.planDeEstudiosUrl || undefined,
+          fechasDeExamenesUrl: data.fechasDeExamenesUrl || undefined,
+          planDeEstudiosActualizado: data.planDeEstudiosActualizado || undefined,
+          fechasDeExamenesActualizado: data.fechasDeExamenesActualizado || undefined,
         };
         setCurso(normalizedCourse);
 
@@ -208,6 +215,138 @@ const ProductDetail = () => {
           )}
         </CardContent>
       </Card>
+
+      {(curso.planDeEstudiosUrl || curso.fechasDeExamenesUrl) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <FileText className="w-5 h-5 mr-2 text-gray-600" />
+              Documentos del Curso
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {curso.planDeEstudiosUrl && (
+                <div className="p-4 border rounded-lg bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-5 h-5 text-red-600" />
+                        <h4 className="font-semibold text-lg">Plan de Estudios</h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Documento con todos los temas que abarca el curso
+                      </p>
+                      {curso.planDeEstudiosActualizado && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Última actualización: {new Date(curso.planDeEstudiosActualizado).toLocaleDateString('es-AR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="cursor-pointer"
+                      >
+                        <a
+                          href={curso.planDeEstudiosUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Ver
+                        </a>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="cursor-pointer"
+                      >
+                        <a
+                          href={curso.planDeEstudiosUrl}
+                          download
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          Descargar
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {curso.fechasDeExamenesUrl && (
+                <div className="p-4 border rounded-lg bg-gray-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-5 h-5 text-red-600" />
+                        <h4 className="font-semibold text-lg">Fechas de Exámenes</h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Documento con fechas y temas a evaluar
+                      </p>
+                      {curso.fechasDeExamenesActualizado && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Última actualización: {new Date(curso.fechasDeExamenesActualizado).toLocaleDateString('es-AR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="cursor-pointer"
+                      >
+                        <a
+                          href={curso.fechasDeExamenesUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Ver
+                        </a>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="cursor-pointer"
+                      >
+                        <a
+                          href={curso.fechasDeExamenesUrl}
+                          download
+                          className="flex items-center gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          Descargar
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

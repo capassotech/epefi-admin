@@ -16,6 +16,8 @@ export const productFormSchema = z.object({
     (val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val),
     { message: "Formato de fecha inválido. Use YYYY-MM-DD" }
   ),
+  planDeEstudios: z.instanceof(File).optional(),
+  fechasDeExamenes: z.instanceof(File).optional(),
 }).refine(
   (data) => {
     // Si ambas fechas están presentes, la fecha de fin debe ser posterior a la de inicio

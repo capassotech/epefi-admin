@@ -43,6 +43,10 @@ export interface Course {
   precio: number;
   fechaInicioDictado?: string; // Formato: YYYY-MM-DD
   fechaFinDictado?: string; // Formato: YYYY-MM-DD
+  planDeEstudiosUrl?: string;
+  fechasDeExamenesUrl?: string;
+  planDeEstudiosActualizado?: string;
+  fechasDeExamenesActualizado?: string;
 }
 
 export interface StudentDB {
