@@ -66,6 +66,8 @@ export default function EditProduct() {
       materias: [],
       planDeEstudios: undefined,
       fechasDeExamenes: undefined,
+      fechaInicioDictado: undefined,
+      fechaFinDictado: undefined,
     },
     mode: "onChange",
   });
@@ -94,7 +96,21 @@ export default function EditProduct() {
         // Resetear flags de eliminación al cargar
         setPlanDeEstudiosDeleted(false);
         setFechasDeExamenesDeleted(false);
-        
+        // Función helper para convertir fecha ISO a formato YYYY-MM-DD
+        const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
+          if (!dateValue) return undefined;
+          try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return undefined;
+            // Convertir a formato YYYY-MM-DD
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          } catch {
+            return undefined;
+          }
+        };
         const formData = {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
@@ -104,6 +120,8 @@ export default function EditProduct() {
           materias: Array.isArray(data.materias) ? data.materias : [],
           planDeEstudios: undefined,
           fechasDeExamenes: undefined,
+          fechaInicioDictado: formatDateForInput(data.fechaInicioDictado),
+          fechaFinDictado: formatDateForInput(data.fechaFinDictado),
         };
         
         form.reset(formData);
@@ -211,6 +229,22 @@ export default function EditProduct() {
         imagen: imageUrl,
         materias: data.materias || [],
       };
+
+      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
+      // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
+      if (data.fechaInicioDictado) {
+        const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
+        payload.fechaInicioDictado = fechaInicio.toISOString();
+      } else {
+        payload.fechaInicioDictado = null;
+      }
+      
+      if (data.fechaFinDictado) {
+        const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
+        payload.fechaFinDictado = fechaFin.toISOString();
+      } else {
+        payload.fechaFinDictado = null;
+      }
 
       // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
       const course = await CoursesAPI.getById(id);
@@ -328,7 +362,22 @@ export default function EditProduct() {
       form.setValue("planDeEstudios", undefined);
       form.setValue("fechasDeExamenes", undefined);
       
-      // Actualizar los datos originales con los nuevos datos, incluyendo materias y PDFs actualizados
+      // Función helper para formatear fechas
+      const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
+        if (!dateValue) return undefined;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) return undefined;
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        } catch {
+          return undefined;
+        }
+      };
+
+      // Actualizar los datos originales con los nuevos datos, incluyendo materias, PDFs y fechas actualizados
       setOriginalCourseData({
         titulo: data.titulo,
         descripcion: data.descripcion,
@@ -338,6 +387,8 @@ export default function EditProduct() {
         materias: Array.isArray(updatedCourse?.materias) ? updatedCourse.materias : data.materias || [],
         planDeEstudios: undefined,
         fechasDeExamenes: undefined,
+        fechaInicioDictado: formatDateForInput(updatedCourse?.fechaInicioDictado),
+        fechaFinDictado: formatDateForInput(updatedCourse?.fechaFinDictado),
       });
       
       // Mostrar mensaje de cambios guardados

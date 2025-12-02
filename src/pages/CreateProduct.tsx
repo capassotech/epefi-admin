@@ -51,6 +51,8 @@ export default function CreateProduct() {
       materias: [],
       planDeEstudios: undefined,
       fechasDeExamenes: undefined,
+      fechaInicioDictado: undefined,
+      fechaFinDictado: undefined,
     },
     mode: "onChange",
   });
@@ -134,6 +136,9 @@ export default function CreateProduct() {
         materias: data.materias || [],
       };
 
+      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
+      payload.fechaInicioDictado = data.fechaInicioDictado || null;
+      payload.fechaFinDictado = data.fechaFinDictado || null;
       if (planDeEstudiosUrl) {
         payload.planDeEstudiosUrl = planDeEstudiosUrl;
         payload.planDeEstudiosActualizado = now;

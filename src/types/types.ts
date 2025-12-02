@@ -41,6 +41,8 @@ export interface Course {
   estado: "activo" | "inactivo";
   materias: string[];
   precio: number;
+  fechaInicioDictado?: string; // Formato: YYYY-MM-DD
+  fechaFinDictado?: string; // Formato: YYYY-MM-DD
   planDeEstudiosUrl?: string;
   fechasDeExamenesUrl?: string;
   planDeEstudiosActualizado?: string;

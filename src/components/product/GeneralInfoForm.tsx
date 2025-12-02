@@ -217,6 +217,44 @@ const GeneralInfoForm = ({
         )}
       />
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name="fechaInicioDictado"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fecha de Inicio del Dictado</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  {...field}
+                  value={field.value || ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="fechaFinDictado"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fecha de Fin del Dictado</FormLabel>
+              <FormControl>
+                <Input
+                  type="date"
+                  {...field}
+                  value={field.value || ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
       <FormField
         control={control}
         name="imagen"
