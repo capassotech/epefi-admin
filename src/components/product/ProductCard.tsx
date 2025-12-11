@@ -2,6 +2,7 @@ import { type Course } from '@/types/types';
 import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { formatCurrency } from '@/utils/currency';
 
 interface ProductCardProps {
   product: Course;
@@ -69,7 +70,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.precio === 0 ? (
               <span className="text-lg font-bold text-green-600">Gratuito</span>
             ) : (
-              <span className="text-lg font-bold text-gray-900">${product.precio.toLocaleString()}</span>
+              <span className="text-lg font-bold text-gray-900">{formatCurrency(product.precio)}</span>
             )}
           </div>
           <div className={`w-2 h-2 rounded-full ${product.estado === 'activo' ? 'bg-green-500' : 'bg-red-500'} shadow-sm`} />

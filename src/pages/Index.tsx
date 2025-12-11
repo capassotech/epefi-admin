@@ -12,6 +12,7 @@ import CreateModule from "./CreateModule";
 import Students from "./Students";
 import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
+import Profile from "./Profile";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -37,6 +38,7 @@ const Index = () => {
           <Route path="/modules/create" element={<CreateModule />} />
           <Route path="/students" element={<Students />} />
           <Route path="/students/:id" element={<StudentDetail />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
     </div>

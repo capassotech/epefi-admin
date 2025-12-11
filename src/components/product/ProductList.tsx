@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
 import { Edit2, Trash2, Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 import { type Course } from '@/types/types';
 
@@ -81,7 +82,7 @@ export const ProductList = ({ products, onDelete }: ProductListProps) => {
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-sm text-gray-600 line-clamp-2">{f.descripcion}</p>
                     <p className="text-sm font-semibold text-gray-800">
-                      ${f.precio.toFixed(2)}
+                      {formatCurrency(f.precio)}
                     </p>
                   </div>
                 </div>

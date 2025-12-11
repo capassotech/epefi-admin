@@ -448,8 +448,7 @@ export default function EditProduct() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Editar Curso</h1>
-          <p className="text-gray-600 mt-1">Modifica los datos de este curso.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Editar curso</h1>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookOpen, Users, Calendar, Plus, User, LogOut, X } from "lucide-react";
+import { BookOpen, Users, Calendar, Plus, User, LogOut, X, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,9 +28,9 @@ const navigation = [
     icon: BookOpen,
   },
   {
-    name: "Crear curso",
-    href: "/products/create",
-    icon: Plus,
+    name: "Mi Perfil",
+    href: "/profile",
+    icon: UserCircle,
   },
 ];
 
@@ -89,6 +89,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
 
       {/* Sidebar */}
       <div
+        data-tour="sidebar"
         className={cn(
           "flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300",
           // Desktop

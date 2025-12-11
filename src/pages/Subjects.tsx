@@ -9,6 +9,9 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
+import { TourButton } from '@/components/tour/TourButton';
+import { subjectsTourSteps } from '@/config/tourSteps';
 
 export default function Subjects() {
     const [materias, setMaterias] = useState<Subject[]>([]);
@@ -197,9 +200,10 @@ export default function Subjects() {
 
     if (loading) {
         return (
-            <div className='h-screen flex justify-center items-center'>
-                <Loader2 className="animate-spin w-10 h-10 text-gray-600" />
-            </div>
+            <InteractiveLoader
+                initialMessage="Cargando cursos"
+                delayedMessage="Por favor aguarde, conectándose con el servidor"
+            />
         );
     }
 
@@ -209,26 +213,26 @@ export default function Subjects() {
 
     return (
         <div className="space-y-6">
-            <div>
+            <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-gray-900">Materias</h1>
-                <p className="text-gray-600 mt-2">
-                    Gestiona todas las materias de tus cursos y programas educativos.
-                </p>
+                <TourButton steps={subjectsTourSteps} />
             </div>
 
-            <SearchAndFilter
-                onSearch={handleSearch}
-                onFilter={handleFilter}
-                onCreateNew={() => setIsCreateModalOpen(true)}
-                createButtonText="Crear materia"
-                filterOptions={filterOptions}
-            />
+            <div data-tour="search-filter">
+                <SearchAndFilter
+                    onSearch={handleSearch}
+                    onFilter={handleFilter}
+                    onCreateNew={() => setIsCreateModalOpen(true)}
+                    createButtonText="Crear materia"
+                    filterOptions={filterOptions}
+                />
+            </div>
 
             <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                     Mostrando {filteredSubjects.length} de {materias.length} materias
                 </p>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
                     <span>Vista:</span>
                     <button
                         onClick={() => setViewMode('cards')}
@@ -248,7 +252,7 @@ export default function Subjects() {
             {filteredSubjects.length > 0 ? (
                 <>
                     {viewMode === 'cards' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="subjects-list">
                             {filteredSubjects.map((m, index) => (
                                 <div
                                     key={m.id}
@@ -263,7 +267,9 @@ export default function Subjects() {
                             ))}
                         </div>
                     ) : (
-                        <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} showTitle={false} />
+                        <div data-tour="subjects-list">
+                            <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} showTitle={false} />
+                        </div>
                     )}
                 </>
             ) : (

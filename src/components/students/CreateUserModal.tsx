@@ -233,12 +233,13 @@ export const CreateUserModal = ({
         ) : isEditing ? (
           <button
             className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            data-tour="create-user"
             title="Editar usuario"
           >
             <Edit2 className="w-4 h-4 cursor-pointer" />
           </button>
         ) : (
-          <Button className="cursor-pointer">
+          <Button className="cursor-pointer" data-tour="create-user">
             <User className="w-4 h-4 mr-2" />
             {triggerText}
           </Button>
@@ -248,13 +249,8 @@ export const CreateUserModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <User className="w-5 h-5" />
-            <span>{isEditing ? "Editar Usuario" : "Crear Nuevo Usuario"}</span>
+            <span>{isEditing ? "Editar usuario" : "Crear nuevo usuario"}</span>
           </DialogTitle>
-          <DialogDescription>
-            {isEditing 
-              ? "Modifica los datos del usuario" 
-              : "Completa el formulario para crear un nuevo usuario"}
-          </DialogDescription>
         </DialogHeader>
 
         <Card>

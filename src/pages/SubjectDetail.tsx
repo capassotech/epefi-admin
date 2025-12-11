@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Plus } from 'lucide-react';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import {
     ArrowLeft,
     Clock,
@@ -171,9 +172,10 @@ export const SubjectDetail = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <InteractiveLoader
+            initialMessage="Cargando materia"
+            delayedMessage="Por favor aguarde, conectándose con el servidor"
+        />
     );
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
     if (!materia) return <div className="p-6">No se encontró el curso</div>;

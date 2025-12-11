@@ -45,6 +45,12 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // No loguear errores 404 (recursos no encontrados) ya que se manejan en el código
+    if (error.response?.status === 404) {
+      // Solo loguear como debug, no como error
+      return Promise.reject(error);
+    }
+    
     if (error.response) {
       // El servidor respondió con un código de estado fuera del rango 2xx
       console.error('❌ Error de respuesta:', {

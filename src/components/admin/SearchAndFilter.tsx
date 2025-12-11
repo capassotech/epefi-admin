@@ -136,7 +136,7 @@ export const SearchAndFilter = ({
         isStudentPage ? (
           <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
         ) : (
-          <Button onClick={onCreateNew} className="cursor-pointer">
+          <Button onClick={onCreateNew} className="cursor-pointer" data-tour="create-course">
             <Plus className="w-4 h-4 mr-2 cursor-pointer" />
             {createButtonText}
           </Button>

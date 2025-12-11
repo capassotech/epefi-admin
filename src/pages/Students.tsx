@@ -10,9 +10,15 @@ import { StudentsAPI } from "@/service/students";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { type StudentDB } from "@/types/types";
 import { Loader2 } from "lucide-react";
+import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { TourButton } from "@/components/tour/TourButton";
+import { studentsTourSteps } from "@/config/tourSteps";
 
 export default function Students() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,12 +112,33 @@ export default function Students() {
   }, [students, filters, searchQuery]);
 
   const handleDeleteClick = (id: string) => {
+    // Verificar si el usuario intenta eliminar su propia cuenta
+    if (user?.uid === id) {
+      toast.error("No puedes eliminar tu propia cuenta", {
+        description: "No está permitido eliminar tu propio usuario por razones de seguridad",
+        duration: 4000,
+      });
+      return;
+    }
+    
     setConfirmDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
   const handleConfirmDelete = async (id: string) => {
     if (!id) return;
+    
+    // Verificar nuevamente antes de eliminar (por seguridad)
+    if (user?.uid === id) {
+      toast.error("No puedes eliminar tu propia cuenta", {
+        description: "No está permitido eliminar tu propio usuario por razones de seguridad",
+        duration: 4000,
+      });
+      setIsDeleteModalOpen(false);
+      setConfirmDeleteId(null);
+      return;
+    }
+    
     setDeleteLoading(true);
 
     try {
@@ -121,8 +148,11 @@ export default function Students() {
       setFilteredStudents((prev) =>
         prev.filter((s) => s.id !== id)
       );
+      
+      toast.success("Usuario eliminado exitosamente");
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
+      toast.error("Error al eliminar el usuario");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteLoading(false);
@@ -165,9 +195,10 @@ export default function Students() {
 
   if (loading) {
     return (
-      <div className="h-screen flex justify-center items-center">
-        <Loader2 className="animate-spin w-10 h-10 text-gray-600" />
-      </div>
+      <InteractiveLoader
+        initialMessage="Cargando usuarios"
+        delayedMessage="Por favor aguarde, conectándose con el servidor"
+      />
     );
   }
 
@@ -177,22 +208,22 @@ export default function Students() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
-        <p className="text-gray-600 mt-2">
-          Gestiona todos los usuarios registrados en la plataforma.
-        </p>
+        <TourButton steps={studentsTourSteps} />
       </div>
 
-      <SearchAndFilter
-        onSearch={handleSearch}
-        onFilter={handleFilter}
-        isStudentPage={true}
-        onCreateNew={() => navigate("/students")}
-        createButtonText="Crear usuario"
-        filterOptions={filterOptions}
-        currentFilters={filters}
-      />
+      <div data-tour="search-filter">
+        <SearchAndFilter
+          onSearch={handleSearch}
+          onFilter={handleFilter}
+          isStudentPage={true}
+          onCreateNew={() => navigate("/students")}
+          createButtonText="Crear usuario"
+          filterOptions={filterOptions}
+          currentFilters={filters}
+        />
+      </div>
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
@@ -201,7 +232,9 @@ export default function Students() {
       </div>
 
       {filteredStudents.length > 0 ? (
-        <StudentList students={filteredStudents} onDelete={handleDeleteClick} onUserUpdated={handleUserUpdated} />
+        <div data-tour="students-list">
+          <StudentList students={filteredStudents} onDelete={handleDeleteClick} onUserUpdated={handleUserUpdated} />
+        </div>
       ) : (
         <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

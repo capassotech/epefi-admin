@@ -5,6 +5,9 @@ import { ProductCard } from '@/components/product/ProductCard';
 import { CoursesAPI } from '@/service/courses';
 import { StudentsAPI } from '@/service/students';
 import type { DashboardStats } from '@/types/types';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
+import { TourButton } from '@/components/tour/TourButton';
+import { dashboardTourSteps } from '@/config/tourSteps';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -69,15 +72,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-14 w-14 border-4 border-gray-200"></div>
-            <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
-          </div>
-          <p className="text-sm text-gray-500 font-medium">Cargando datos...</p>
-        </div>
-      </div>
+      <InteractiveLoader
+        initialMessage="Cargando dashboard"
+        delayedMessage="Por favor aguarde, conectándose con el servidor"
+      />
     );
   }
 
@@ -92,6 +90,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3 text-right sm:text-left">
+          <TourButton steps={dashboardTourSteps} />
           <div className="hidden sm:block w-px h-8 bg-gray-200"></div>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Última actualización</p>
@@ -105,10 +104,12 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <DashboardStatsComponent stats={stats} />
+      <div data-tour="dashboard-stats">
+        <DashboardStatsComponent stats={stats} />
+      </div>
 
       {/* Recent Products */}
-      <div className="space-y-6">
+      <div className="space-y-6" data-tour="recent-courses">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Últimos Cursos</h2>

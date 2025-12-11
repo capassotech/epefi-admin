@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import {
     ArrowLeft,
     Clock,
@@ -44,12 +45,24 @@ export const StudentDetail = () => {
                 if (data.cursos_asignados && data.cursos_asignados.length > 0) {
                     setLoadingCursos(true);
                     try {
-                        const cursosData = await Promise.all(
-                            data.cursos_asignados.map((cursoId: string) => CoursesAPI.getById(cursoId))
-                        );
-                        setCursos(cursosData);
+                        // Cargar cursos individualmente y manejar errores 404 silenciosamente
+                        const cursosPromises = data.cursos_asignados.map(async (cursoId: string) => {
+                            try {
+                                return await CoursesAPI.getById(cursoId);
+                            } catch (error: any) {
+                                // Si el curso no existe (404) u otro error, retornar null silenciosamente
+                                // Los cursos eliminados simplemente no se mostrarán
+                                return null;
+                            }
+                        });
+                        
+                        const cursosResults = await Promise.all(cursosPromises);
+                        // Filtrar los cursos que existen (eliminar nulls)
+                        const cursosExistentes = cursosResults.filter((curso): curso is Course => curso !== null);
+                        setCursos(cursosExistentes);
                     } catch (moduloError) {
-                        console.error("⚠️ Error al cargar materias:", moduloError);
+                        console.error("⚠️ Error general al cargar cursos:", moduloError);
+                        setCursos([]);
                     } finally {
                         setLoadingCursos(false);
                     }
@@ -66,9 +79,10 @@ export const StudentDetail = () => {
     }, [id]);
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <InteractiveLoader
+            initialMessage="Cargando usuario"
+            delayedMessage="Por favor aguarde, conectándose con el servidor"
+        />
     );
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
     if (!student) return <div className="p-6">No se encontró el curso</div>;

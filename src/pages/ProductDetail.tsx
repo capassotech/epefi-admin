@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, PencilIcon } from 'lucide-react';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
+import { formatCurrency } from '@/utils/currency';
 import {
   ArrowLeft,
   Clock,
@@ -73,9 +75,10 @@ const ProductDetail = () => {
   }, [id]);
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
+    <InteractiveLoader
+      initialMessage="Cargando curso"
+      delayedMessage="Por favor aguarde, conectándose con el servidor"
+    />
   );
 
   if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
@@ -143,7 +146,7 @@ const ProductDetail = () => {
             <div>
               <div className="flex items-center mt-2">
                 <Users className="w-4 h-4 mr-2 text-gray-500" />
-                <p><strong>Precio del curso:</strong> <span className='text-gray-500'>${curso.precio || "N/A"}</span></p>
+                <p><strong>Precio del curso:</strong> <span className='text-gray-500'>{formatCurrency(curso.precio)}</span></p>
               </div>
               <p className="flex items-center mt-2">
                 <Tag className="w-4 h-4 mr-2 text-gray-500" />

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import authService from "@/service/authService";
 import AuthFormView from "./AuthFormView";
+import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 
 interface AuthFormProps {
   isLogin?: boolean;
@@ -78,7 +79,8 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
     try {
       await login(formData.email, formData.password);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Pequeño delay para asegurar que los datos se guarden en localStorage
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       const studentData = authService.getStudentDataFromStorage();
       console.log("📦 Datos del usuario:", studentData);
@@ -97,14 +99,14 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
         return;
       }
 
+      // Redirigir inmediatamente
+      navigate("/");
+
+      // Mostrar toast después de redirigir
       toast.success(`¡Bienvenido de vuelta, ${userName}!`, {
         description: "Has iniciado sesión exitosamente",
         duration: 4000,
       });
-
-      setTimeout(() => {
-        navigate("/");
-      }, 1000);
     } catch (error: any) {
       console.error("❌ Error en login:", error);
       toast.error(error.error || error.message || "Error al iniciar sesión");
@@ -132,24 +134,32 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
   };
 
   return (
-    <AuthFormView
-      isLogin={isLogin}
-      currentStep={currentStep}
-      showEmailForm={showEmailForm}
-      onSubmit={handleSubmit}
-      onGoogleAuth={() => {}} 
-      onInputChange={handleInputChange}
-      onStepChange={handleStepChange}
-      onEmailMethodSelect={handleEmailMethodSelect}
-      errors={errors}
-      formData={formData}
-      isSubmitting={isSubmitting}
-      showPassword={showPassword}
-      setShowPassword={setShowPassword}
-      passwordRequirements={getPasswordRequirements(
-        (formData.password as string) || ""
+    <>
+      {isSubmitting && isLogin && (
+        <InteractiveLoader
+          initialMessage="Iniciando sesión"
+          delayedMessage="Por favor aguarde, conectándose con el servidor"
+        />
       )}
-    />
+      <AuthFormView
+        isLogin={isLogin}
+        currentStep={currentStep}
+        showEmailForm={showEmailForm}
+        onSubmit={handleSubmit}
+        onGoogleAuth={() => {}} 
+        onInputChange={handleInputChange}
+        onStepChange={handleStepChange}
+        onEmailMethodSelect={handleEmailMethodSelect}
+        errors={errors}
+        formData={formData}
+        isSubmitting={isSubmitting}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        passwordRequirements={getPasswordRequirements(
+          (formData.password as string) || ""
+        )}
+      />
+    </>
   );
 };
 

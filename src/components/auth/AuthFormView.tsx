@@ -14,6 +14,7 @@ import {
   Loader2,
   Check,
   X,
+  Shield,
 } from "lucide-react";
 
 export default function AuthFormView({
@@ -62,22 +63,12 @@ export default function AuthFormView({
   };
 
   const getStepTitle = () => {
-    if (isLogin) return "Iniciar Sesión";
+    if (isLogin) return "Iniciar sesión";
 
     // switch (currentStep) {
     //     case 1: return "Crear Cuenta - Paso 1";
     //     case 2: return "Crear Cuenta - Paso 2";
     //     default: return "Crear Cuenta";
-    // }
-  };
-
-  const getStepDescription = () => {
-    if (isLogin) return "Ingresa a tu cuenta para continuar";
-
-    // switch (currentStep) {
-    //     case 1: return "Ingresa tus datos personales";
-    //     case 2: return "Elige cómo quieres registrarte";
-    //     default: return "Únete a nuestra comunidad";
     // }
   };
 
@@ -442,7 +433,7 @@ export default function AuthFormView({
               Iniciando sesión...
             </>
           ) : (
-            "Iniciar Sesión"
+            "Iniciar sesión"
           )}
         </Button>
       </form>
@@ -468,12 +459,17 @@ export default function AuthFormView({
 
         <Card className="shadow-2xl border-0 card-gradient">
           <CardHeader className="space-y-1">
+            {isLogin && (
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Shield className="h-5 w-5 text-primary" />
+                <span className="text-sm font-semibold text-primary">
+                  Panel de Administrador
+                </span>
+              </div>
+            )}
             <CardTitle className="text-2xl font-bold text-center text-foreground">
               {getStepTitle()}
             </CardTitle>
-            <p className="text-center text-muted-foreground">
-              {getStepDescription()}
-            </p>
           </CardHeader>
 
           <CardContent className="space-y-6">
@@ -488,7 +484,7 @@ export default function AuthFormView({
             {isLogin && (
               <div className="text-center">
                 <Link
-                  to="/login"
+                  to="/recuperar-contrasena"
                   className="text-sm text-primary hover:underline transition-colors"
                 >
                   ¿Olvidaste tu contraseña?

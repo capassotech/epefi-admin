@@ -9,6 +9,7 @@ import { type Course, type StudentDB } from "@/types/types";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { CoursesAPI } from "@/service/courses";
 import { StudentsAPI } from "@/service/students";
+import { formatCurrency } from "@/utils/currency";
 
 
 interface CoursesAsignStudentModalProps {
@@ -309,7 +310,7 @@ export const CoursesAsignStudentModal = ({
                                                                     {curso.estado === 'activo' ? 'Activo' : 'Inactivo'}
                                                                 </Badge>
                                                                 <Badge variant="outline" className="text-[0.7rem] border-gray-200 text-gray-600">
-                                                                    {curso.precio === 0 ? 'Gratuito' : `$${curso.precio.toLocaleString()}`}
+                                                                    {formatCurrency(curso.precio)}
                                                                 </Badge>
                                                             </div>
                                                         </div>

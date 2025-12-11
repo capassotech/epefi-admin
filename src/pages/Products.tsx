@@ -8,6 +8,9 @@ import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { type Course } from '@/types/types';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
+import { TourButton } from '@/components/tour/TourButton';
+import { productsTourSteps } from '@/config/tourSteps';
 
 export default function Products() {
   const navigate = useNavigate();
@@ -273,9 +276,10 @@ export default function Products() {
 
   if (loading) {
     return (
-      <div className='h-screen flex justify-center items-center'>
-        <Loader2 className="animate-spin w-10 h-10 text-gray-600" />
-      </div>
+      <InteractiveLoader
+        initialMessage="Cargando cursos"
+        delayedMessage="Por favor aguarde, conectándose con el servidor"
+      />
     );
   }
 
@@ -285,26 +289,26 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Cursos</h1>
-        <p className="text-gray-600 mt-2">
-          Gestiona todos tus cursos, membresías, e-books y contenido gratuito.
-        </p>
+        <TourButton steps={productsTourSteps} />
       </div>
 
-      <SearchAndFilter
-        onSearch={handleSearch}
-        onFilter={handleFilter}
-        onCreateNew={() => navigate('/products/create')}
-        createButtonText="Crear curso"
-        filterOptions={filterOptions}
-      />
+      <div data-tour="search-filter">
+        <SearchAndFilter
+          onSearch={handleSearch}
+          onFilter={handleFilter}
+          onCreateNew={() => navigate('/products/create')}
+          createButtonText="Crear curso"
+          filterOptions={filterOptions}
+        />
+      </div>
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Mostrando {filteredProducts.length} de {cursos.length} cursos
         </p>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
+        <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
           <span>Vista:</span>
           <button
             onClick={() => setViewMode('cards')}
@@ -324,7 +328,7 @@ export default function Products() {
       {filteredProducts.length > 0 ? (
         <>
           {viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="courses-list">
               {filteredProducts.map((f, index) => (
                 <div
                   key={f.id}
@@ -338,7 +342,9 @@ export default function Products() {
               ))}
             </div>
           ) : (
-            <ProductList products={filteredProducts} onDelete={handleDeleteClick} />
+            <div data-tour="courses-list">
+              <ProductList products={filteredProducts} onDelete={handleDeleteClick} />
+            </div>
           )}
         </>
       ) : (

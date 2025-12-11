@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
 import { Button } from "../ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 interface StudentListProps {
   students: StudentDB[];
@@ -24,6 +25,7 @@ interface StudentListProps {
 
 export function StudentList({ students, onDelete, onUserUpdated }: StudentListProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
@@ -181,9 +183,9 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                           onDelete(student.id);
                           setTimeout(() => setDeletingId(null), 1000);
                         }}
-                        disabled={deletingId === student.id}
+                        disabled={deletingId === student.id || user?.uid === student.id}
                         className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm disabled:opacity-50"
-                        title="Eliminar usuario"
+                        title={user?.uid === student.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
                       >
                         {deletingId === student.id ? (
                           <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />

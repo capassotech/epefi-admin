@@ -7,6 +7,9 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   confirmPasswordReset,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 import { auth } from "../../config/firebase-client";
 import type {
@@ -242,17 +245,49 @@ class AuthService {
 
   async forgotPassword(email: string): Promise<void> {
     try {
-      await api.get(`/auth/check-email/${email}`);
+      // Intentar verificar el email en el backend si el endpoint existe
+      try {
+        await api.get(`/auth/check-email/${email}`);
+      } catch (checkError: any) {
+        // Si el endpoint no existe (404) o hay otro error, continuamos con Firebase
+        // Firebase validará si el email existe
+        if (checkError.response?.status !== 404) {
+          // Si es un error diferente a 404, podría ser que el email no existe
+          const customError = new Error(
+            checkError.response?.data?.error || "El email no está registrado"
+          );
+          (customError as any).exists = checkError.response?.data?.exists || false;
+          throw customError;
+        }
+        // Si es 404, el endpoint no existe, continuamos con Firebase
+      }
 
+      // Enviar email de recuperación a través de Firebase
       await sendPasswordResetEmail(auth, email, {
         url: `${FRONTEND_URL}/recuperar-contrasena`,
       });
     } catch (error: any) {
-      const customError = new Error(
-        error.response?.data?.error || "Error al enviar email de recuperación"
-      );
-      (customError as any).exists = error.response?.data?.exists || false;
+      // Si el error ya es un Error personalizado, lo relanzamos
+      if (error.message && error.exists !== undefined) {
+        throw error;
+      }
+      
+      // Manejar errores de Firebase
+      let errorMessage = "Error al enviar email de recuperación";
+      let exists = true;
 
+      if (error.code === "auth/user-not-found") {
+        errorMessage = "Este email no está registrado";
+        exists = false;
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "El formato del email es inválido";
+        exists = false;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      const customError = new Error(errorMessage);
+      (customError as any).exists = exists;
       throw customError;
     }
   }
@@ -262,6 +297,31 @@ class AuthService {
       await confirmPasswordReset(auth, oobCode, password);
     } catch (error: any) {
       throw new Error(error.message || "Error al cambiar contraseña");
+    }
+  }
+
+  async updateUserPassword(currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        throw new Error("No hay usuario autenticado");
+      }
+
+      // Reautenticar con la contraseña actual
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Actualizar la contraseña
+      await updatePassword(user, newPassword);
+    } catch (error: any) {
+      if (error.code === "auth/wrong-password") {
+        throw new Error("La contraseña actual es incorrecta");
+      } else if (error.code === "auth/weak-password") {
+        throw new Error("La nueva contraseña es muy débil");
+      } else if (error.code === "auth/requires-recent-login") {
+        throw new Error("Por favor, vuelve a iniciar sesión antes de cambiar tu contraseña");
+      }
+      throw new Error(error.message || "Error al actualizar la contraseña");
     }
   }
 
