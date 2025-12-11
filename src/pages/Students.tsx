@@ -9,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { type StudentDB } from "@/types/types";
-import { Loader2 } from "lucide-react";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";

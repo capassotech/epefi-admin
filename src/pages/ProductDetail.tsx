@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PencilIcon } from 'lucide-react';
+import { PencilIcon } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { formatCurrency } from '@/utils/currency';
 import {

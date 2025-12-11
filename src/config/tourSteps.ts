@@ -4,8 +4,9 @@ export const dashboardTourSteps: TourStep[] = [
   {
     element: '[data-tour="sidebar"]',
     popover: {
-      title: 'Menú de navegación',
-      description: 'Desde aquí puedes acceder a todas las secciones del panel: Dashboard, Usuarios, Cursos, Materias y tu Perfil.',
+      title: 'Menú principal',
+      description:
+        'Desde acá entrás a todas las partes del sistema: cursos, usuarios, materias y tu perfil.',
       side: 'right',
       align: 'start',
     },
@@ -13,8 +14,9 @@ export const dashboardTourSteps: TourStep[] = [
   {
     element: '[data-tour="dashboard-stats"]',
     popover: {
-      title: 'Estadísticas',
-      description: 'Aquí puedes ver un resumen rápido de los estudiantes y cursos en tu plataforma. Haz clic en las tarjetas para ir a cada sección.',
+      title: 'Resumen general',
+      description:
+        'Acá ves un resumen rápido de lo más importante. Si tocás una tarjeta, vas directo a esa sección.',
       side: 'bottom',
       align: 'start',
     },
@@ -22,8 +24,9 @@ export const dashboardTourSteps: TourStep[] = [
   {
     element: '[data-tour="recent-courses"]',
     popover: {
-      title: 'Últimos cursos',
-      description: 'Esta sección muestra los cursos más recientes. Puedes hacer clic en cualquier curso para ver sus detalles.',
+      title: 'Cursos recientes',
+      description:
+        'Estos son los últimos cursos creados. Tocá uno para ver la información.',
       side: 'top',
       align: 'start',
     },
@@ -34,8 +37,9 @@ export const productsTourSteps: TourStep[] = [
   {
     element: '[data-tour="search-filter"]',
     popover: {
-      title: 'Búsqueda y filtros',
-      description: 'Usa la barra de búsqueda para encontrar cursos por título o descripción. Los filtros te permiten ordenar por estado, precio, fecha, etc.',
+      title: 'Buscar cursos',
+      description:
+        'Usá este buscador para encontrar un curso por nombre. También podés ordenar la lista.',
       side: 'bottom',
       align: 'start',
     },
@@ -43,8 +47,9 @@ export const productsTourSteps: TourStep[] = [
   {
     element: '[data-tour="create-course"]',
     popover: {
-      title: 'Crear nuevo curso',
-      description: 'Haz clic aquí para crear un nuevo curso. Podrás agregar información general, materias, módulos y más.',
+      title: 'Nuevo curso',
+      description:
+        'Desde acá creás un curso nuevo y cargás toda la información.',
       side: 'bottom',
       align: 'end',
     },
@@ -52,8 +57,9 @@ export const productsTourSteps: TourStep[] = [
   {
     element: '[data-tour="view-toggle"]',
     popover: {
-      title: 'Cambiar vista',
-      description: 'Alterna entre vista de tarjetas y vista de lista para ver los cursos de la forma que prefieras.',
+      title: 'Cómo se muestran',
+      description:
+        'Podés cambiar cómo se ven los cursos: en tarjetas o en lista.',
       side: 'bottom',
       align: 'end',
     },
@@ -62,7 +68,8 @@ export const productsTourSteps: TourStep[] = [
     element: '[data-tour="courses-list"]',
     popover: {
       title: 'Lista de cursos',
-      description: 'Aquí verás todos tus cursos. Puedes hacer clic en cualquier curso para ver sus detalles, editarlo o eliminarlo.',
+      description:
+        'Acá están todos los cursos. Entrá a uno para editarlo o ver los detalles.',
       side: 'top',
       align: 'start',
     },
@@ -73,8 +80,9 @@ export const studentsTourSteps: TourStep[] = [
   {
     element: '[data-tour="search-filter"]',
     popover: {
-      title: 'Búsqueda y filtros',
-      description: 'Busca usuarios por nombre, apellido, email o DNI. Filtra por estado (activo/inactivo) y rol (estudiante/administrador).',
+      title: 'Buscar usuarios',
+      description:
+        'Buscá personas por nombre, apellido o email.',
       side: 'bottom',
       align: 'start',
     },
@@ -82,8 +90,9 @@ export const studentsTourSteps: TourStep[] = [
   {
     element: '[data-tour="create-user"]',
     popover: {
-      title: 'Crear nuevo usuario',
-      description: 'Haz clic aquí para crear un nuevo usuario. Podrás asignar roles y cursos después de crearlo.',
+      title: 'Nuevo usuario',
+      description:
+        'Desde acá podés crear un usuario nuevo en el sistema.',
       side: 'bottom',
       align: 'end',
     },
@@ -92,7 +101,8 @@ export const studentsTourSteps: TourStep[] = [
     element: '[data-tour="students-list"]',
     popover: {
       title: 'Lista de usuarios',
-      description: 'Aquí verás todos los usuarios registrados. Puedes hacer clic en cualquier usuario para ver sus detalles, editarlo o asignarle cursos.',
+      description:
+        'Acá ves todas las personas cargadas. Entrá a una para ver o cambiar sus datos.',
       side: 'top',
       align: 'start',
     },
@@ -103,8 +113,9 @@ export const subjectsTourSteps: TourStep[] = [
   {
     element: '[data-tour="search-filter"]',
     popover: {
-      title: 'Búsqueda y filtros',
-      description: 'Busca materias por nombre y ordénalas según tus preferencias.',
+      title: 'Buscar materias',
+      description:
+        'Usá el buscador para encontrar una materia.',
       side: 'bottom',
       align: 'start',
     },
@@ -112,8 +123,9 @@ export const subjectsTourSteps: TourStep[] = [
   {
     element: '[data-tour="create-course"]',
     popover: {
-      title: 'Crear Nueva Materia',
-      description: 'Haz clic aquí para crear una nueva materia. Podrás asociarla a cursos y agregar módulos.',
+      title: 'Nueva materia',
+      description:
+        'Desde acá podés crear una materia nueva.',
       side: 'bottom',
       align: 'end',
     },
@@ -121,8 +133,9 @@ export const subjectsTourSteps: TourStep[] = [
   {
     element: '[data-tour="view-toggle"]',
     popover: {
-      title: 'Cambiar Vista',
-      description: 'Alterna entre vista de tarjetas y vista de lista para ver las materias de la forma que prefieras.',
+      title: 'Forma de verlas',
+      description:
+        'Elegí si querés ver las materias en tarjetas o en lista.',
       side: 'bottom',
       align: 'end',
     },
@@ -130,8 +143,9 @@ export const subjectsTourSteps: TourStep[] = [
   {
     element: '[data-tour="subjects-list"]',
     popover: {
-      title: 'Lista de Materias',
-      description: 'Aquí verás todas tus materias. Puedes hacer clic en cualquier materia para editarla, agregar módulos o eliminarla.',
+      title: 'Lista de materias',
+      description:
+        'Acá están todas las materias. Entrá a una para editarla o agregar contenido.',
       side: 'top',
       align: 'start',
     },
@@ -142,8 +156,9 @@ export const profileTourSteps: TourStep[] = [
   {
     element: '[data-tour="profile-info"]',
     popover: {
-      title: 'Información Personal',
-      description: 'Aquí puedes editar tu nombre, apellido, email y DNI. Recuerda guardar los cambios después de editarlos.',
+      title: 'Tus datos',
+      description:
+        'Acá podés cambiar tus datos personales.',
       side: 'bottom',
       align: 'start',
     },
@@ -151,8 +166,9 @@ export const profileTourSteps: TourStep[] = [
   {
     element: '[data-tour="change-password"]',
     popover: {
-      title: 'Cambiar Contraseña',
-      description: 'Haz clic aquí para cambiar tu contraseña. Necesitarás ingresar tu contraseña actual y la nueva contraseña.',
+      title: 'Contraseña',
+      description:
+        'Desde acá podés cambiar tu contraseña.',
       side: 'bottom',
       align: 'start',
     },
@@ -160,11 +176,11 @@ export const profileTourSteps: TourStep[] = [
   {
     element: '[data-tour="save-button"]',
     popover: {
-      title: 'Guardar Cambios',
-      description: 'Después de editar tu información, haz clic aquí para guardar los cambios.',
+      title: 'Guardar',
+      description:
+        'Cuando termines, tocá acá para guardar los cambios.',
       side: 'top',
       align: 'end',
     },
   },
 ];
-

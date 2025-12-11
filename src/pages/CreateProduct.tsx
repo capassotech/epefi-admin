@@ -37,8 +37,8 @@ export default function CreateProduct() {
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentPlanDeEstudiosUrl, setCurrentPlanDeEstudiosUrl] = useState<string | null>(null);
-  const [currentFechasDeExamenesUrl, setCurrentFechasDeExamenesUrl] = useState<string | null>(null);
+  const [currentPlanDeEstudiosUrl] = useState<string | null>(null);
+  const [currentFechasDeExamenesUrl] = useState<string | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),

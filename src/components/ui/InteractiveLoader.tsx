@@ -88,7 +88,6 @@ export function InteractiveLoader({
           
           {/* Partículas flotantes alrededor */}
           {[...Array(12)].map((_, i) => {
-            const angle = (i * 30) * (Math.PI / 180);
             const radius = 70;
             
             return (

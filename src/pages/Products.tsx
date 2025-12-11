@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal'; 
 import { type Course } from '@/types/types';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { TourButton } from '@/components/tour/TourButton';

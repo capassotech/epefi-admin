@@ -5,7 +5,6 @@ import SubjectModal from '../components/subject/SubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';

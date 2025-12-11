@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookOpen, Users, Calendar, Plus, User, LogOut, X, UserCircle } from "lucide-react";
+import { BookOpen, Users, Calendar, User, LogOut, X, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";

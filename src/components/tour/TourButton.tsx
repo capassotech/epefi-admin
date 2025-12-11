@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { HelpCircle } from 'lucide-react';
 import { useTour, type TourStep } from '@/hooks/useTour';
-import { useEffect, useState } from 'react';
 
 interface TourButtonProps {
   steps: TourStep[];
