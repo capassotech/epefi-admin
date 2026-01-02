@@ -268,22 +268,6 @@ const ProductDetail = () => {
                           Ver
                         </a>
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        className="cursor-pointer"
-                      >
-                        <a
-                          href={curso.planDeEstudiosUrl}
-                          download
-                          target="_blank"
-                          className="flex items-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          Descargar
-                        </a>
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -326,22 +310,6 @@ const ProductDetail = () => {
                         >
                           <ExternalLink className="w-4 h-4" />
                           Ver
-                        </a>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        className="cursor-pointer"
-                      >
-                        <a
-                          href={curso.fechasDeExamenesUrl}
-                          download
-                          target="_blank"
-                          className="flex items-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          Descargar
                         </a>
                       </Button>
                     </div>
