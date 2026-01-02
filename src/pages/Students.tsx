@@ -1,5 +1,5 @@
 // src/pages/admin/Students.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StudentList } from "@/components/students/StudentsList";
 import {
   SearchAndFilter,
@@ -29,7 +29,7 @@ export default function Students() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const applyFilters = (query: string, filterOptions: FilterOptions) => {
+  const applyFilters = useCallback((query: string, filterOptions: FilterOptions) => {
     let filtered = [...students];
 
     if (query) {
@@ -85,7 +85,7 @@ export default function Students() {
     }
 
     setFilteredStudents(filtered);
-  };
+  }, [students]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -108,7 +108,7 @@ export default function Students() {
   // Aplicar filtros cuando cambien los estudiantes, la búsqueda o los filtros
   useEffect(() => {
     applyFilters(searchQuery, filters);
-  }, [students, filters, searchQuery]);
+  }, [applyFilters, filters, searchQuery]);
 
   const handleDeleteClick = (id: string) => {
     // Verificar si el usuario intenta eliminar su propia cuenta
@@ -217,7 +217,7 @@ export default function Students() {
           onSearch={handleSearch}
           onFilter={handleFilter}
           isStudentPage={true}
-          onCreateNew={() => navigate("/students")}
+          onCreateNew={handleUserUpdated}
           createButtonText="Crear usuario"
           filterOptions={filterOptions}
           currentFilters={filters}
