@@ -15,7 +15,6 @@ import {
   Image as ImageIcon,
   Calendar,
   FileText,
-  Download,
   ExternalLink,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
