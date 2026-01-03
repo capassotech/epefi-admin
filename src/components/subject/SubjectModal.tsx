@@ -101,38 +101,78 @@ const SubjectModal = ({
             }
         });
         setCourseNamesCache(prev => ({ ...prev, ...newCache }));
+        return courses;
+    };
+
+    // Función para validar y limpiar referencias a cursos eliminados
+    const validateAndCleanCourseReferences = async (subjectCourseIds: string[]): Promise<string[]> => {
+        if (!subjectCourseIds || subjectCourseIds.length === 0) return [];
+        
+        // Cargar todos los cursos existentes
+        const allCourses = await CoursesAPI.getAll();
+        const validCourseIds = allCourses.map((c: Course) => String(c.id));
+        
+        // Filtrar solo los IDs que existen
+        const validIds = subjectCourseIds.filter(id => validCourseIds.includes(String(id)));
+        
+        // Si hay IDs inválidos, actualizar la materia en el backend
+        if (validIds.length !== subjectCourseIds.length && editingSubject) {
+            const invalidIds = subjectCourseIds.filter(id => !validCourseIds.includes(String(id)));
+            console.warn(`⚠️ Se encontraron referencias a cursos eliminados en la materia ${editingSubject.id}:`, invalidIds);
+            
+            // Actualizar la materia para limpiar las referencias inválidas
+            try {
+                await CoursesAPI.updateMateria(editingSubject.id, {
+                    ...editingSubject,
+                    id_cursos: validIds,
+                });
+                toast.info(`Se limpiaron ${subjectCourseIds.length - validIds.length} referencia(s) a curso(s) eliminado(s)`);
+            } catch (error) {
+                console.error('Error al limpiar referencias inválidas:', error);
+                // No mostrar error al usuario, solo continuar con los IDs válidos
+            }
+        }
+        
+        return validIds;
     };
 
     useEffect(() => {
         if (isOpen) {
-            if (editingSubject) {
-                setSubjectForm({
-                    nombre: editingSubject.nombre,
-                    id_cursos: editingSubject.id_cursos || [],
-                    modulos: editingSubject.modulos || [],
-                });
-                setSelectedCourses(editingSubject.id_cursos || []);
-            } else {
-                const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
-                setSubjectForm({
-                    nombre: "",
-                    id_cursos: initialCourses,
-                    modulos: [],
-                });
-                setSelectedCourses(initialCourses);
-            }
+            const initializeSubject = async () => {
+                if (editingSubject) {
+                    // Validar y limpiar referencias a cursos eliminados
+                    const validCourseIds = await validateAndCleanCourseReferences(editingSubject.id_cursos || []);
+                    
+                    setSubjectForm({
+                        nombre: editingSubject.nombre,
+                        id_cursos: validCourseIds,
+                        modulos: editingSubject.modulos || [],
+                    });
+                    setSelectedCourses(validCourseIds);
+                } else {
+                    const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
+                    setSubjectForm({
+                        nombre: "",
+                        id_cursos: initialCourses,
+                        modulos: [],
+                    });
+                    setSelectedCourses(initialCourses);
+                }
 
-            // Si hay courseTitle, usarlo directamente
-            if (courseTitle) {
-                setCurrentCourseTitle(courseTitle);
-            } else if (courseId && !courseTitle) {
-                // Si no hay courseTitle pero hay courseId, intentar cargar el curso
-                loadCourseById(courseId);
-            }
+                // Si hay courseTitle, usarlo directamente
+                if (courseTitle) {
+                    setCurrentCourseTitle(courseTitle);
+                } else if (courseId && !courseTitle) {
+                    // Si no hay courseTitle pero hay courseId, intentar cargar el curso
+                    loadCourseById(courseId);
+                }
 
-            // Cargar todos los cursos existentes
-            // Esto carga todos los cursos y los agrega automáticamente al caché
-            loadExistingCourses();
+                // Cargar todos los cursos existentes
+                // Esto carga todos los cursos y los agrega automáticamente al caché
+                await loadExistingCourses();
+            };
+            
+            initializeSubject();
         }
     }, [isOpen, courseId, courseTitle, editingSubject]);
 
@@ -168,7 +208,7 @@ const SubjectModal = ({
         }
         
         // Buscar en la lista de cursos cargados (que debería tener todos los cursos)
-        const course = courses.find(c => c.id === id);
+        const course = courses.find(c => String(c.id) === String(id));
         if (course && course.titulo) {
             // Agregar al caché y retornar el título
             setCourseNamesCache(prev => {
@@ -180,18 +220,14 @@ const SubjectModal = ({
             return course.titulo;
         }
         
-        // Si no se encuentra en la lista de cursos cargados, intentar cargarlo individualmente
-        // Solo si no está ya en proceso de carga
-        if (id && !courseNamesCache[id] && courses.length > 0) {
-            // Si ya se cargaron todos los cursos y no está en la lista, 
-            // probablemente el curso no existe o fue eliminado
-            // Pero intentemos cargarlo de todas formas
-            loadCourseById(id).catch(() => {
-                // Si falla, no hacer nada, simplemente mostrar el ID
-            });
+        // Si no se encuentra en la lista de cursos cargados y ya se cargaron todos los cursos,
+        // significa que el curso fue eliminado
+        if (id && courses.length > 0) {
+            // El curso no existe, retornar un mensaje indicando que fue eliminado
+            return `[Curso eliminado]`;
         }
         
-        // Retornar el ID como fallback mientras se carga o si no se encuentra
+        // Retornar el ID como fallback mientras se carga
         return id;
     };
 
@@ -352,19 +388,34 @@ const SubjectModal = ({
                                         <div className="mt-3">
                                             <p className="text-sm text-gray-600 mb-2">Cursos seleccionados:</p>
                                             <div className="flex flex-wrap gap-2">
-                                                {selectedCourses.map((courseId) => (
-                                                    <Badge key={courseId} variant="secondary" className="flex items-center gap-1">
-                                                        {getCourseName(courseId)}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleCourseRemove(courseId)}
-                                                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                                                {selectedCourses.map((courseId) => {
+                                                    const courseName = getCourseName(courseId);
+                                                    const isDeleted = courseName === "[Curso eliminado]";
+                                                    return (
+                                                        <Badge 
+                                                            key={courseId} 
+                                                            variant={isDeleted ? "destructive" : "secondary"} 
+                                                            className="flex items-center gap-1"
                                                         >
-                                                            <X className="h-3 w-3" />
-                                                        </button>
-                                                    </Badge>
-                                                ))}
+                                                            {courseName}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCourseRemove(courseId)}
+                                                                className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                                                                title={isDeleted ? "Remover referencia a curso eliminado" : "Remover curso"}
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </Badge>
+                                                    );
+                                                })}
                                             </div>
+                                            {selectedCourses.some(id => getCourseName(id) === "[Curso eliminado]") && (
+                                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                                    <span>⚠️</span>
+                                                    <span>Algunos cursos fueron eliminados y se limpiarán automáticamente al guardar</span>
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>

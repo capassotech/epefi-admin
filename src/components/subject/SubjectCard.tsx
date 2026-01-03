@@ -35,9 +35,13 @@ export function SubjectCard({ subject, onEdit }: SubjectCardProps) {
         {/* Course Info */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            {subject.id_cursos && (
+            {subject.id_cursos && subject.id_cursos.length > 0 ? (
               <span className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                Curso/s: {subject.id_cursos.join(', ')}
+                {subject.id_cursos.length} curso{subject.id_cursos.length !== 1 ? 's' : ''} asociado{subject.id_cursos.length !== 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                Sin cursos asociados
               </span>
             )}
           </div>
