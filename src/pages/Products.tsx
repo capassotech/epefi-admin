@@ -342,7 +342,18 @@ export default function Products() {
             </div>
           ) : (
             <div data-tour="courses-list">
-              <ProductList products={filteredProducts} onDelete={handleDeleteClick} />
+              <ProductList 
+                products={filteredProducts}
+                onProductUpdated={(id, newEstado) => {
+                  // Actualizar el estado local sin recargar todo
+                  setCursos(prev => prev.map(c => 
+                    c.id === id ? { ...c, estado: newEstado } : c
+                  ));
+                  setFilteredProducts(prev => prev.map(c => 
+                    c.id === id ? { ...c, estado: newEstado } : c
+                  ));
+                }}
+              />
             </div>
           )}
         </>

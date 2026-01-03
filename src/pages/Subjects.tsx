@@ -32,8 +32,13 @@ export default function Subjects() {
             try {
                 const res = await CoursesAPI.getMaterias();
                 const data = Array.isArray(res) ? res : res?.data || [];
-                setMaterias(data);
-                setFilteredSubjects(data);
+                // Asegurar que todas las materias tengan el campo activo mapeado correctamente
+                const normalizedData = data.map((m: any) => ({
+                    ...m,
+                    activo: m.activo !== undefined ? m.activo : (m.estado === 'activo' || m.estado === undefined),
+                }));
+                setMaterias(normalizedData);
+                setFilteredSubjects(normalizedData);
             } catch (err) {
                 console.error("Error al cargar materias:", err);
                 setError('No se pudieron cargar las materias');
@@ -267,7 +272,33 @@ export default function Subjects() {
                         </div>
                     ) : (
                         <div data-tour="subjects-list">
-                            <SubjectList subjects={filteredSubjects} onDelete={handleDeleteClick} onEdit={handleEditClick} showTitle={false} />
+                            <SubjectList 
+                                subjects={filteredSubjects} 
+                                onDelete={handleDeleteClick} 
+                                onEdit={handleEditClick} 
+                                showTitle={false}
+                                onStatusChange={async () => {
+                                    // Recargar materias después de cambiar estado
+                                    try {
+                                        const res = await CoursesAPI.getMaterias();
+                                        const data = Array.isArray(res) ? res : res?.data || [];
+                                        setMaterias(data);
+                                        applyFilters(searchQuery, filters);
+                                    } catch (err) {
+                                        console.error("Error al recargar materias:", err);
+                                    }
+                                }}
+                                onSubjectStatusUpdated={(id, newEstado) => {
+                                    // Actualizar el estado local inmediatamente sin recargar todo
+                                    const newActivo = newEstado === 'activo';
+                                    setMaterias(prev => prev.map(m => 
+                                        m.id === id ? { ...m, activo: newActivo, estado: newEstado } : m
+                                    ));
+                                    setFilteredSubjects(prev => prev.map(m => 
+                                        m.id === id ? { ...m, activo: newActivo, estado: newEstado } : m
+                                    ));
+                                }}
+                            />
                         </div>
                     )}
                 </>

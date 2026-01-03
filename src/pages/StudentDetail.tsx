@@ -14,10 +14,24 @@ import {
     CheckCircle,
     XCircle,
     Calendar,
+    Trash,
+    Loader2,
 } from 'lucide-react';
 import type { Course, StudentDB } from '@/types/types';
 import { StudentsAPI } from '@/service/students';
 import { CoursesAPI } from '@/service/courses';
+import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 export const StudentDetail = () => {
@@ -28,6 +42,8 @@ export const StudentDetail = () => {
     const [loading, setLoading] = useState(true);
     const [loadingCursos, setLoadingCursos] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (!id) {
@@ -46,13 +62,9 @@ export const StudentDetail = () => {
                     try {
                         // Cargar cursos individualmente y manejar errores 404 silenciosamente
                         const cursosPromises = data.cursos_asignados.map(async (cursoId: string) => {
-                            try {
-                                return await CoursesAPI.getById(cursoId);
-                            } catch (error: any) {
-                                // Si el curso no existe (404) u otro error, retornar null silenciosamente
-                                // Los cursos eliminados simplemente no se mostrarán
-                                return null;
-                            }
+                            // getById ahora retorna null si el curso no existe (404)
+                            const curso = await CoursesAPI.getById(cursoId);
+                            return curso; // Puede ser null si el curso fue eliminado
                         });
                         
                         const cursosResults = await Promise.all(cursosPromises);
@@ -214,6 +226,67 @@ export const StudentDetail = () => {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Sección de eliminación del usuario */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+                <div className="flex justify-center">
+                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="lg"
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Eliminando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash className="w-4 h-4 mr-2" />
+                                        Eliminar Usuario Permanentemente
+                                    </>
+                                )}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción eliminará el usuario "{student?.nombre || ""} {student?.apellido || ""}" y todos sus datos asociados de forma permanente. 
+                                    Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={async () => {
+                                        if (!id) return;
+                                        setIsDeleting(true);
+                                        try {
+                                            await StudentsAPI.delete(id);
+                                            toast.success('Usuario eliminado exitosamente');
+                                            setDeleteConfirmOpen(false);
+                                            navigate('/students');
+                                        } catch (err) {
+                                            toast.error('Error al eliminar el usuario');
+                                            console.error('Error al eliminar:', err);
+                                        } finally {
+                                            setIsDeleting(false);
+                                        }
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700"
+                                >
+                                    Eliminar Permanentemente
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </div>
         </div>
     );
 };

@@ -24,6 +24,8 @@ export interface Subject {
   modulos: string[];
   nombre: string;
   imagen?: string;
+  activo?: boolean;
+  estado?: "activo" | "inactivo"; // Mantener para compatibilidad, pero usar activo del backend
 }
 
 export interface Degree {

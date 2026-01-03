@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   Edit2,
+  Trash,
 } from "lucide-react";
 
 import {
@@ -31,6 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { type CreateUserFormData, type StudentDB, type FirestoreTimestamp } from "@/types/types";
 
 
@@ -53,6 +65,8 @@ export const CreateUserModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<CreateUserFormData & { id?: string; fechaRegistro?: FirestoreTimestamp }>({
     nombre: "",
     apellido: "",
@@ -463,6 +477,73 @@ export const CreateUserModal = ({
                   )}
                 </Button>
               </div>
+
+              {/* Sección de eliminación - Solo en modo edición */}
+              {isEditing && editingUser && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <div className="flex justify-center">
+                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="lg"
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          disabled={isDeleting || isLoading}
+                        >
+                          {isDeleting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Eliminando...
+                            </>
+                          ) : (
+                            <>
+                              <Trash className="w-4 h-4 mr-2" />
+                              Eliminar Usuario Permanentemente
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción eliminará el usuario "{editingUser.nombre} {editingUser.apellido}" y todos sus datos asociados de forma permanente. 
+                            Esta acción no se puede deshacer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={async () => {
+                              if (!editingUser.id) return;
+                              setIsDeleting(true);
+                              try {
+                                const { StudentsAPI } = await import('@/service/students');
+                                await StudentsAPI.delete(editingUser.id);
+                                toast.success(`Usuario ${editingUser.nombre} ${editingUser.apellido} eliminado correctamente`);
+                                setDeleteConfirmOpen(false);
+                                setIsOpen(false);
+                                if (onUserCreated) {
+                                  onUserCreated();
+                                }
+                              } catch (error: any) {
+                                console.error("Error al eliminar usuario:", error);
+                                toast.error("Error al eliminar el usuario");
+                              } finally {
+                                setIsDeleting(false);
+                              }
+                            }}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Eliminar Permanentemente
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

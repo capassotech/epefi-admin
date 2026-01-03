@@ -14,6 +14,7 @@ import {
   CheckCircle,
   X,
   Clock,
+  Trash,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +28,17 @@ import { slugify } from "@/lib/utils";
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import SubjectCreation from "@/components/product/SubjectCreation";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 export default function EditProduct() {
@@ -49,6 +61,8 @@ export default function EditProduct() {
   // Estados para modales de confirmación de eliminación
   const [isDeletePlanModalOpen, setIsDeletePlanModalOpen] = useState(false);
   const [isDeleteFechasModalOpen, setIsDeleteFechasModalOpen] = useState(false);
+  const [isDeleteCourseModalOpen, setIsDeleteCourseModalOpen] = useState(false);
+  const [deleteCourseLoading, setDeleteCourseLoading] = useState(false);
   
   // Estados para el mensaje de cambios guardados
   const [showSaveMessage, setShowSaveMessage] = useState(false);
@@ -191,6 +205,27 @@ export default function EditProduct() {
 
   const handleCancelDeleteFechas = () => {
     setIsDeleteFechasModalOpen(false);
+  };
+
+  const handleCancelDeleteCourse = () => {
+    setIsDeleteCourseModalOpen(false);
+  };
+
+  const handleConfirmDeleteCourse = async (courseId: string) => {
+    if (!courseId) return;
+    setDeleteCourseLoading(true);
+    try {
+      await CoursesAPI.delete(courseId);
+      toast.success("Curso eliminado exitosamente");
+      navigate("/products");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const message = axiosErr.response?.data?.message || "Error al eliminar el curso";
+      toast.error(message);
+    } finally {
+      setDeleteCourseLoading(false);
+      setIsDeleteCourseModalOpen(false);
+    }
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -735,6 +770,57 @@ export default function EditProduct() {
         deleteLoading={false}
         id="fechas-de-examenes"
       />
+
+      {/* Sección de eliminación del curso */}
+      <div className="mt-8 pt-8 border-t border-gray-200">
+        <div className="flex justify-center">
+          <AlertDialog open={isDeleteCourseModalOpen} onOpenChange={setIsDeleteCourseModalOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="destructive"
+                size="lg"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteCourseLoading}
+              >
+                {deleteCourseLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="w-4 h-4 mr-2" />
+                    Eliminar Curso Permanentemente
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar curso permanentemente?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará el curso "{form.getValues().titulo || "este curso"}" y todos sus datos asociados de forma permanente. 
+                  Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleCancelDeleteCourse}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (id) {
+                      handleConfirmDeleteCourse(id);
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Eliminar Permanentemente
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
     </div>
   );
 }
