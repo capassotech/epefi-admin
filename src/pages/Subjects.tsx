@@ -193,7 +193,6 @@ export default function Subjects() {
         sortOptions: [
             { value: 'title', label: 'Título' },
             { value: 'status', label: 'Estado' },
-            { value: 'date', label: 'Fecha de creación' },
         ],
     };
 
