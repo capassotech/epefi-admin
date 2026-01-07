@@ -1,4 +1,4 @@
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { type Subject } from '@/types/types';
@@ -12,12 +12,8 @@ export function SubjectCard({ subject, onEdit }: SubjectCardProps) {
   return (
     <div className="admin-card overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
       {/* Header Icon */}
-      <div className="aspect-video bg-gray-200 overflow-hidden">
-        <img
-          src={'/placeholder.svg'}
-          alt={subject.nombre}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+      <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden flex items-center justify-center">
+        <BookOpen className="w-16 h-16 text-blue-600 opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
 
       <div className="p-6">
