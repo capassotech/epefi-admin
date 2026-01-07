@@ -442,23 +442,46 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             const toAdd = selectedSubjects.map((s) => s.id);
             const updatedIds = Array.from(new Set([...existingIds, ...toAdd]));
             await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
-                    setCourseSubjectIds(updatedIds);
+            
+            // Actualizar cada materia para incluir el curso en su campo id_cursos
+            const courseIdStr = String(courseId);
+            for (const subjectId of toAdd) {
+                try {
+                    const materia = await CoursesAPI.getMateriaById(subjectId);
+                    const currentCursos = Array.isArray(materia.id_cursos) ? materia.id_cursos.map(String) : [];
                     
-                    // Cargar las materias asociadas y actualizar la lista
-                    setLoadingSubjects(true);
-                    try {
-                        const associatedSubjects = await CoursesAPI.getMateriasByIds(updatedIds);
-                        setCourseSubjects(Array.isArray(associatedSubjects) ? associatedSubjects : []);
-                    } catch (e) {
-                        console.error("Error al cargar materias asociadas:", e);
-                        // Si falla, agregar manualmente las seleccionadas
-                        setCourseSubjects(prev => {
-                            const newSubjects = selectedSubjects.filter(s => !prev.some(p => p.id === s.id));
-                            return [...prev, ...newSubjects];
+                    // Verificar si el curso ya está en id_cursos
+                    if (!currentCursos.includes(courseIdStr)) {
+                        const updatedCursos = [...currentCursos, courseIdStr];
+                        await CoursesAPI.updateMateria(subjectId, {
+                            ...materia,
+                            id_cursos: updatedCursos,
                         });
-                    } finally {
-                        setLoadingSubjects(false);
+                        console.log(`Materia ${subjectId} actualizada con el curso ${courseIdStr}`);
                     }
+                } catch (materiaError) {
+                    console.error(`Error al actualizar materia ${subjectId}:`, materiaError);
+                    // Continuar con las demás materias aunque una falle
+                }
+            }
+            
+            setCourseSubjectIds(updatedIds);
+                    
+            // Cargar las materias asociadas y actualizar la lista
+            setLoadingSubjects(true);
+            try {
+                const associatedSubjects = await CoursesAPI.getMateriasByIds(updatedIds);
+                setCourseSubjects(Array.isArray(associatedSubjects) ? associatedSubjects : []);
+            } catch (e) {
+                console.error("Error al cargar materias asociadas:", e);
+                // Si falla, agregar manualmente las seleccionadas
+                setCourseSubjects(prev => {
+                    const newSubjects = selectedSubjects.filter(s => !prev.some(p => p.id === s.id));
+                    return [...prev, ...newSubjects];
+                });
+            } finally {
+                setLoadingSubjects(false);
+            }
                     
             toast.success("Materias asociadas al curso");
             setSelectedSubjects([]);

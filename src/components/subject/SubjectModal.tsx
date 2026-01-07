@@ -66,6 +66,7 @@ const SubjectModal = ({
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [initializing, setInitializing] = useState(false);
     const [currentCourseTitle, setCurrentCourseTitle] = useState<string | null>(courseTitle || null);
     const location = useLocation();
     const [subjectForm, setSubjectForm] = useState({
@@ -104,21 +105,51 @@ const SubjectModal = ({
         return courses;
     };
 
-    // Función para validar y limpiar referencias a cursos eliminados
+    // Función para validar y limpiar referencias a cursos eliminados o inactivos
     const validateAndCleanCourseReferences = async (subjectCourseIds: string[]): Promise<string[]> => {
         if (!subjectCourseIds || subjectCourseIds.length === 0) return [];
         
-        // Cargar todos los cursos existentes
-        const allCourses = await CoursesAPI.getAll();
-        const validCourseIds = allCourses.map((c: Course) => String(c.id));
+        // Verificar cada curso individualmente usando getById para asegurar que existe
+        // Solo se eliminan cursos que estén realmente eliminados (404) o inactivos
+        const validIds: string[] = [];
+        const invalidIds: string[] = [];
         
-        // Filtrar solo los IDs que existen
-        const validIds = subjectCourseIds.filter(id => validCourseIds.includes(String(id)));
+        for (const courseId of subjectCourseIds) {
+            try {
+                const course = await CoursesAPI.getById(String(courseId));
+                if (course && course.id) {
+                    // Verificar si el curso está activo o inactivo
+                    // Solo mantener cursos activos, eliminar inactivos o eliminados
+                    if (course.estado === "activo") {
+                        // El curso existe y está activo, agregarlo a la lista de válidos
+                        validIds.push(String(courseId));
+                    } else {
+                        // El curso existe pero está inactivo, marcarlo como inválido
+                        console.log(`Curso ${courseId} está inactivo, será removido de la materia`);
+                        invalidIds.push(String(courseId));
+                    }
+                } else {
+                    // El curso no existe o no tiene ID válido
+                    invalidIds.push(String(courseId));
+                }
+            } catch (error: unknown) {
+                // Si getById retorna null o lanza un error 404, el curso no existe
+                const axiosError = error as { response?: { status?: number } };
+                if (axiosError.response?.status === 404) {
+                    // El curso fue eliminado
+                    console.log(`Curso ${courseId} no existe (404), será removido de la materia`);
+                    invalidIds.push(String(courseId));
+                } else {
+                    // Para otros errores, asumir que el curso existe y está activo (puede ser un error temporal)
+                    console.warn(`Error al verificar curso ${courseId}:`, error);
+                    validIds.push(String(courseId));
+                }
+            }
+        }
         
-        // Si hay IDs inválidos, actualizar la materia en el backend
-        if (validIds.length !== subjectCourseIds.length && editingSubject) {
-            const invalidIds = subjectCourseIds.filter(id => !validCourseIds.includes(String(id)));
-            console.warn(`⚠️ Se encontraron referencias a cursos eliminados en la materia ${editingSubject.id}:`, invalidIds);
+        // Si hay IDs inválidos (eliminados o inactivos), actualizar la materia en el backend
+        if (invalidIds.length > 0 && editingSubject) {
+            console.warn(`⚠️ Se encontraron referencias a cursos eliminados o inactivos en la materia ${editingSubject.id}:`, invalidIds);
             
             // Actualizar la materia para limpiar las referencias inválidas
             try {
@@ -126,7 +157,7 @@ const SubjectModal = ({
                     ...editingSubject,
                     id_cursos: validIds,
                 });
-                toast.info(`Se limpiaron ${subjectCourseIds.length - validIds.length} referencia(s) a curso(s) eliminado(s)`);
+                toast.info(`Se limpiaron ${invalidIds.length} referencia(s) a curso(s) eliminado(s) o inactivo(s)`);
             } catch (error) {
                 console.error('Error al limpiar referencias inválidas:', error);
                 // No mostrar error al usuario, solo continuar con los IDs válidos
@@ -139,46 +170,81 @@ const SubjectModal = ({
     useEffect(() => {
         if (isOpen) {
             const initializeSubject = async () => {
-                if (editingSubject) {
-                    // Validar y limpiar referencias a cursos eliminados
-                    const validCourseIds = await validateAndCleanCourseReferences(editingSubject.id_cursos || []);
+                setInitializing(true);
+                try {
+                    // Cargar todos los cursos existentes primero para tenerlos disponibles
+                    await loadExistingCourses();
                     
-                    setSubjectForm({
-                        nombre: editingSubject.nombre,
-                        id_cursos: validCourseIds,
-                        modulos: editingSubject.modulos || [],
-                    });
-                    setSelectedCourses(validCourseIds);
-                } else {
-                    const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
-                    setSubjectForm({
-                        nombre: "",
-                        id_cursos: initialCourses,
-                        modulos: [],
-                    });
-                    setSelectedCourses(initialCourses);
-                }
+                    if (editingSubject) {
+                        // Recargar la materia desde el backend para obtener los datos más actualizados
+                        // especialmente el campo id_cursos que puede haber cambiado
+                        try {
+                            const refreshedSubject = await CoursesAPI.getMateriaById(editingSubject.id);
+                            console.log("Materia recargada desde el backend:", refreshedSubject);
+                            console.log("Cursos asignados a la materia:", refreshedSubject.id_cursos);
+                            
+                            // Validar y limpiar referencias a cursos eliminados o inactivos
+                            const validCourseIds = await validateAndCleanCourseReferences(refreshedSubject.id_cursos || []);
+                            
+                            // Normalizar todos los IDs a strings para consistencia
+                            const normalizedCourseIds = validCourseIds.map(id => String(id));
+                            console.log("Materia en edición - Cursos asignados normalizados:", normalizedCourseIds);
+                            
+                            setSubjectForm({
+                                nombre: refreshedSubject.nombre,
+                                id_cursos: normalizedCourseIds,
+                                modulos: refreshedSubject.modulos || [],
+                            });
+                            setSelectedCourses(normalizedCourseIds);
+                        } catch (error) {
+                            console.error("Error al recargar la materia desde el backend:", error);
+                            // Si falla, usar los datos del editingSubject original
+                            const validCourseIds = await validateAndCleanCourseReferences(editingSubject.id_cursos || []);
+                            const normalizedCourseIds = validCourseIds.map(id => String(id));
+                            
+                            setSubjectForm({
+                                nombre: editingSubject.nombre,
+                                id_cursos: normalizedCourseIds,
+                                modulos: editingSubject.modulos || [],
+                            });
+                            setSelectedCourses(normalizedCourseIds);
+                        }
+                    } else {
+                        const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
+                        setSubjectForm({
+                            nombre: "",
+                            id_cursos: initialCourses,
+                            modulos: [],
+                        });
+                        setSelectedCourses(initialCourses);
+                    }
 
-                // Si hay courseTitle, usarlo directamente
-                if (courseTitle) {
-                    setCurrentCourseTitle(courseTitle);
-                } else if (courseId && !courseTitle) {
-                    // Si no hay courseTitle pero hay courseId, intentar cargar el curso
-                    loadCourseById(courseId);
+                    // Si hay courseTitle, usarlo directamente
+                    if (courseTitle) {
+                        setCurrentCourseTitle(courseTitle);
+                    } else if (courseId && !courseTitle) {
+                        // Si no hay courseTitle pero hay courseId, intentar cargar el curso
+                        await loadCourseById(courseId);
+                    }
+                } catch (error) {
+                    console.error("Error al inicializar el modal:", error);
+                    toast.error("Error al cargar los datos");
+                } finally {
+                    setInitializing(false);
                 }
-
-                // Cargar todos los cursos existentes
-                // Esto carga todos los cursos y los agrega automáticamente al caché
-                await loadExistingCourses();
             };
             
             initializeSubject();
+        } else {
+            // Resetear el estado cuando se cierra el modal
+            setInitializing(false);
         }
     }, [isOpen, courseId, courseTitle, editingSubject]);
 
     const handleCourseSelect = (courseId: string) => {
-        if (!selectedCourses.includes(courseId)) {
-            const newSelectedCourses = [...selectedCourses, courseId];
+        const normalizedCourseId = String(courseId);
+        if (!selectedCourses.includes(normalizedCourseId)) {
+            const newSelectedCourses = [...selectedCourses, normalizedCourseId];
             setSelectedCourses(newSelectedCourses);
             setSubjectForm(prev => ({
                 ...prev,
@@ -342,7 +408,15 @@ const SubjectModal = ({
                         </h2>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {initializing ? (
+                        <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                            <p className="text-sm text-gray-600">
+                                {editingSubject ? 'Cargando datos de la materia...' : 'Cargando cursos disponibles...'}
+                            </p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Nombre de la Materia *
@@ -374,9 +448,9 @@ const SubjectModal = ({
                                         </SelectTrigger>
                                         <SelectContent>
                                             {courses
-                                                .filter(course => !selectedCourses.includes(course.id))
+                                                .filter(course => !selectedCourses.includes(String(course.id)))
                                                 .map((course) => (
-                                                    <SelectItem key={course.id} value={course.id}>
+                                                    <SelectItem key={course.id} value={String(course.id)}>
                                                         {course.titulo}
                                                     </SelectItem>
                                                 ))}
@@ -513,6 +587,7 @@ const SubjectModal = ({
                             </Button>
                         </div>
                     </form>
+                    )}
                 </div>
             </DialogContent>
             

@@ -154,6 +154,40 @@ export default function CreateProduct() {
       const newCourseId = String(response.id);
       
       console.log("Curso creado con ID:", newCourseId);
+      
+      // Actualizar las materias existentes para incluir el nuevo curso en su campo id_cursos
+      if (data.materias && Array.isArray(data.materias) && data.materias.length > 0) {
+        try {
+          const materiasToUpdate = data.materias as string[];
+          console.log("Actualizando materias con el nuevo curso:", materiasToUpdate);
+          
+          for (const materiaId of materiasToUpdate) {
+            try {
+              // Obtener la materia actual
+              const materia = await CoursesAPI.getMateriaById(materiaId);
+              
+              // Verificar si el curso ya está en id_cursos
+              const currentCursos = Array.isArray(materia.id_cursos) ? materia.id_cursos.map(String) : [];
+              if (!currentCursos.includes(newCourseId)) {
+                // Actualizar la materia para incluir el nuevo curso
+                const updatedCursos = [...currentCursos, newCourseId];
+                await CoursesAPI.updateMateria(materiaId, {
+                  ...materia,
+                  id_cursos: updatedCursos,
+                });
+                console.log(`Materia ${materiaId} actualizada con el curso ${newCourseId}`);
+              }
+            } catch (materiaError) {
+              console.error(`Error al actualizar materia ${materiaId}:`, materiaError);
+              // Continuar con las demás materias aunque una falle
+            }
+          }
+        } catch (updateError) {
+          console.error("Error al actualizar materias:", updateError);
+          // No fallar la creación del curso si la actualización de materias falla
+        }
+      }
+      
       setCreatedCourseId(newCourseId);
       setCourseCreated(true);
       setCourseAlreadyCreatedInSession(true);
