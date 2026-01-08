@@ -138,7 +138,7 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
       {isSubmitting && isLogin && (
         <InteractiveLoader
           initialMessage="Iniciando sesión"
-          delayedMessage="Por favor aguarde, conectándose con el servidor"
+          delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
         />
       )}
       <AuthFormView

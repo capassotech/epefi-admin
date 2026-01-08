@@ -152,7 +152,7 @@ export default function Profile() {
     return (
       <InteractiveLoader
         initialMessage="Cargando perfil"
-        delayedMessage="Por favor aguarde, conectándose con el servidor"
+        delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
       />
     );
   }

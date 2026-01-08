@@ -76,7 +76,7 @@ const ProductDetail = () => {
   if (loading) return (
     <InteractiveLoader
       initialMessage="Cargando curso"
-      delayedMessage="Por favor aguarde, conectándose con el servidor"
+      delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
     />
   );
 

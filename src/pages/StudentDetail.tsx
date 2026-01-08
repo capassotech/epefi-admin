@@ -80,7 +80,7 @@ export const StudentDetail = () => {
     if (loading) return (
         <InteractiveLoader
             initialMessage="Cargando usuario"
-            delayedMessage="Por favor aguarde, conectándose con el servidor"
+            delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
         />
     );
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;

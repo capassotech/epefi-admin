@@ -277,7 +277,7 @@ export default function Products() {
     return (
       <InteractiveLoader
         initialMessage="Cargando cursos"
-        delayedMessage="Por favor aguarde, conectándose con el servidor"
+        delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
       />
     );
   }

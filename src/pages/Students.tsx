@@ -196,7 +196,7 @@ export default function Students() {
     return (
       <InteractiveLoader
         initialMessage="Cargando usuarios"
-        delayedMessage="Por favor aguarde, conectándose con el servidor"
+        delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
       />
     );
   }
