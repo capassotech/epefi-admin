@@ -291,12 +291,41 @@ export default function Subjects() {
                                 onSubjectStatusUpdated={(id, newEstado) => {
                                     // Actualizar el estado local inmediatamente sin recargar todo
                                     const newActivo = newEstado === 'activo';
-                                    setMaterias(prev => prev.map(m => 
-                                        m.id === id ? { ...m, activo: newActivo, estado: newEstado } : m
-                                    ));
-                                    setFilteredSubjects(prev => prev.map(m => 
-                                        m.id === id ? { ...m, activo: newActivo, estado: newEstado } : m
-                                    ));
+                                    const normalizedId = String(id);
+                                    console.log('Actualizando estado local de la materia:', { id, newEstado, newActivo });
+                                    
+                                    // Forzar actualización creando nuevos arrays para que React detecte el cambio
+                                    setMaterias(prev => {
+                                        const updated = prev.map(m => {
+                                            const mId = String(m.id);
+                                            if (mId === normalizedId) {
+                                                console.log('Actualizando materia en materias:', { idAnterior: m.id, activoAnterior: m.activo, estadoAnterior: m.estado, activoNuevo: newActivo, estadoNuevo: newEstado });
+                                                // Crear un nuevo objeto para garantizar que React detecte el cambio
+                                                return { ...m, activo: newActivo, estado: newEstado };
+                                            }
+                                            return m;
+                                        });
+                                        // Verificar que realmente se actualizó
+                                        const found = updated.find(m => String(m.id) === normalizedId);
+                                        console.log('Materia actualizada en materias:', found);
+                                        return updated;
+                                    });
+                                    
+                                    setFilteredSubjects(prev => {
+                                        const updated = prev.map(m => {
+                                            const mId = String(m.id);
+                                            if (mId === normalizedId) {
+                                                console.log('Actualizando materia en filteredSubjects:', { idAnterior: m.id, activoAnterior: m.activo, estadoAnterior: m.estado, activoNuevo: newActivo, estadoNuevo: newEstado });
+                                                // Crear un nuevo objeto para garantizar que React detecte el cambio
+                                                return { ...m, activo: newActivo, estado: newEstado };
+                                            }
+                                            return m;
+                                        });
+                                        // Verificar que realmente se actualizó
+                                        const found = updated.find(m => String(m.id) === normalizedId);
+                                        console.log('Materia actualizada en filteredSubjects:', found);
+                                        return updated;
+                                    });
                                 }}
                             />
                         </div>

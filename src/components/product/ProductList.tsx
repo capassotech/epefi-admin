@@ -53,7 +53,26 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
     try {
       // Usar el endpoint específico para alternar el estado
       const updatedCourse = await CoursesAPI.toggleStatus(formacion.id);
-      const newEstado = updatedCourse.estado;
+      // Intentar leer el estado de diferentes formas posibles
+      let newEstado: "activo" | "inactivo";
+      if (updatedCourse.estado) {
+        newEstado = updatedCourse.estado === "activo" ? "activo" : "inactivo";
+      } else if (updatedCourse.estado_curso) {
+        newEstado = updatedCourse.estado_curso === "activo" ? "activo" : "inactivo";
+      } else if (updatedCourse.activo !== undefined) {
+        newEstado = updatedCourse.activo ? "activo" : "inactivo";
+      } else {
+        // Si el backend no retorna el estado, usar el estado esperado basado en el switch
+        newEstado = newActiveState ? "activo" : "inactivo";
+      }
+      
+      console.log('Estado actualizado del curso:', {
+        id: formacion.id,
+        estadoAnterior: formacion.estado,
+        estadoNuevo: newEstado,
+        newActiveState,
+        updatedCourse
+      });
       
       // Si se deshabilita el curso, desasignarlo de todos los estudiantes
       if (newEstado === "inactivo") {
@@ -98,6 +117,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
       if (onProductUpdated) {
         // Actualizamos el estado local en el padre para que el switch
         // refleje inmediatamente el nuevo estado sin depender solo del refetch
+        console.log('Llamando a onProductUpdated con:', { id: formacion.id, newEstado });
         onProductUpdated(formacion.id, newEstado);
       }
     } catch (error) {

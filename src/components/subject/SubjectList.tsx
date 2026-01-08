@@ -36,13 +36,22 @@ export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassi
       const response = await CoursesAPI.toggleMateriaStatus(id);
       // El backend retorna { materia: { id, activo, ... } }
       const updatedSubject = response.materia || response;
-      const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : true;
+      const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : (updatedSubject.estado === 'activo');
       const newEstado = newActivo ? 'activo' : 'inactivo';
+      
+      console.log('Estado actualizado de la materia:', {
+        id,
+        activoAnterior: subjects.find(m => String(m.id) === String(id))?.activo,
+        activoNuevo: newActivo,
+        estadoNuevo: newEstado,
+        updatedSubject
+      });
       
       toast.success(`Materia ${newActivo ? 'activada' : 'desactivada'} exitosamente`);
       
       // Actualizar el estado local inmediatamente
       if (onSubjectStatusUpdated) {
+        console.log('Llamando a onSubjectStatusUpdated con:', { id, newEstado });
         onSubjectStatusUpdated(id, newEstado);
       } else if (onStatusChange) {
         // Solo recargar todo si no hay callback de actualización local
