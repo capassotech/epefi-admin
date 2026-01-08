@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import authService from "@/service/authService";
 import AuthFormView from "./AuthFormView";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { extractErrorMessage } from "@/utils/errorMessages";
 
 interface AuthFormProps {
   isLogin?: boolean;
@@ -109,7 +110,8 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
       });
     } catch (error: any) {
       console.error("❌ Error en login:", error);
-      toast.error(error.error || error.message || "Error al iniciar sesión");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
       setIsSubmitting(false);
     }
   };

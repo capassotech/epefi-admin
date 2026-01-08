@@ -1,69 +1,55 @@
-# React + TypeScript + Vite
+# EPEFI Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Panel administrativo de la plataforma EPEFI.
 
-Currently, two official plugins are available:
+## 🚀 Inicio Rápido
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+npm i
+cp env.local .env  # Usa env.qa o env.production según necesites
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔧 Configuración de Entornos
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+El proyecto soporta **QA** y **Producción** mediante variables de entorno.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Archivos de Configuración
+
+- `env.local` - Configuración para desarrollo local (usa datos de QA)
+- `env.qa` - Configuración para entorno QA
+- `env.production` - Configuración para producción
+
+**Para desarrollo local:** Copia `env.local` a `.env`:
+```sh
+cp env.local .env
 ```
+
+### Variables Requeridas
+
+- `VITE_FIREBASE_API_KEY_QA` / `VITE_FIREBASE_API_KEY_PROD`
+- `VITE_FIREBASE_AUTH_DOMAIN_QA` / `VITE_FIREBASE_AUTH_DOMAIN_PROD`
+- `VITE_FIREBASE_PROJECT_ID_QA` / `VITE_FIREBASE_PROJECT_ID_PROD`
+- `VITE_FIREBASE_STORAGE_BUCKET_QA` / `VITE_FIREBASE_STORAGE_BUCKET_PROD`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID_QA` / `VITE_FIREBASE_MESSAGING_SENDER_ID_PROD`
+- `VITE_FIREBASE_APP_ID_QA` / `VITE_FIREBASE_APP_ID_PROD`
+- `VITE_FIREBASE_MEASUREMENT_ID_QA` / `VITE_FIREBASE_MEASUREMENT_ID_PROD`
+- `VITE_API_URL` - URL del backend
+- `VITE_ENVIRONMENT` - `qa` o `prod` (se establece automáticamente en CI/CD)
+
+### Indicador Visual
+
+Cuando el entorno es **QA**, se muestra un banner "ENTORNO PARA PRUEBAS" en la esquina superior derecha.
+
+### CI/CD (GitHub Actions)
+
+Los despliegues automáticos usan GitHub Secrets con sufijos `_QA` y `_PROD`:
+- `VITE_FIREBASE_API_KEY_QA`, `VITE_FIREBASE_API_KEY_PROD`
+- `VITE_FIREBASE_AUTH_DOMAIN_QA`, `VITE_FIREBASE_AUTH_DOMAIN_PROD`
+- ... (mismo patrón para todas las variables)
+
+## 📦 Tecnologías
+
+- Vite + TypeScript + React
+- shadcn-ui + Tailwind CSS
+- Firebase (Auth, Storage, Firestore)

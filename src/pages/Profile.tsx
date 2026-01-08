@@ -12,6 +12,7 @@ import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import authService from "@/service/authService";
 import { TourButton } from "@/components/tour/TourButton";
 import { profileTourSteps } from "@/config/tourSteps";
+import { extractErrorMessage } from "@/utils/errorMessages";
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -142,7 +143,8 @@ export default function Profile() {
       }
     } catch (error: any) {
       console.error("Error al actualizar perfil:", error);
-      toast.error(error.message || "Error al actualizar el perfil");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -379,9 +381,10 @@ export default function Profile() {
                 setPasswordErrors({});
               } catch (error: any) {
                 console.error("Error al cambiar contraseña:", error);
-                toast.error(error.message || "Error al cambiar la contraseña");
-                if (error.message?.includes("incorrecta")) {
-                  setPasswordErrors({ currentPassword: error.message });
+                const errorMessage = extractErrorMessage(error);
+                toast.error(errorMessage);
+                if (errorMessage.includes("incorrecta")) {
+                  setPasswordErrors({ currentPassword: errorMessage });
                 }
               } finally {
                 setIsChangingPassword(false);

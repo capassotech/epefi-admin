@@ -16,6 +16,7 @@ import {
   X,
   Shield,
 } from "lucide-react";
+import { isDevelopmentOrQA } from "@/utils/environment";
 
 export default function AuthFormView({
   isLogin = false,
@@ -482,13 +483,21 @@ export default function AuthFormView({
               : renderStep1()}
 
             {isLogin && (
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <Link
                   to="/recuperar-contrasena"
-                  className="text-sm text-primary hover:underline transition-colors"
+                  className="text-sm text-primary hover:underline transition-colors block"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
+                {isDevelopmentOrQA() && (
+                  <Link
+                    to="/crear-primer-admin"
+                    className="text-sm text-muted-foreground hover:text-primary hover:underline transition-colors block"
+                  >
+                    ¿Necesitas crear el primer administrador?
+                  </Link>
+                )}
               </div>
             )}
           </CardContent>

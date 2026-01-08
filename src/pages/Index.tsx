@@ -13,13 +13,16 @@ import Students from "./Students";
 import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
 import Profile from "./Profile";
+import EnvironmentBanner from "@/components/EnvironmentBanner";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
+    <>
+      <EnvironmentBanner />
+      <div className="min-h-screen bg-gray-50 flex">
+        <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
       <main className="flex-1 p-4 lg:p-8 overflow-auto">
         {/* Header móvil */}
         <div className="lg:hidden mb-6 flex items-center justify-between">
@@ -42,6 +45,7 @@ const Index = () => {
         </Routes>
       </main>
     </div>
+    </>
   );
 };
 

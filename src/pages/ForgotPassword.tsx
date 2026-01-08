@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, Eye, EyeOff, Loader2, Shield } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import EnvironmentBanner from "@/components/EnvironmentBanner";
+import { extractErrorMessage } from "@/utils/errorMessages";
 
 const ForgotPassword = () => {
   const [searchParams] = useSearchParams();
@@ -64,7 +66,8 @@ const ForgotPassword = () => {
       });
     } catch (error: any) {
       console.error("Error al solicitar recuperación:", error);
-      toast.error(error.message || "Error al enviar el email de recuperación");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
       if (error.exists === false) {
         setErrors({ email: "Este email no está registrado" });
       }
@@ -124,7 +127,8 @@ const ForgotPassword = () => {
       }, 1500);
     } catch (error: any) {
       console.error("Error al cambiar contraseña:", error);
-      toast.error(error.message || "Error al cambiar la contraseña");
+      const errorMessage = extractErrorMessage(error);
+      toast.error(errorMessage);
       setErrors({ password: "El enlace puede haber expirado. Solicita uno nuevo." });
     } finally {
       setIsSubmitting(false);
@@ -134,7 +138,9 @@ const ForgotPassword = () => {
   const passwordRequirements = getPasswordRequirements(password);
 
   return (
-    <div className="min-h-screen bg-gradient-hero dark:bg-gradient-hero-dark flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <>
+      <EnvironmentBanner />
+      <div className="min-h-screen bg-gradient-hero dark:bg-gradient-hero-dark flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-flex items-center space-x-2 mb-8">
@@ -360,6 +366,7 @@ const ForgotPassword = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 

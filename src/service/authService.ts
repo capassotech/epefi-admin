@@ -19,6 +19,7 @@ import type {
   UserProfile,
 } from "../types/types";
 import { safeSetItem, safeGetItem, safeRemoveItem } from "../utils/storage";
+import { getFirebaseErrorMessage } from "../utils/errorMessages";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
@@ -48,13 +49,38 @@ api.interceptors.request.use(async (config) => {
 
 class AuthService {
   async register(userData: RegisterData): Promise<AuthResponse> {
+    let response: any = null;
+    
     try {
-      const response = await api.post("/auth/register", userData);
+      response = await api.post("/auth/register", userData);
 
+      // Intentar usar el customToken si está disponible, pero no fallar si no funciona
       if (response.data.customToken) {
-        await signInWithCustomToken(auth, response.data.customToken);
+        try {
+          await signInWithCustomToken(auth, response.data.customToken);
+          console.log("✅ Autenticado con customToken");
+        } catch (firebaseError: any) {
+          console.warn("⚠️ Error al autenticar con customToken:", firebaseError.code);
+          // Si el customToken falla pero el usuario fue creado en el backend, continuar
+          // El usuario podrá hacer login después con email/password
+          if (firebaseError.code === "auth/custom-token-mismatch" || 
+              firebaseError.code === "auth/invalid-custom-token") {
+            console.log("ℹ️ El usuario fue creado en el backend, pero el customToken no es válido.");
+            console.log("ℹ️ El usuario podrá iniciar sesión con email/password después.");
+            // Retornar éxito parcial
+            return {
+              user: response.data.user || null,
+              message: "Usuario creado exitosamente. Por favor, inicia sesión con tu email y contraseña.",
+              customTokenError: true
+            } as any;
+          } else {
+            // Para otros errores de Firebase, relanzar el error
+            throw firebaseError;
+          }
+        }
       }
 
+      // Guardar datos del usuario si están disponibles
       if (response.data.user) {
         const studentData = {
           uid: response.data.user.uid,
@@ -70,10 +96,31 @@ class AuthService {
 
       return response.data;
     } catch (error: any) {
+      // Si el error es del backend (response.data), manejarlo
       if (error.response?.data) {
-        throw error.response.data;
+        const backendError = error.response.data;
+        if (backendError.error || backendError.message) {
+          const errorMessage = backendError.error || backendError.message;
+          throw { ...backendError, message: errorMessage };
+        }
+        throw backendError;
       }
-      throw new Error("Error de conexión. Verifica tu conexión a internet.");
+      
+      // Si es un error de Firebase del customToken y tenemos respuesta del backend
+      if ((error.code === "auth/custom-token-mismatch" || 
+           error.code === "auth/invalid-custom-token") && 
+          response?.data) {
+        // El usuario fue creado en el backend, pero el customToken falló
+        // Retornar éxito parcial para que el usuario pueda hacer login después
+        return {
+          user: response.data.user || null,
+          message: "Usuario creado exitosamente. Por favor, inicia sesión con tu email y contraseña.",
+          customTokenError: true
+        } as any;
+      }
+      
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage || "Error de conexión. Verifica tu conexión a internet.");
     }
   }
 
@@ -94,7 +141,8 @@ class AuthService {
       const idToken = await user.getIdToken();
       return { idToken, user };
     } catch (error: any) {
-      throw new Error(error.message);
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage);
     }
   }
 
@@ -141,7 +189,11 @@ class AuthService {
       return response.data;
     } catch (error: any) {
       console.error("Error en googleRegister: ", error.response?.data?.error);
-      throw new Error(error.response?.data?.error || error.message);
+      if (error.response?.data?.error) {
+        throw { ...error.response.data, message: error.response.data.error };
+      }
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage);
     }
   }
 
@@ -184,10 +236,20 @@ class AuthService {
     } catch (error: any) {
       console.error("❌ Error en login:", error);
 
+      // Si el error viene del backend, mantener su estructura
       if (error.response?.data) {
-        throw error.response.data;
+        // Si el error del backend tiene un mensaje, crear un error con ese mensaje
+        const backendError = error.response.data;
+        if (backendError.error || backendError.message) {
+          const errorMessage = backendError.error || backendError.message;
+          throw { ...backendError, message: errorMessage };
+        }
+        throw backendError;
       }
-      throw new Error(error.message || "Error al iniciar sesión");
+
+      // Si es un error de Firebase, usar el helper
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage);
     }
   }
 
@@ -205,16 +267,8 @@ class AuthService {
       console.log("✅ Firebase auth exitoso:", userCredential.user.uid);
     } catch (error: any) {
       console.error("❌ Firebase auth falló:", error.code);
-
-      if (error.code === "auth/invalid-credential") {
-        throw new Error("Credenciales inválidas");
-      }
-
-      if (error.code === "auth/user-not-found") {
-        throw new Error("Usuario no encontrado");
-      }
-
-      throw new Error("Error al autenticar con Firebase");
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage);
     }
   }
 
@@ -237,9 +291,8 @@ class AuthService {
       if (error.response?.status === 404) {
         return false;
       }
-      throw new Error(
-        error.response?.data?.error || "Error al verificar el usuario"
-      );
+      const errorMessage = error.response?.data?.error || getFirebaseErrorMessage(error) || "Error al verificar el usuario";
+      throw new Error(errorMessage);
     }
   }
 
@@ -273,17 +326,11 @@ class AuthService {
       }
       
       // Manejar errores de Firebase
-      let errorMessage = "Error al enviar email de recuperación";
+      const errorMessage = getFirebaseErrorMessage(error);
       let exists = true;
 
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "Este email no está registrado";
+      if (error.code === "auth/user-not-found" || error.code === "auth/invalid-email") {
         exists = false;
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "El formato del email es inválido";
-        exists = false;
-      } else if (error.message) {
-        errorMessage = error.message;
       }
 
       const customError = new Error(errorMessage);
@@ -296,7 +343,8 @@ class AuthService {
     try {
       await confirmPasswordReset(auth, oobCode, password);
     } catch (error: any) {
-      throw new Error(error.message || "Error al cambiar contraseña");
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage || "Error al cambiar contraseña");
     }
   }
 
@@ -314,14 +362,8 @@ class AuthService {
       // Actualizar la contraseña
       await updatePassword(user, newPassword);
     } catch (error: any) {
-      if (error.code === "auth/wrong-password") {
-        throw new Error("La contraseña actual es incorrecta");
-      } else if (error.code === "auth/weak-password") {
-        throw new Error("La nueva contraseña es muy débil");
-      } else if (error.code === "auth/requires-recent-login") {
-        throw new Error("Por favor, vuelve a iniciar sesión antes de cambiar tu contraseña");
-      }
-      throw new Error(error.message || "Error al actualizar la contraseña");
+      const errorMessage = getFirebaseErrorMessage(error);
+      throw new Error(errorMessage || "Error al actualizar la contraseña");
     }
   }
 
@@ -337,9 +379,8 @@ class AuthService {
           "Sesión expirada. Por favor, inicia sesión nuevamente."
         );
       }
-      throw new Error(
-        error.response?.data?.error || "Error al obtener el perfil"
-      );
+      const errorMessage = error.response?.data?.error || getFirebaseErrorMessage(error) || "Error al obtener el perfil";
+      throw new Error(errorMessage);
     }
   }
 
