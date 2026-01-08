@@ -44,7 +44,6 @@ export function getFirebaseErrorMessage(error: any): string {
     "auth/missing-phone-number": "Falta número de teléfono",
     "auth/quota-exceeded": "Cuota excedida",
     "auth/credential-mismatch": "Credenciales no coinciden",
-    "auth/invalid-credential": "Credenciales inválidas",
     "auth/missing-or-invalid-nonce": "Nonce faltante o inválido",
     "auth/timeout": "Tiempo de espera agotado",
     "auth/internal-error": "Error interno del servidor",
