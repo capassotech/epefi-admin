@@ -12,6 +12,7 @@ import {
     IdCard,
     User,
     CheckCircle,
+    CheckCircle2,
     XCircle,
     Calendar,
     Trash,
@@ -51,7 +52,12 @@ interface SubjectWithDetails extends Omit<Subject, 'modulos'> {
 
 interface ModuleWithStatus extends Module {
     enabled: boolean;
-    progress?: number; // Para uso futuro
+    progress?: number;
+    completedContents?: {
+        documents: boolean[];
+        videos: boolean[];
+    };
+    progressPercentage?: number;
 }
 
 export const StudentDetail = () => {
@@ -69,6 +75,47 @@ export const StudentDetail = () => {
     const [updatingModules, setUpdatingModules] = useState<Set<string>>(new Set());
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
     const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+    const [progress, setProgress] = useState<Record<string, Record<string, boolean>>>({});
+
+    // Función para verificar si un contenido está completado
+    const isContentCompleted = (moduleId: string, contentIndex: number, contentType: 'video' | 'document'): boolean => {
+        const contentKey = `${moduleId}_${contentType}_${contentIndex}`;
+        const moduleProgress = progress[moduleId] || {};
+        return moduleProgress[contentKey] === true;
+    };
+
+    // Calcular progreso de un módulo
+    const calculateModuleProgress = (module: Module): { completed: number; total: number; percentage: number } => {
+        let completed = 0;
+        let total = 0;
+
+        // Contar videos
+        if (module.url_video) {
+            const videos = Array.isArray(module.url_video) ? module.url_video : [module.url_video];
+            videos.forEach((_, index) => {
+                total++;
+                if (isContentCompleted(module.id, index, 'video')) {
+                    completed++;
+                }
+            });
+        }
+
+        // Contar documentos
+        if (module.url_archivo) {
+            const documents = module.url_archivo.includes('|||') 
+                ? module.url_archivo.split('|||').filter(url => url.trim())
+                : [module.url_archivo];
+            documents.forEach((_, index) => {
+                total++;
+                if (isContentCompleted(module.id, index, 'document')) {
+                    completed++;
+                }
+            });
+        }
+
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { completed, total, percentage };
+    };
 
     // Cargar datos del estudiante y módulos habilitados
     useEffect(() => {
@@ -81,17 +128,20 @@ export const StudentDetail = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [studentData, modulesData] = await Promise.all([
+                const [studentData, modulesData, progressData] = await Promise.all([
                     StudentsAPI.getById(id),
                     StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
+                    StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
                 ]);
 
                 setStudent(studentData);
                 const modulesHabilitados = modulesData.modulos_habilitados || {};
+                const progressInfo = progressData.progreso || {};
+                setProgress(progressInfo);
 
                 // Cargar cursos si el estudiante tiene cursos asignados
                 if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
-                    await loadCoursesWithDetails(studentData.cursos_asignados, modulesHabilitados);
+                    await loadCoursesWithDetails(studentData.cursos_asignados, modulesHabilitados, progressInfo);
                 }
             } catch (error: unknown) {
                 console.error("❌ Error al cargar estudiante:", error);
@@ -104,7 +154,7 @@ export const StudentDetail = () => {
         fetchData();
     }, [id]);
 
-    const loadCoursesWithDetails = async (courseIds: string[], modulesHabilitados: Record<string, boolean>) => {
+    const loadCoursesWithDetails = async (courseIds: string[], modulesHabilitados: Record<string, boolean>, progressInfo: Record<string, Record<string, boolean>>) => {
         setLoadingCourses(true);
         try {
             const coursesData: CourseWithDetails[] = [];
@@ -126,10 +176,69 @@ export const StudentDetail = () => {
                                 const modulesData = await CoursesAPI.getModulesByIds(subject.modulos);
                                 
                                 for (const module of modulesData) {
+                                    // Calcular progreso usando progressInfo directamente
+                                    let moduleCompleted = 0;
+                                    let moduleTotal = 0;
+                                    
+                                    // Contar videos
+                                    if (module.url_video) {
+                                        const videos = Array.isArray(module.url_video) ? module.url_video : [module.url_video];
+                                        videos.forEach((_: string, index: number) => {
+                                            moduleTotal++;
+                                            const contentKey = `${module.id}_video_${index}`;
+                                            if (progressInfo[module.id]?.[contentKey] === true) {
+                                                moduleCompleted++;
+                                            }
+                                        });
+                                    }
+                                    
+                                    // Contar documentos
+                                    if (module.url_archivo) {
+                                        const documents = module.url_archivo.includes('|||') 
+                                            ? module.url_archivo.split('|||').filter((url: string) => url.trim())
+                                            : [module.url_archivo];
+                                        documents.forEach((_: string, index: number) => {
+                                            moduleTotal++;
+                                            const contentKey = `${module.id}_document_${index}`;
+                                            if (progressInfo[module.id]?.[contentKey] === true) {
+                                                moduleCompleted++;
+                                            }
+                                        });
+                                    }
+                                    
+                                    const moduleProgressPercentage = moduleTotal > 0 
+                                        ? Math.round((moduleCompleted / moduleTotal) * 100) 
+                                        : 0;
+                                    
                                     modulos.push({
                                         ...module,
-                                        enabled: modulesHabilitados[module.id] !== false, // Por defecto habilitado si no está explícitamente deshabilitado
-                                        progress: 0, // Para uso futuro
+                                        enabled: modulesHabilitados[module.id] !== false,
+                                        progress: moduleProgressPercentage,
+                                        progressPercentage: moduleProgressPercentage,
+                                        completedContents: {
+                                            documents: module.url_archivo ? (
+                                                module.url_archivo.includes('|||') 
+                                                    ? module.url_archivo.split('|||').filter((url: string) => url.trim()).map((_: string, index: number) => {
+                                                        const contentKey = `${module.id}_document_${index}`;
+                                                        return progressInfo[module.id]?.[contentKey] === true;
+                                                    })
+                                                    : [(() => {
+                                                        const contentKey = `${module.id}_document_0`;
+                                                        return progressInfo[module.id]?.[contentKey] === true;
+                                                    })()]
+                                            ) : [],
+                                            videos: module.url_video ? (
+                                                Array.isArray(module.url_video)
+                                                    ? module.url_video.map((_: string, index: number) => {
+                                                        const contentKey = `${module.id}_video_${index}`;
+                                                        return progressInfo[module.id]?.[contentKey] === true;
+                                                    })
+                                                    : [(() => {
+                                                        const contentKey = `${module.id}_video_0`;
+                                                        return progressInfo[module.id]?.[contentKey] === true;
+                                                    })()]
+                                            ) : [],
+                                        },
                                     });
                                 }
                             }
@@ -378,7 +487,7 @@ export const StudentDetail = () => {
                             <Calendar className="w-4 h-4 mr-1.5 text-white" />
                             Asignar Cursos
                         </Button>
-                    </CardTitle>
+                            </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loadingCourses ? (
@@ -398,19 +507,50 @@ export const StudentDetail = () => {
                                         onClick={() => toggleCourse(course.id)}
                                         className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
                                     >
-                                        <div className="flex items-center space-x-3">
+                                        <div className="flex items-center space-x-3 flex-1">
                                             {expandedCourses.has(course.id) ? (
                                                 <ChevronDown className="w-6 h-6 text-gray-500 flex-shrink-0" />
                                             ) : (
                                                 <ChevronRight className="w-6 h-6 text-gray-500 flex-shrink-0" />
                                             )}
                                             <BookOpen className="w-6 h-6 text-blue-500 flex-shrink-0" />
-                                            <div className="text-left">
+                                            <div className="text-left flex-1">
                                                 <h3 className="font-semibold text-lg text-gray-900">{course.titulo}</h3>
-                                                <p className="text-sm text-gray-600">{course.descripcion}</p>
+                                                {/* Progreso del curso */}
+                                                {(() => {
+                                                    let courseCompleted = 0;
+                                                    let courseTotal = 0;
+                                                    course.materias.forEach(subject => {
+                                                        subject.modulos.forEach(module => {
+                                                            const moduleProgress = calculateModuleProgress(module);
+                                                            courseCompleted += moduleProgress.completed;
+                                                            courseTotal += moduleProgress.total;
+                                                        });
+                                                    });
+                                                    const courseProgressPercentage = courseTotal > 0 
+                                                        ? Math.round((courseCompleted / courseTotal) * 100) 
+                                                        : 0;
+                                                    
+                                                    if (courseTotal > 0) {
+                                                        return (
+                                                            <div className="mt-2 flex items-center gap-2">
+                                                                <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[200px]">
+                                                                    <div
+                                                                        className="bg-green-500 h-2 rounded-full transition-all"
+                                                                        style={{ width: `${courseProgressPercentage}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-xs text-gray-600 font-medium">
+                                                                    {courseProgressPercentage}% completado ({courseCompleted}/{courseTotal})
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </div>
                                         </div>
-                                        <span className="text-sm text-gray-500">
+                                        <span className="text-sm text-gray-500 ml-2">
                                             {course.materias.length} materia{course.materias.length !== 1 ? 's' : ''}
                                         </span>
                                     </button>
@@ -420,26 +560,54 @@ export const StudentDetail = () => {
                                             {course.materias.length === 0 ? (
                                                 <p className="text-gray-500 text-sm">No hay materias en este curso.</p>
                                             ) : (
-                                                <div className="space-y-3">
-                                                    {course.materias.map((subject) => (
-                                                        <div key={subject.id} className="border rounded-lg overflow-hidden">
-                                                            <button
-                                                                onClick={() => toggleSubject(subject.id)}
-                                                                className="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 transition-colors"
-                                                            >
-                                                                <div className="flex items-center space-x-3">
-                                                                    {expandedSubjects.has(subject.id) ? (
-                                                                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                                                                    ) : (
-                                                                        <ChevronRight className="w-4 h-4 text-gray-500" />
-                                                                    )}
-                                                                    <BookOpen className="w-4 h-4 text-purple-500" />
-                                                                    <span className="font-medium text-gray-900">{subject.nombre}</span>
-                                                                </div>
-                                                                <span className="text-xs text-gray-500">
-                                                                    {subject.modulos.length} módulo{subject.modulos.length !== 1 ? 's' : ''}
-                                                                </span>
-                                                            </button>
+                                <div className="space-y-3">
+                                                    {course.materias.map((subject) => {
+                                                        // Calcular progreso de la materia
+                                                        let subjectCompleted = 0;
+                                                        let subjectTotal = 0;
+                                                        subject.modulos.forEach(module => {
+                                                            const moduleProgress = calculateModuleProgress(module);
+                                                            subjectCompleted += moduleProgress.completed;
+                                                            subjectTotal += moduleProgress.total;
+                                                        });
+                                                        const subjectProgressPercentage = subjectTotal > 0 
+                                                            ? Math.round((subjectCompleted / subjectTotal) * 100) 
+                                                            : 0;
+
+                                                        return (
+                                                            <div key={subject.id} className="border rounded-lg overflow-hidden">
+                                                                <button
+                                                                    onClick={() => toggleSubject(subject.id)}
+                                                                    className="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                                >
+                                                                    <div className="flex items-center space-x-3 flex-1">
+                                                                        {expandedSubjects.has(subject.id) ? (
+                                                                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                                                                        ) : (
+                                                                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                                                                        )}
+                                                                        <BookOpen className="w-4 h-4 text-purple-500" />
+                                                                        <div className="flex-1 text-left">
+                                                                            <span className="font-medium text-gray-900">{subject.nombre}</span>
+                                                                            {subjectTotal > 0 && (
+                                                                                <div className="mt-1 flex items-center gap-2">
+                                                                                    <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-[100px]">
+                                                                                        <div
+                                                                                            className="bg-green-500 h-1.5 rounded-full transition-all"
+                                                                                            style={{ width: `${subjectProgressPercentage}%` }}
+                                                                                        />
+                                                                                    </div>
+                                                                                    <span className="text-xs text-gray-600">
+                                                                                        {subjectProgressPercentage}%
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="text-xs text-gray-500 ml-2">
+                                                                        {subject.modulos.length} módulo{subject.modulos.length !== 1 ? 's' : ''}
+                                                                    </span>
+                                                                </button>
 
                                                             {expandedSubjects.has(subject.id) && (
                                                                 <div className="p-3 bg-white border-t">
@@ -447,50 +615,120 @@ export const StudentDetail = () => {
                                                                         <p className="text-gray-500 text-sm">No hay módulos en esta materia.</p>
                                                                     ) : (
                                                                         <div className="space-y-2">
-                                                                            {subject.modulos.map((module) => (
-                                                                                <div
-                                                                                    key={module.id}
-                                                                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                                >
-                                                                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                                                                        {module.tipo_contenido === 'video' ? (
-                                                                                            <Play className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                                                                                        ) : (
-                                                                                            <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                                                                        )}
-                                                                                        <div className="flex-1 min-w-0">
-                                                                                            <p className="font-medium text-sm text-gray-900 truncate">
-                                                                                                {module.titulo}
-                                                                                            </p>
-                                                                                            <p className="text-xs text-gray-500 truncate">
-                                                                                                {module.descripcion}
-                                                                                            </p>
+                                                                            {subject.modulos.map((module) => {
+                                                                                // Calcular progreso del módulo
+                                                                                const moduleProgress = calculateModuleProgress(module);
+                                                                                const progressPercentage = moduleProgress.percentage;
+                                                                                
+                                                                                // Obtener documentos y videos del módulo
+                                                                                const documents = module.url_archivo ? (
+                                                                                    module.url_archivo.includes('|||') 
+                                                                                        ? module.url_archivo.split('|||').filter(url => url.trim())
+                                                                                        : [module.url_archivo]
+                                                                                ) : [];
+                                                                                const videos = module.url_video ? (
+                                                                                    Array.isArray(module.url_video) ? module.url_video : [module.url_video]
+                                                                                ) : [];
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={module.id}
+                                                                                        className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                                                                    >
+                                                                                        <div className="flex items-center justify-between mb-2">
+                                                                                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                                                                                {module.tipo_contenido === 'video' ? (
+                                                                                                    <Play className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                                                                                                ) : (
+                                                                                                    <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                                                                                )}
+                                                                                                <div className="flex-1 min-w-0">
+                                                                                                    <p className="font-medium text-sm text-gray-900 truncate">
+                                                                                                        {module.titulo}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="flex items-center space-x-3 ml-4">
+                                                                                                {updatingModules.has(module.id) ? (
+                                                                                                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                                                                                                ) : (
+                                                                                                    <Switch
+                                                                                                        checked={module.enabled}
+                                                                                                        onCheckedChange={() => handleModuleToggle(module.id, module.enabled)}
+                                                                                                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
+                                                                                                    />
+                                                                                                )}
+                                                                                                <span className={`text-xs font-medium w-20 text-right ${
+                                                                                                    module.enabled ? 'text-green-700' : 'text-red-700'
+                                                                                                }`}>
+                                                                                                    {module.enabled ? 'Habilitado' : 'Deshabilitado'}
+                                                                                                </span>
+                                                                                            </div>
                                                                                         </div>
-                                                                                    </div>
-                                                                                    <div className="flex items-center space-x-3 ml-4">
-                                                                                        {updatingModules.has(module.id) ? (
-                                                                                            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                                                                                        ) : (
-                                                                                            <Switch
-                                                                                                checked={module.enabled}
-                                                                                                onCheckedChange={() => handleModuleToggle(module.id, module.enabled)}
-                                                                                                className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
-                                                                                            />
+                                                                                        
+                                                                                        {/* Barra de progreso del módulo */}
+                                                                                        {(documents.length > 0 || videos.length > 0) && (
+                                                                                            <div className="mt-3 space-y-2">
+                                                                                                <div className="flex items-center justify-between text-xs">
+                                                                                                    <span className="text-gray-600 font-medium">Progreso del módulo</span>
+                                                                                                    <span className="text-gray-600">
+                                                                                                        {moduleProgress.completed} de {moduleProgress.total} completados ({progressPercentage}%)
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                                                    <div
+                                                                                                        className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                                                                                        style={{ width: `${progressPercentage}%` }}
+                                                                                                    />
+                                                                                                </div>
+                                                                                                
+                                                                                                {/* Lista de contenidos con estado */}
+                                                                                                <div className="mt-2 space-y-1">
+                                                                                                    {/* Documentos */}
+                                                                                                    {documents.map((_, index) => {
+                                                                                                        const isCompleted = isContentCompleted(module.id, index, 'document');
+                                                                                                        return (
+                                                                                                            <div key={`doc-${index}`} className="flex items-center gap-2 text-xs">
+                                                                                                                {isCompleted ? (
+                                                                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                                                                                                                ) : (
+                                                                                                                    <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                                                                                )}
+                                                                                                                <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
+                                                                                                                    Documento {index + 1} {isCompleted ? '(Completado)' : '(Pendiente)'}
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                    {/* Videos */}
+                                                                                                    {videos.map((_, index) => {
+                                                                                                        const isCompleted = isContentCompleted(module.id, index, 'video');
+                                                                                                        return (
+                                                                                                            <div key={`video-${index}`} className="flex items-center gap-2 text-xs">
+                                                                                                                {isCompleted ? (
+                                                                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                                                                                                                ) : (
+                                                                                                                    <Play className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                                                                                                )}
+                                                                                                                <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
+                                                                                                                    Video {index + 1} {isCompleted ? '(Completado)' : '(Pendiente)'}
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
+                                                                                            </div>
                                                                                         )}
-                                                                                        <span className={`text-xs font-medium w-20 text-right ${
-                                                                                            module.enabled ? 'text-green-700' : 'text-red-700'
-                                                                                        }`}>
-                                                                                            {module.enabled ? 'Habilitado' : 'Deshabilitado'}
-                                                                                        </span>
                                                                                     </div>
-                                                                                </div>
-                                                                            ))}
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             )}
-                                                        </div>
-                                                    ))}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
@@ -591,8 +829,12 @@ export const StudentDetail = () => {
                         const studentData = await StudentsAPI.getById(id);
                         setStudent(studentData);
                         if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
-                            const modulesData = await StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} }));
-                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {});
+                            const [modulesData, progressData] = await Promise.all([
+                                StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
+                                StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
+                            ]);
+                            setProgress(progressData.progreso || {});
+                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
                         } else {
                             setCourses([]);
                         }

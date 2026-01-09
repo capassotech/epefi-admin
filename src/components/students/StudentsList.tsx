@@ -3,7 +3,6 @@ import {
   Mail,
   // Calendar,
   Edit2,
-  UserPlus,
   Loader2,
   Calendar,
   Eye,

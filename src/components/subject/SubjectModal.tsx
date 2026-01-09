@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, X, BookOpen, Settings, Trash2 } from 'lucide-react';
+import { Loader2, BookOpen, Settings, Trash2 } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
 import { toast } from 'sonner';
 
@@ -24,14 +24,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { CoursesAPI } from '@/service/courses';
 import { type Course, type Subject } from '@/types/types';
 
@@ -66,10 +58,8 @@ const SubjectModal = ({
 }: SubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
-    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [currentCourseTitle, setCurrentCourseTitle] = useState<string | null>(courseTitle || null);
-    const location = useLocation();
     const [subjectForm, setSubjectForm] = useState({
         nombre: "",
         id_cursos: Array.isArray(courseId) ? courseId : courseId ? [courseId] : [] as string[],
@@ -152,13 +142,6 @@ const SubjectModal = ({
                         id_cursos: validCourseIds,
                         modulos: editingSubject.modulos || [],
                     });
-                    // Solo mantener selectedCourses si estamos en el flujo de creación de curso
-                    if (fromCourseCreation && courseId) {
-                        const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
-                        setSelectedCourses(initialCourses);
-                    } else {
-                        setSelectedCourses([]);
-                    }
                 } else {
                     const initialCourses = fromCourseCreation && courseId 
                         ? (Array.isArray(courseId) ? courseId : courseId ? [courseId] : [])
@@ -168,7 +151,6 @@ const SubjectModal = ({
                         id_cursos: initialCourses,
                         modulos: [],
                     });
-                    setSelectedCourses(initialCourses);
                 }
 
                 // Si hay courseTitle, usarlo directamente
@@ -187,26 +169,6 @@ const SubjectModal = ({
             initializeSubject();
         }
     }, [isOpen, courseId, courseTitle, editingSubject]);
-
-    const handleCourseSelect = (courseId: string) => {
-        if (!selectedCourses.includes(courseId)) {
-            const newSelectedCourses = [...selectedCourses, courseId];
-            setSelectedCourses(newSelectedCourses);
-            setSubjectForm(prev => ({
-                ...prev,
-                id_cursos: newSelectedCourses
-            }));
-        }
-    };
-
-    const handleCourseRemove = (courseId: string) => {
-        const newSelectedCourses = selectedCourses.filter(id => id !== courseId);
-        setSelectedCourses(newSelectedCourses);
-        setSubjectForm(prev => ({
-            ...prev,
-            id_cursos: newSelectedCourses
-        }));
-    };
 
     const getCourseName = (id: string) => {
         // Primero buscar en el caché

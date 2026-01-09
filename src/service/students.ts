@@ -193,4 +193,22 @@ export const StudentsAPI = {
       throw new Error(errorMessage);
     }
   },
+
+  // Obtener el progreso del estudiante
+  getStudentProgress: async (id: string) => {
+    try {
+      const res = await api.get(`/usuarios/${id}/progreso`);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al obtener progreso del estudiante";
+      throw new Error(errorMessage);
+    }
+  },
 };
