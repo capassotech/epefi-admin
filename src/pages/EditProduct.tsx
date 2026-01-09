@@ -111,18 +111,37 @@ export default function EditProduct() {
         setPlanDeEstudiosDeleted(false);
         setFechasDeExamenesDeleted(false);
         // Función helper para convertir fecha ISO a formato YYYY-MM-DD
-        const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
-          if (!dateValue) return undefined;
+        const formatDateForInput = (dateValue: string | undefined | null): string => {
+          if (!dateValue) {
+            // Retornar fecha por defecto si no hay valor
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
           try {
             const date = new Date(dateValue);
-            if (isNaN(date.getTime())) return undefined;
+            if (isNaN(date.getTime())) {
+              // Retornar fecha por defecto si la fecha es inválida
+              const today = new Date();
+              const year = today.getFullYear();
+              const month = String(today.getMonth() + 1).padStart(2, '0');
+              const day = String(today.getDate()).padStart(2, '0');
+              return `${year}-${month}-${day}`;
+            }
             // Convertir a formato YYYY-MM-DD
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
           } catch {
-            return undefined;
+            // Retornar fecha por defecto si hay error
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
           }
         };
         const formData = {
@@ -389,17 +408,36 @@ export default function EditProduct() {
       form.setValue("fechasDeExamenes", undefined);
       
       // Función helper para formatear fechas
-      const formatDateForInput = (dateValue: string | undefined | null): string | undefined => {
-        if (!dateValue) return undefined;
+      const formatDateForInput = (dateValue: string | undefined | null): string => {
+        if (!dateValue) {
+          // Retornar fecha por defecto si no hay valor
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
         try {
           const date = new Date(dateValue);
-          if (isNaN(date.getTime())) return undefined;
+          if (isNaN(date.getTime())) {
+            // Retornar fecha por defecto si la fecha es inválida
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
           return `${year}-${month}-${day}`;
         } catch {
-          return undefined;
+          // Retornar fecha por defecto si hay error
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
         }
       };
 
@@ -699,6 +737,40 @@ export default function EditProduct() {
                       setCurrentFechasDeExamenesUrl(course.fechasDeExamenesUrl || null);
                       
                       // Actualizar originalCourseData con los datos actuales del curso
+                      // Función helper para formatear fechas
+                      const formatDateForInput = (dateValue: string | undefined | null): string => {
+                        if (!dateValue) {
+                          // Retornar fecha por defecto si no hay valor
+                          const today = new Date();
+                          const year = today.getFullYear();
+                          const month = String(today.getMonth() + 1).padStart(2, '0');
+                          const day = String(today.getDate()).padStart(2, '0');
+                          return `${year}-${month}-${day}`;
+                        }
+                        try {
+                          const date = new Date(dateValue);
+                          if (isNaN(date.getTime())) {
+                            // Retornar fecha por defecto si la fecha es inválida
+                            const today = new Date();
+                            const year = today.getFullYear();
+                            const month = String(today.getMonth() + 1).padStart(2, '0');
+                            const day = String(today.getDate()).padStart(2, '0');
+                            return `${year}-${month}-${day}`;
+                          }
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, '0');
+                          const day = String(date.getDate()).padStart(2, '0');
+                          return `${year}-${month}-${day}`;
+                        } catch {
+                          // Retornar fecha por defecto si hay error
+                          const today = new Date();
+                          const year = today.getFullYear();
+                          const month = String(today.getMonth() + 1).padStart(2, '0');
+                          const day = String(today.getDate()).padStart(2, '0');
+                          return `${year}-${month}-${day}`;
+                        }
+                      };
+
                       const updatedFormData = {
                         titulo: course.titulo || "",
                         descripcion: course.descripcion || "",
@@ -708,6 +780,8 @@ export default function EditProduct() {
                         materias: Array.isArray(course.materias) ? course.materias : [],
                         planDeEstudios: undefined,
                         fechasDeExamenes: undefined,
+                        fechaInicioDictado: formatDateForInput(course.fechaInicioDictado),
+                        fechaFinDictado: formatDateForInput(course.fechaFinDictado),
                       };
                       
                       setOriginalCourseData(updatedFormData);

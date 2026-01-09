@@ -358,9 +358,8 @@ const ModulesModal = ({
             }
 
             // Obtener el token de autenticación explícitamente
-            let idToken: string | null = null;
             try {
-                idToken = await firebaseUser.getIdToken();
+                await firebaseUser.getIdToken();
             } catch (tokenError) {
                 console.error('Error al obtener token:', tokenError);
                 toast.error('Error de autenticación. Por favor, inicia sesión nuevamente');
@@ -676,7 +675,7 @@ const ModulesModal = ({
                                             : [];
                                         
                                         // Función para extraer el nombre del archivo de la URL
-                                        const getFileNameFromUrl = (url: string): string => {
+                                        const getFileNameFromUrl = (url: string, fileIndex: number): string => {
                                             try {
                                                 const urlObj = new URL(url);
                                                 let pathname = urlObj.pathname;
@@ -699,7 +698,7 @@ const ModulesModal = ({
                                                 
                                                 // Si el nombre está vacío después de limpiar, usar genérico
                                                 if (!fileName || fileName.trim().length === 0) {
-                                                    return `Archivo ${index + 1}`;
+                                                    return `Archivo ${fileIndex + 1}`;
                                                 }
                                                 
                                                 // Limpiar y formatear el nombre
@@ -721,7 +720,7 @@ const ModulesModal = ({
                                                     .filter(word => word.length > 0)
                                                     .join(' ');
                                                 
-                                                return fileName || `Archivo ${index + 1}`;
+                                                return fileName || `Archivo ${fileIndex + 1}`;
                                             } catch {
                                                 // Si no es una URL válida, intentar extraer de otra forma
                                                 const parts = url.split('/');
@@ -738,7 +737,7 @@ const ModulesModal = ({
                                                 fileName = fileName.replace(/\.(pdf|doc|docx|txt|zip|rar)$/i, '');
                                                 
                                                 if (!fileName || fileName.trim().length === 0) {
-                                                    return `Archivo ${index + 1}`;
+                                                    return `Archivo ${fileIndex + 1}`;
                                                 }
                                                 
                                                 return fileName;
@@ -748,7 +747,7 @@ const ModulesModal = ({
                                         return existingUrls.length > 0 ? (
                                             <div className="space-y-2">
                                                 {existingUrls.map((url, index) => {
-                                                    const fileName = getFileNameFromUrl(url);
+                                                    const fileName = getFileNameFromUrl(url, index);
                                                     return (
                                                         <div 
                                                         key={`existing-${index}`} 
