@@ -6,6 +6,7 @@ import {
   UserPlus,
   Loader2,
   Calendar,
+  Eye,
 } from "lucide-react";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
@@ -158,6 +159,20 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                 </td> */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/students/${student.id}`);
+                      }}
+                      className="h-9 w-[140px] px-3 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 hover:text-green-800 transition-all duration-200 shadow-sm cursor-pointer"
+                      title="Ver detalles del estudiante"
+                      data-tour="view-student-details"
+                    >
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      Ver Detalles
+                    </Button>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CreateUserModal
                         onUserCreated={onUserUpdated}
@@ -170,6 +185,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                           size="sm"
                           className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                           title="Editar usuario"
+                          data-tour="edit-student"
                         >
                           <Edit2 className="w-4 h-4 mr-1.5" />
                           Editar
@@ -187,6 +203,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                       }}
                       className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer"
                       title="Asignar cursos"
+                      data-tour="assign-courses"
                     >
                       <Calendar className="w-4 h-4 mr-1.5 text-white" />
                       Cursos
@@ -199,6 +216,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                       }`}
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
+                      data-tour="toggle-student-status"
                     >
                       <span className={`text-xs whitespace-nowrap font-medium ${
                         (student.activo ?? false)

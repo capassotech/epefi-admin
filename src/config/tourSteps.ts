@@ -107,6 +107,46 @@ export const studentsTourSteps: TourStep[] = [
       align: 'start',
     },
   },
+  {
+    element: '[data-tour="view-student-details"]',
+    popover: {
+      title: 'Ver detalles del alumno',
+      description:
+        'Este botón te lleva a la pantalla de detalles del estudiante, donde podés ver todos sus cursos, materias y módulos asignados. Desde ahí podés habilitar o deshabilitar cada módulo individualmente, lo cual es útil cuando los estudiantes pagan mes a mes y necesitás controlar qué contenido pueden ver según su plan de pago.',
+      side: 'left',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="edit-student"]',
+    popover: {
+      title: 'Editar usuario',
+      description:
+        'Desde acá podés modificar los datos personales del estudiante: nombre, apellido, email, DNI y otros datos de su perfil.',
+      side: 'left',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="assign-courses"]',
+    popover: {
+      title: 'Asignar cursos',
+      description:
+        'Este botón te permite asignar o quitar cursos al estudiante. Podés seleccionar múltiples cursos y el sistema los asignará automáticamente.',
+      side: 'left',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="toggle-student-status"]',
+    popover: {
+      title: 'Habilitar/Deshabilitar usuario',
+      description:
+        'Con este switch podés activar o desactivar el acceso del estudiante al sistema. Si lo deshabilitás, el estudiante no podrá acceder a ningún curso ni contenido hasta que lo vuelvas a habilitar.',
+      side: 'left',
+      align: 'start',
+    },
+  },
 ];
 
 export const subjectsTourSteps: TourStep[] = [

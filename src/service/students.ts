@@ -157,4 +157,40 @@ export const StudentsAPI = {
       throw new Error(errorMessage);
     }
   },
+
+  // Obtener el estado de habilitación de módulos para un estudiante
+  getStudentModules: async (id: string) => {
+    try {
+      const res = await api.get(`/usuarios/${id}/modulos`);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al obtener módulos del estudiante";
+      throw new Error(errorMessage);
+    }
+  },
+
+  // Actualizar el estado de habilitación de un módulo para un estudiante
+  updateStudentModule: async (studentId: string, moduleId: string, enabled: boolean) => {
+    try {
+      const res = await api.patch(`/usuarios/${studentId}/modulos/${moduleId}`, { enabled });
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al actualizar módulo del estudiante";
+      throw new Error(errorMessage);
+    }
+  },
 };
