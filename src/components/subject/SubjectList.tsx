@@ -19,17 +19,15 @@ interface SubjectListProps {
   onSubjectStatusUpdated?: (id: string, newEstado: "activo" | "inactivo") => void;
 }
 
-export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassign = false, showTitle = true, onStatusChange, onSubjectStatusUpdated }: SubjectListProps) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false, showTitle = true, onStatusChange, onSubjectStatusUpdated }: SubjectListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isUnassigning, setIsUnassigning] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   const closeToast = () => setToastState(null);
 
-  const handleStatusChange = async (id: string, newCheckedState: boolean) => {
+  const handleStatusChange = async (id: string, _newCheckedState: boolean) => {
     setUpdatingStatusId(id);
     try {
       // Usar el endpoint específico para alternar el estado
@@ -62,38 +60,6 @@ export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassi
       toast.error('Error al actualizar el estado de la materia');
     } finally {
       setUpdatingStatusId(null);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (onDelete) {
-      onDelete(id);
-      await confirmDelete();
-    } else {
-      setSelectedId(id);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedId || isDeleting) return;
-
-    setIsDeleting(true);
-
-    try {
-      if (onDelete) {
-        await onDelete(selectedId); 
-      } else {
-        await CoursesAPI.deleteMateria(selectedId);
-      }
-
-      setToastState({ message: 'Materia eliminada con éxito', type: 'success' });
-
-      setSelectedId(null);
-    } catch (err) {
-      setToastState({ message: 'Error al eliminar la materia', type: 'error' });
-      console.error('Error al eliminar:', err);
-    } finally {
-      setIsDeleting(false);
     }
   };
 

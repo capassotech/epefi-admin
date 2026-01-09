@@ -13,7 +13,6 @@ import { useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
-import { useAuth } from "@/context/AuthContext";
 import { StudentsAPI } from "@/service/students";
 import { toast } from "sonner";
 
@@ -24,13 +23,11 @@ interface StudentListProps {
   onStatusChange?: () => void;
 }
 
-export function StudentList({ students, onDelete, onUserUpdated, onStatusChange }: StudentListProps) {
+export function StudentList({ students, onUserUpdated, onStatusChange }: StudentListProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   const handleStatusChange = async (id: string, currentStatus: boolean) => {
@@ -168,8 +165,8 @@ export function StudentList({ students, onDelete, onUserUpdated, onStatusChange 
                       <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
                       <Switch
-                        checked={student.activo}
-                        onCheckedChange={() => handleStatusChange(student.id, student.activo)}
+                        checked={student.activo ?? false}
+                        onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
                         onClick={(e) => {
                           e.stopPropagation();
                         }}

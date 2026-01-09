@@ -9,7 +9,7 @@ import ToastNotification from "../ui/ToastNotification";
 import { formatCurrency } from '@/utils/currency';
 import { Pencil, Loader2 } from 'lucide-react';
 import { toast } from "sonner";
-import { Course, StudentDB } from "@/types/types";
+import type { Course, StudentDB } from "@/types/types";
 
 // Componente para manejar imágenes con placeholder
 const ImageWithPlaceholder = ({ src, alt, className }: { src?: string; alt: string; className?: string }) => {

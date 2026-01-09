@@ -10,7 +10,6 @@ import {
     Clock,
     BookOpen,
     Image as ImageIcon,
-    Trash2,
     Trash,
     Loader2,
 } from 'lucide-react';

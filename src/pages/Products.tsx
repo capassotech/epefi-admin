@@ -52,10 +52,6 @@ export default function Products() {
     fetchCursos();
   }, []);
 
-  const handleDeleteClick = async (id: string) => {
-    setConfirmDeleteId(id);
-    setIsDeleteModalOpen(true);
-  };
 
   const handleConfirmDelete = async (id: string) => {
     if (!id) {
