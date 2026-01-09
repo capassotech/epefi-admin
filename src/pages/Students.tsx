@@ -232,7 +232,22 @@ export default function Students() {
 
       {filteredStudents.length > 0 ? (
         <div data-tour="students-list">
-          <StudentList students={filteredStudents} onDelete={handleDeleteClick} onUserUpdated={handleUserUpdated} />
+          <StudentList 
+            students={filteredStudents} 
+            onDelete={handleDeleteClick} 
+            onUserUpdated={handleUserUpdated}
+            onStatusChange={async () => {
+              // Recargar estudiantes después de cambiar estado
+              try {
+                const res = await StudentsAPI.getAll();
+                const data = Array.isArray(res) ? res : res?.data || [];
+                setStudents(data);
+                applyFilters(searchQuery, filters);
+              } catch (err) {
+                console.error("Error al recargar estudiantes:", err);
+              }
+            }}
+          />
         </div>
       ) : (
         <div className="text-center py-12">

@@ -10,6 +10,9 @@ import {
     Clock,
     BookOpen,
     Image as ImageIcon,
+    Trash2,
+    Trash,
+    Loader2,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Module, Subject } from '@/types/types';
@@ -17,6 +20,17 @@ import ModulesList from '@/components/subject/ModulesList';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import ModulesModal from '@/components/subject/ModulesModal';
 import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
 export const SubjectDetail = () => {
@@ -32,6 +46,8 @@ export const SubjectDetail = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Module | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [isDeletingMateria, setIsDeletingMateria] = useState(false);
 
     useEffect(() => {
         if (!id) {
@@ -259,7 +275,68 @@ export const SubjectDetail = () => {
                 deleteLoading={deleteLoading}
                 itemName={modulos.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
                 id={confirmDeleteId || ""}
-            />  
+            />
+
+            {/* Sección de eliminación de la materia */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+                <div className="flex justify-center">
+                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="lg"
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                disabled={isDeletingMateria}
+                            >
+                                {isDeletingMateria ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Eliminando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash className="w-4 h-4 mr-2" />
+                                        Eliminar Materia Permanentemente
+                                    </>
+                                )}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar materia permanentemente?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción eliminará la materia "{materia?.nombre || "esta materia"}" y todos sus datos asociados de forma permanente. 
+                                    Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={async () => {
+                                        if (!id) return;
+                                        setIsDeletingMateria(true);
+                                        try {
+                                            await CoursesAPI.deleteMateria(id);
+                                            toast.success('Materia eliminada exitosamente');
+                                            setDeleteConfirmOpen(false);
+                                            navigate('/subjects');
+                                        } catch (err) {
+                                            toast.error('Error al eliminar la materia');
+                                            console.error('Error al eliminar:', err);
+                                        } finally {
+                                            setIsDeletingMateria(false);
+                                        }
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700"
+                                >
+                                    Eliminar Permanentemente
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </div>
         </div>
     );
 };

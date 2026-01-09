@@ -342,7 +342,47 @@ export default function Products() {
             </div>
           ) : (
             <div data-tour="courses-list">
-              <ProductList products={filteredProducts} onDelete={handleDeleteClick} />
+              <ProductList 
+                products={filteredProducts}
+                onProductUpdated={(id, newEstado) => {
+                  // Actualizar el estado local sin recargar todo
+                  console.log('Actualizando estado local del curso:', { id, newEstado });
+                  const normalizedId = String(id);
+                  
+                  // Forzar actualización creando nuevos arrays para que React detecte el cambio
+                  setCursos(prev => {
+                    const updated = prev.map(c => {
+                      const cId = String(c.id);
+                      if (cId === normalizedId) {
+                        console.log('Actualizando curso en cursos:', { idAnterior: c.id, estadoAnterior: c.estado, estadoNuevo: newEstado });
+                        // Crear un nuevo objeto para garantizar que React detecte el cambio
+                        return { ...c, estado: newEstado };
+                      }
+                      return c;
+                    });
+                    // Verificar que realmente se actualizó
+                    const found = updated.find(c => String(c.id) === normalizedId);
+                    console.log('Curso actualizado en cursos:', found);
+                    return updated;
+                  });
+                  
+                  setFilteredProducts(prev => {
+                    const updated = prev.map(c => {
+                      const cId = String(c.id);
+                      if (cId === normalizedId) {
+                        console.log('Actualizando curso en filteredProducts:', { idAnterior: c.id, estadoAnterior: c.estado, estadoNuevo: newEstado });
+                        // Crear un nuevo objeto para garantizar que React detecte el cambio
+                        return { ...c, estado: newEstado };
+                      }
+                      return c;
+                    });
+                    // Verificar que realmente se actualizó
+                    const found = updated.find(c => String(c.id) === normalizedId);
+                    console.log('Curso actualizado en filteredProducts:', found);
+                    return updated;
+                  });
+                }}
+              />
             </div>
           )}
         </>

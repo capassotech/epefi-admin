@@ -1,10 +1,7 @@
 // src/components/student/StudentList.tsx
 import {
-  Trash2,
   Mail,
   // Calendar,
-  CheckCircle,
-  XCircle,
   Edit2,
   UserPlus,
   Loader2,
@@ -15,21 +12,47 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import { useAuth } from "@/context/AuthContext";
+import { StudentsAPI } from "@/service/students";
+import { toast } from "sonner";
 
 interface StudentListProps {
   students: StudentDB[];
   onDelete: (id: string) => void;
   onUserUpdated?: () => void;
+  onStatusChange?: () => void;
 }
 
-export function StudentList({ students, onDelete, onUserUpdated }: StudentListProps) {
+export function StudentList({ students, onDelete, onUserUpdated, onStatusChange }: StudentListProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  const handleStatusChange = async (id: string, currentStatus: boolean) => {
+    setUpdatingStatusId(id);
+    try {
+      const student = students.find(s => s.id === id);
+      if (!student) return;
+      
+      await StudentsAPI.updateStudent(id, {
+        activo: !currentStatus,
+      });
+      toast.success(`Usuario ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`);
+      if (onStatusChange) {
+        onStatusChange();
+      }
+    } catch (error) {
+      console.error('Error al actualizar estado del usuario:', error);
+      toast.error('Error al actualizar el estado del usuario');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const getErrorMessage = (e: unknown) => {
     if (e instanceof Error) return e.message;
@@ -133,17 +156,26 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                   </div>
                 </td>
                 <td className="px-2 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    {student.activo ? (
-                      <>
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        <span className="text-sm text-green-700">Activo</span>
-                      </>
+                  <div 
+                    className="flex items-center gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {updatingStatusId === student.id ? 'Actualizando...' : (student.activo ? 'Activo' : 'Inactivo')}
+                    </span>
+                    {updatingStatusId === student.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
-                      <>
-                        <XCircle className="w-4 h-4 text-red-500 mr-2" />
-                        <span className="text-sm text-red-700">Inactivo</span>
-                      </>
+                      <Switch
+                        checked={student.activo}
+                        onCheckedChange={() => handleStatusChange(student.id, student.activo)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        disabled={updatingStatusId !== null}
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                      />
                     )}
                   </div>
                 </td>
@@ -174,26 +206,6 @@ export function StudentList({ students, onDelete, onUserUpdated }: StudentListPr
                           </Button>
                         </CreateUserModal>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingId(student.id);
-                          onDelete(student.id);
-                          setTimeout(() => setDeletingId(null), 1000);
-                        }}
-                        disabled={deletingId === student.id || user?.uid === student.id}
-                        className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm disabled:opacity-50"
-                        title={user?.uid === student.id ? "No puedes eliminar tu propia cuenta" : "Eliminar usuario"}
-                      >
-                        {deletingId === student.id ? (
-                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4 mr-1.5" />
-                        )}
-                        Eliminar
-                      </Button>
                     </div>
                     <Button
                       variant="default"

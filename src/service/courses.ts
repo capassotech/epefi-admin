@@ -83,8 +83,21 @@ export const CoursesAPI = {
   },
 
   getById: async (id: string) => {
-    const res = await api.get(`/cursos/${id}`);
-    return res.data;
+    try {
+      const res = await api.get(`/cursos/${id}`);
+      return res.data;
+    } catch (error: unknown) {
+      // Manejar errores 404 silenciosamente (recursos no encontrados)
+      const axiosError = error as { response?: { status?: number }; request?: any };
+      if (axiosError.response?.status === 404) {
+        // Retornar null en lugar de lanzar error para evitar logs en consola
+        // El código que llama puede verificar si el resultado es null
+        return null;
+      }
+      // Para otros errores, loguear y re-lanzar
+      console.error('Error al obtener curso:', error);
+      throw error;
+    }
   },
 
   create: async (data: Record<string, unknown>) => {
@@ -95,6 +108,27 @@ export const CoursesAPI = {
   update: async (id: string, data: Record<string, unknown>) => {
     const res = await api.put(`/cursos/${id}`, data);
     return res.data;
+  },
+
+  toggleStatus: async (id: string) => {
+    try {
+      const res = await api.patch(`/cursos/${id}/toggle-status`);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { 
+          data?: { message?: string; error?: string }; 
+          status?: number;
+        };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al alternar el estado del curso";
+      throw new Error(errorMessage);
+    }
   },
 
   delete: async (id: string) => {
@@ -225,6 +259,27 @@ export const CoursesAPI = {
         axiosError.response?.data?.message ||
         axiosError.message ||
         "Error al actualizar materia";
+      throw new Error(errorMessage);
+    }
+  },
+
+  toggleMateriaStatus: async (id: string) => {
+    try {
+      const res = await api.patch(`/materias/${id}/toggle-status`);
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { 
+          data?: { message?: string; error?: string }; 
+          status?: number;
+        };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al alternar el estado de la materia";
       throw new Error(errorMessage);
     }
   },

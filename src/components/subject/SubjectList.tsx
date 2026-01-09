@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom';
 import ToastNotification from '../ui/ToastNotification';
 import { CoursesAPI } from '@/service/courses';
 import { type Subject } from '@/types/types';
-import { Edit2, Trash2, X, Loader2 } from 'lucide-react';
+import { Edit2, X, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 interface SubjectListProps {
   subjects: Subject[];
@@ -13,16 +15,55 @@ interface SubjectListProps {
   onUnassign?: (id: string) => void; // Nueva función para desasignar materia del curso
   showUnassign?: boolean; // Flag para mostrar el botón de desasignar
   showTitle?: boolean; // Flag para mostrar/ocultar el título
+  onStatusChange?: () => void;
+  onSubjectStatusUpdated?: (id: string, newEstado: "activo" | "inactivo") => void;
 }
 
-export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassign = false, showTitle = true }: SubjectListProps) => {
+export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassign = false, showTitle = true, onStatusChange, onSubjectStatusUpdated }: SubjectListProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUnassigning, setIsUnassigning] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
-  const closeToast = () => setToast(null);
+  const closeToast = () => setToastState(null);
+
+  const handleStatusChange = async (id: string, newCheckedState: boolean) => {
+    setUpdatingStatusId(id);
+    try {
+      // Usar el endpoint específico para alternar el estado
+      const response = await CoursesAPI.toggleMateriaStatus(id);
+      // El backend retorna { materia: { id, activo, ... } }
+      const updatedSubject = response.materia || response;
+      const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : (updatedSubject.estado === 'activo');
+      const newEstado = newActivo ? 'activo' : 'inactivo';
+      
+      console.log('Estado actualizado de la materia:', {
+        id,
+        activoAnterior: subjects.find(m => String(m.id) === String(id))?.activo,
+        activoNuevo: newActivo,
+        estadoNuevo: newEstado,
+        updatedSubject
+      });
+      
+      toast.success(`Materia ${newActivo ? 'activada' : 'desactivada'} exitosamente`);
+      
+      // Actualizar el estado local inmediatamente
+      if (onSubjectStatusUpdated) {
+        console.log('Llamando a onSubjectStatusUpdated con:', { id, newEstado });
+        onSubjectStatusUpdated(id, newEstado);
+      } else if (onStatusChange) {
+        // Solo recargar todo si no hay callback de actualización local
+        onStatusChange();
+      }
+    } catch (error) {
+      console.error('Error al actualizar estado de la materia:', error);
+      toast.error('Error al actualizar el estado de la materia');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (onDelete) {
@@ -45,11 +86,11 @@ export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassi
         await CoursesAPI.deleteMateria(selectedId);
       }
 
-      setToast({ message: 'Materia eliminada con éxito', type: 'success' });
+      setToastState({ message: 'Materia eliminada con éxito', type: 'success' });
 
       setSelectedId(null);
     } catch (err) {
-      setToast({ message: 'Error al eliminar la materia', type: 'error' });
+      setToastState({ message: 'Error al eliminar la materia', type: 'error' });
       console.error('Error al eliminar:', err);
     } finally {
       setIsDeleting(false);
@@ -143,38 +184,40 @@ export const SubjectList = ({ subjects, onDelete, onEdit, onUnassign, showUnassi
                       )}
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(m.id);
-                    }}
-                    disabled={isDeleting && selectedId === m.id}
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                   >
-                    {isDeleting && selectedId === m.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                        Eliminando...
-                      </>
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {updatingStatusId === m.id ? 'Actualizando...' : ((m.activo !== undefined ? m.activo : (m.estado === 'activo')) ? 'Activo' : 'Inactivo')}
+                    </span>
+                    {updatingStatusId === m.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
-                      <>
-                        <Trash2 className="w-4 h-4 mr-1.5" />
-                        Eliminar
-                      </>
+                      <Switch
+                        checked={m.activo !== undefined ? m.activo : (m.estado === 'activo')}
+                        onCheckedChange={(checked) => {
+                          handleStatusChange(m.id, checked);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        disabled={updatingStatusId !== null}
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                      />
                     )}
-                  </Button>
+                  </div>
                 </div>
               </li>
             ))
           )}
         </ul>
       </div>
-      {toast && (
+      {toastState && (
         <ToastNotification
-          message={toast.message}
-          type={toast.type}
+          message={toastState.message}
+          type={toastState.type}
           onClose={closeToast}
         />
       )}
