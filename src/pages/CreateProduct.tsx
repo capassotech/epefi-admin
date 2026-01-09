@@ -136,9 +136,12 @@ export default function CreateProduct() {
         materias: data.materias || [],
       };
 
-      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
-      payload.fechaInicioDictado = data.fechaInicioDictado || null;
-      payload.fechaFinDictado = data.fechaFinDictado || null;
+      // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
+      const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
+      payload.fechaInicioDictado = fechaInicio.toISOString();
+      
+      const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
+      payload.fechaFinDictado = fechaFin.toISOString();
       if (planDeEstudiosUrl) {
         payload.planDeEstudiosUrl = planDeEstudiosUrl;
         payload.planDeEstudiosActualizado = now;

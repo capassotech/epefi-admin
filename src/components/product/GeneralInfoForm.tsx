@@ -223,12 +223,13 @@ const GeneralInfoForm = ({
           name="fechaInicioDictado"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de Inicio del Dictado</FormLabel>
+              <FormLabel>Fecha de Inicio del Dictado <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   type="date"
                   {...field}
                   value={field.value || ""}
+                  required
                 />
               </FormControl>
               <FormMessage />
@@ -241,12 +242,13 @@ const GeneralInfoForm = ({
           name="fechaFinDictado"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Fecha de Fin del Dictado</FormLabel>
+              <FormLabel>Fecha de Fin del Dictado <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   type="date"
                   {...field}
                   value={field.value || ""}
+                  required
                 />
               </FormControl>
               <FormMessage />

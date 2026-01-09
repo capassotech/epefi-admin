@@ -265,21 +265,12 @@ export default function EditProduct() {
         materias: data.materias || [],
       };
 
-      // Incluir fechas siempre, incluso si están vacías (para que el backend pueda procesarlas)
       // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
-      if (data.fechaInicioDictado) {
-        const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
-        payload.fechaInicioDictado = fechaInicio.toISOString();
-      } else {
-        payload.fechaInicioDictado = null;
-      }
+      const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
+      payload.fechaInicioDictado = fechaInicio.toISOString();
       
-      if (data.fechaFinDictado) {
-        const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
-        payload.fechaFinDictado = fechaFin.toISOString();
-      } else {
-        payload.fechaFinDictado = null;
-      }
+      const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
+      payload.fechaFinDictado = fechaFin.toISOString();
 
       // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
       const course = await CoursesAPI.getById(id);

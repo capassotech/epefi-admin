@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { CoursesAPI } from "@/service/courses";
 import { StudentsAPI } from "@/service/students";
 import { Link } from "react-router-dom";
@@ -179,9 +180,11 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                       </div>
 
                       {/* Botones de acción */}
-                      <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
-                        <button
-                          className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-all duration-200 font-medium text-xs sm:text-sm shadow-sm hover:shadow-md flex-1 sm:flex-initial"
+                      <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             const id = f.id;
@@ -203,13 +206,13 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                             navigate(`/products/${encodeURIComponent(id)}/edit`);
                           }}
                         >
-                          <Pencil className="w-4 h-4" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </button>
+                          <Pencil className="w-4 h-4 mr-1.5" />
+                          Editar
+                        </Button>
                         
                         <div 
                           data-tour="switch-toggle"
-                          className={`flex items-center gap-2 px-3 sm:px-4 py-2 border rounded-lg transition-colors ${
+                          className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors ${
                             (f.estado === "activo")
                               ? 'bg-green-50 border-green-200' 
                               : 'bg-red-50 border-red-200'

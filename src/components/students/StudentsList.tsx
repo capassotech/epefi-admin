@@ -95,13 +95,10 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
               <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Rol
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Estado
-              </th>
               {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Registro
               </th> */}
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Acciones
               </th>
             </tr>
@@ -152,73 +149,77 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                     )}
                   </div>
                 </td>
-                <td className="px-2 py-4 whitespace-nowrap">
-                  <div 
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <span className="text-xs text-gray-600 whitespace-nowrap">
-                      {updatingStatusId === student.id ? 'Actualizando...' : (student.activo ? 'Activo' : 'Inactivo')}
-                    </span>
-                    {updatingStatusId === student.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                    ) : (
-                      <Switch
-                        checked={student.activo ?? false}
-                        onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        disabled={updatingStatusId !== null}
-                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                      />
-                    )}
-                  </div>
-                </td>
                 {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2 text-gray-400" />
                     {formatDate(student.fechaRegistro)}
                   </div>
                 </td> */}
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex flex-col items-end justify-end gap-2">
-                    <div className="flex items-center gap-2">
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <CreateUserModal
-                          onUserCreated={onUserUpdated}
-                          triggerText=""
-                          isEditing={true}
-                          editingUser={student}
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <CreateUserModal
+                        onUserCreated={onUserUpdated}
+                        triggerText=""
+                        isEditing={true}
+                        editingUser={student}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                          title="Editar usuario"
                         >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm"
-                            title="Editar usuario"
-                          >
-                            <Edit2 className="w-4 h-4 mr-1.5" />
-                            Editar
-                          </Button>
-                        </CreateUserModal>
-                      </div>
+                          <Edit2 className="w-4 h-4 mr-1.5" />
+                          Editar
+                        </Button>
+                      </CreateUserModal>
                     </div>
                     <Button
-                      variant="default"
                       size="sm"
+                      variant="outline"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedStudentId(student.id);
                         setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md"
+                      className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                       title="Asignar cursos"
                     >
                       <UserPlus className="w-4 h-4 mr-1.5" />
                       Asignar cursos
                     </Button>
+                    <div 
+                      className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors w-[140px] ${
+                        (student.activo ?? false)
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <span className={`text-xs whitespace-nowrap font-medium ${
+                        (student.activo ?? false)
+                          ? 'text-green-700' 
+                          : 'text-red-700'
+                      }`}>
+                        {updatingStatusId === student.id ? 'Actualizando...' : ((student.activo ?? false) ? 'Habilitado' : 'Deshabilitado')}
+                      </span>
+                      {updatingStatusId === student.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                      ) : (
+                        <Switch
+                          checked={student.activo ?? false}
+                          onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          disabled={updatingStatusId !== null}
+                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                        />
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>
