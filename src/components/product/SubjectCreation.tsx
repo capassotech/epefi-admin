@@ -680,6 +680,27 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                         setLoadingModules(false);
                     }
                 }}
+                onSubjectDeleted={async (subjectId: string) => {
+                    // Actualizar el estado local removiendo la materia eliminada
+                    setAllSubjects(prev => prev.filter(s => s.id !== subjectId));
+                    setCourseSubjects(prev => prev.filter(s => s.id !== subjectId));
+                    setCourseSubjectIds(prev => prev.filter(id => id !== subjectId));
+                    setEditingSubject(null);
+                    
+                    // Si hay courseId, actualizar el curso para remover la referencia a la materia
+                    if (courseId) {
+                        try {
+                            const course = await CoursesAPI.getById(String(courseId));
+                            const updatedMaterias = Array.isArray(course?.materias) 
+                                ? course.materias.filter((id: string) => id !== subjectId)
+                                : [];
+                            await CoursesAPI.update(String(courseId), { ...course, materias: updatedMaterias });
+                            setCourseSubjectIds(updatedMaterias);
+                        } catch (error) {
+                            console.error("Error al actualizar curso después de eliminar materia:", error);
+                        }
+                    }
+                }}
             />
 
             <ConfirmDeleteModal

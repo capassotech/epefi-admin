@@ -5,6 +5,7 @@ import {
   Edit2,
   UserPlus,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
@@ -184,11 +185,11 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                         setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                      className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer"
                       title="Asignar cursos"
                     >
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      Asignar cursos
+                      <Calendar className="w-4 h-4 mr-1.5 text-white" />
+                      Cursos
                     </Button>
                     <div 
                       className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors w-[140px] ${

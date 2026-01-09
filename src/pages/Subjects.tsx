@@ -365,6 +365,12 @@ export default function Subjects() {
                 onGoToModules={async (subjectId: string) => {
                     navigate(`/modules/create?subjectId=${subjectId}`);
                 }}
+                onSubjectDeleted={async (subjectId: string) => {
+                    // Actualizar el estado local removiendo la materia eliminada
+                    setMaterias(prev => prev.filter(m => m.id !== subjectId));
+                    setFilteredSubjects(prev => prev.filter(m => m.id !== subjectId));
+                    setEditingSubject(null);
+                }}
             />
         </div>
     );

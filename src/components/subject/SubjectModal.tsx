@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, X, BookOpen, Settings } from 'lucide-react';
+import { Loader2, X, BookOpen, Settings, Trash2 } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
 import { toast } from 'sonner';
 
@@ -47,6 +47,7 @@ interface SubjectModalProps {
     onGoToModules?: (subjectId: string, moduleIds: string[]) => void;
     fromCourseCreation?: boolean; // Indica si se está creando desde el flujo de creación de curso
     onSubjectCreatedComplete?: (subjectId: string) => void; // Callback cuando se completa la creación (materia + módulos)
+    onSubjectDeleted?: (subjectId: string) => Promise<void>; // Callback cuando se elimina una materia
 }
 
 
@@ -60,7 +61,8 @@ const SubjectModal = ({
     onSubjectUpdated,
     onGoToModules,
     fromCourseCreation = false,
-    onSubjectCreatedComplete
+    onSubjectCreatedComplete,
+    onSubjectDeleted
 }: SubjectModalProps) => {
     const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
@@ -74,6 +76,8 @@ const SubjectModal = ({
         modulos: [] as string[],
     });
     const [showConfirmSaveDialog, setShowConfirmSaveDialog] = useState(false);
+    const [showConfirmDeleteDialog, setShowConfirmDeleteDialog] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [courseNamesCache, setCourseNamesCache] = useState<Record<string, string>>({});
 
     const loadCourseById = async (id: string) => {
@@ -148,9 +152,17 @@ const SubjectModal = ({
                         id_cursos: validCourseIds,
                         modulos: editingSubject.modulos || [],
                     });
-                    setSelectedCourses(validCourseIds);
+                    // Solo mantener selectedCourses si estamos en el flujo de creación de curso
+                    if (fromCourseCreation && courseId) {
+                        const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
+                        setSelectedCourses(initialCourses);
+                    } else {
+                        setSelectedCourses([]);
+                    }
                 } else {
-                    const initialCourses = Array.isArray(courseId) ? courseId : courseId ? [courseId] : [];
+                    const initialCourses = fromCourseCreation && courseId 
+                        ? (Array.isArray(courseId) ? courseId : courseId ? [courseId] : [])
+                        : [];
                     setSubjectForm({
                         nombre: "",
                         id_cursos: initialCourses,
@@ -250,9 +262,15 @@ const SubjectModal = ({
         }
 
         try {
+            // Si estamos en el flujo de creación de curso, usar el courseId
+            // Si no, usar un array vacío (no se pueden asignar cursos desde la gestión de materias)
+            const cursosAsignados = fromCourseCreation && courseId 
+                ? (Array.isArray(courseId) ? courseId : [courseId])
+                : (editingSubject?.id_cursos || []);
+            
             const subjectDataToSend = {
                 nombre: subjectForm.nombre,
-                id_cursos: selectedCourses,
+                id_cursos: cursosAsignados,
                 modulos: subjectForm.modulos,
             };
 
@@ -294,10 +312,16 @@ const SubjectModal = ({
                         }, 500);
                     } else {
                         // Fallback al flujo antiguo con localStorage (para compatibilidad)
+                        // Si estamos en el flujo de creación de curso, usar el courseId
+                        // Si no, usar un array vacío (no se pueden asignar cursos desde la gestión de materias)
+                        const cursosAsignados = fromCourseCreation && courseId 
+                            ? (Array.isArray(courseId) ? courseId : [courseId])
+                            : [];
+                        
                         const subjectData = {
                             id: res.id,
                             nombre: subjectForm.nombre,
-                            id_cursos: selectedCourses,
+                            id_cursos: cursosAsignados,
                             modulos: subjectForm.modulos,
                         };
 
@@ -362,82 +386,7 @@ const SubjectModal = ({
                             />
                         </div>
 
-                        {!location.pathname.includes('products') ? (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Curso/s asociado/s
-                                    </label>
-                                    <Select onValueChange={handleCourseSelect}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Seleccionar cursos..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {courses
-                                                .filter(course => !selectedCourses.includes(course.id))
-                                                .map((course) => (
-                                                    <SelectItem key={course.id} value={course.id}>
-                                                        {course.titulo}
-                                                    </SelectItem>
-                                                ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    {/* Mostrar cursos seleccionados */}
-                                    {selectedCourses.length > 0 && (
-                                        <div className="mt-3">
-                                            <p className="text-sm text-gray-600 mb-2">Cursos seleccionados:</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {selectedCourses.map((courseId) => {
-                                                    const courseName = getCourseName(courseId);
-                                                    const isDeleted = courseName === "[Curso eliminado]";
-                                                    return (
-                                                        <Badge 
-                                                            key={courseId} 
-                                                            variant={isDeleted ? "destructive" : "secondary"} 
-                                                            className="flex items-center gap-1"
-                                                        >
-                                                            {courseName}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleCourseRemove(courseId)}
-                                                                className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-                                                                title={isDeleted ? "Remover referencia a curso eliminado" : "Remover curso"}
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </button>
-                                                        </Badge>
-                                                    );
-                                                })}
-                                            </div>
-                                            {selectedCourses.some(id => getCourseName(id) === "[Curso eliminado]") && (
-                                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                                                    <span>⚠️</span>
-                                                    <span>Algunos cursos fueron eliminados y se limpiarán automáticamente al guardar</span>
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {selectedCourses.length > 0 && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-blue-700">
-                                                    Esta materia se asociará a {selectedCourses.length} curso{selectedCourses.length > 1 ? 's' : ''} seleccionado{selectedCourses.length > 1 ? 's' : ''}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
+                        {fromCourseCreation && courseId && (
                             <div>
                                 <h1 className="text-sm font-medium text-gray-700 mb-2">Esta materia se asociará al curso:</h1>
                                 <Badge key={courseId} variant="default" className="flex items-center gap-1 w-fit mt-3">
@@ -488,29 +437,53 @@ const SubjectModal = ({
                             </div>
                         )}
 
-                        <div className="flex justify-end space-x-3 pt-4 border-t">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onCancel}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                className='cursor-pointer'
-                                type="submit"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <Loader2 className='h-4 w-4 animate-spin' />
-                                ) : editingSubject ? (
-                                    'Guardar Cambios'
-                                ) : fromCourseCreation ? (
-                                    'Crear Materia'
-                                ) : (
-                                    'Continuar con Módulos'
-                                )}
-                            </Button>
+                        <div className="flex justify-between items-center pt-4 border-t">
+                            {editingSubject && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => setShowConfirmDeleteDialog(true)}
+                                    disabled={loading || deleteLoading}
+                                    className="cursor-pointer text-white"
+                                >
+                                    {deleteLoading ? (
+                                        <>
+                                            <Loader2 className='h-4 w-4 animate-spin mr-2' />
+                                            Eliminando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className='h-4 w-4 mr-2' />
+                                            Eliminar Materia
+                                        </>
+                                    )}
+                                </Button>
+                            )}
+                            <div className="flex justify-end space-x-3 ml-auto">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onCancel}
+                                    disabled={loading || deleteLoading}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    className='cursor-pointer'
+                                    type="submit"
+                                    disabled={loading || deleteLoading}
+                                >
+                                    {loading ? (
+                                        <Loader2 className='h-4 w-4 animate-spin' />
+                                    ) : editingSubject ? (
+                                        'Guardar Cambios'
+                                    ) : fromCourseCreation ? (
+                                        'Crear Materia'
+                                    ) : (
+                                        'Continuar con Módulos'
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -551,9 +524,15 @@ const SubjectModal = ({
                                 if (!editingSubject) {
                                     setLoading(true);
                                     try {
+                                        // Si estamos en el flujo de creación de curso, usar el courseId
+                                        // Si no, usar un array vacío (no se pueden asignar cursos desde la gestión de materias)
+                                        const cursosAsignados = fromCourseCreation && courseId 
+                                            ? (Array.isArray(courseId) ? courseId : [courseId])
+                                            : [];
+                                        
                                         const subjectDataToSend = {
                                             nombre: subjectForm.nombre,
-                                            id_cursos: selectedCourses,
+                                            id_cursos: cursosAsignados,
                                             modulos: subjectForm.modulos,
                                         };
                                         
@@ -594,9 +573,15 @@ const SubjectModal = ({
                                     // Si estamos editando, guardar cambios primero
                                     setLoading(true);
                                     try {
+                                        // Si estamos en el flujo de creación de curso, usar el courseId
+                                        // Si no, mantener los cursos existentes de la materia
+                                        const cursosAsignados = fromCourseCreation && courseId 
+                                            ? (Array.isArray(courseId) ? courseId : [courseId])
+                                            : (editingSubject?.id_cursos || []);
+                                        
                                         const subjectDataToSend = {
                                             nombre: subjectForm.nombre,
-                                            id_cursos: selectedCourses,
+                                            id_cursos: cursosAsignados,
                                             modulos: subjectForm.modulos,
                                         };
                                         
@@ -627,6 +612,67 @@ const SubjectModal = ({
                                 </>
                             ) : (
                                 editingSubject ? "Guardar y Continuar" : "Guardar y Continuar"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            
+            {/* Dialog de confirmación para eliminar materia */}
+            <AlertDialog open={showConfirmDeleteDialog} onOpenChange={setShowConfirmDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="h-5 w-5" />
+                            Eliminar Materia
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-left pt-2">
+                            ¿Estás seguro de que deseas eliminar la materia <strong>"{editingSubject?.nombre}"</strong>?
+                            <br /><br />
+                            Esta acción eliminará permanentemente la materia y todos sus módulos asociados. Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel 
+                            className="cursor-pointer"
+                            disabled={deleteLoading}
+                        >
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="cursor-pointer bg-red-600 hover:bg-red-700"
+                            onClick={async () => {
+                                if (!editingSubject?.id) return;
+                                
+                                setDeleteLoading(true);
+                                try {
+                                    await CoursesAPI.deleteMateria(editingSubject.id);
+                                    toast.success("Materia eliminada exitosamente");
+                                    
+                                    // Cerrar el modal
+                                    setShowConfirmDeleteDialog(false);
+                                    onCancel();
+                                    
+                                    // Llamar al callback si existe
+                                    if (onSubjectDeleted) {
+                                        await onSubjectDeleted(editingSubject.id);
+                                    }
+                                } catch (error) {
+                                    console.error('Error al eliminar materia:', error);
+                                    toast.error('Error al eliminar la materia. Por favor, inténtalo de nuevo.');
+                                } finally {
+                                    setDeleteLoading(false);
+                                }
+                            }}
+                            disabled={deleteLoading}
+                        >
+                            {deleteLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                'Eliminar'
                             )}
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -8,9 +8,19 @@ import { StudentsAPI } from "@/service/students";
 import { Link } from "react-router-dom";
 import ToastNotification from "../ui/ToastNotification";
 import { formatCurrency } from '@/utils/currency';
-import { Pencil, Loader2 } from 'lucide-react';
+import { Pencil, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from "sonner";
 import type { Course, StudentDB } from "@/types/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Componente para manejar imágenes con placeholder
 const ImageWithPlaceholder = ({ src, alt, className }: { src?: string; alt: string; className?: string }) => {
@@ -46,10 +56,43 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
     type: "success" | "error";
   } | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [pendingCourse, setPendingCourse] = useState<{ course: Course; newState: boolean } | null>(null);
+  const [studentsCount, setStudentsCount] = useState<number>(0);
+  const [loadingStudentsCount, setLoadingStudentsCount] = useState(false);
 
   const closeToast = () => setToastState(null);
 
   const handleToggleActive = async (formacion: Course, newActiveState: boolean) => {
+    // Si se va a deshabilitar, mostrar advertencia primero
+    if (!newActiveState) {
+      setLoadingStudentsCount(true);
+      try {
+        // Obtener todos los estudiantes y contar cuántos tienen este curso asignado
+        const allStudents = await StudentsAPI.getAll();
+        const studentsWithCourse = allStudents.filter((student: StudentDB) => 
+          student.cursos_asignados?.includes(formacion.id)
+        );
+        setStudentsCount(studentsWithCourse.length);
+        setPendingCourse({ course: formacion, newState: newActiveState });
+        setShowDisableConfirm(true);
+      } catch (error) {
+        console.error('Error al obtener estudiantes:', error);
+        // Si hay error, continuar de todas formas pero sin mostrar el conteo
+        setStudentsCount(0);
+        setPendingCourse({ course: formacion, newState: newActiveState });
+        setShowDisableConfirm(true);
+      } finally {
+        setLoadingStudentsCount(false);
+      }
+      return;
+    }
+
+    // Si se va a habilitar, proceder directamente
+    await executeToggleActive(formacion, newActiveState);
+  };
+
+  const executeToggleActive = async (formacion: Course, newActiveState: boolean) => {
     setUpdatingStatusId(formacion.id);
     try {
       // Usar el endpoint específico para alternar el estado
@@ -264,6 +307,66 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
           onClose={closeToast}
         />
       )}
+
+      {/* Modal de confirmación para deshabilitar curso */}
+      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Advertencia: Deshabilitar Curso
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left pt-2 space-y-3">
+              <p>
+                ¿Estás seguro de que deseas deshabilitar el curso <strong>"{pendingCourse?.course.titulo}"</strong>?
+              </p>
+              {loadingStudentsCount ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verificando estudiantes asignados...</span>
+                </div>
+              ) : studentsCount > 0 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-1">
+                    ⚠️ Este curso está asignado a {studentsCount} estudiante{studentsCount > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Al deshabilitar el curso, se desasignará automáticamente de todos los estudiantes que lo tengan actualmente.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Este curso no tiene estudiantes asignados actualmente.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowDisableConfirm(false);
+                setPendingCourse(null);
+                setStudentsCount(0);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setShowDisableConfirm(false);
+                if (pendingCourse) {
+                  await executeToggleActive(pendingCourse.course, pendingCourse.newState);
+                  setPendingCourse(null);
+                  setStudentsCount(0);
+                }
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Sí, deshabilitar curso
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
