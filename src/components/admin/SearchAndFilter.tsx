@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,11 +7,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Plus } from "lucide-react";
+import { Search, Filter } from "lucide-react";
+import { CreateUserModal } from "../students/CreateUserModal";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export interface FilterOptions {
   status?: string;
   sortBy?: string;
+  role?: string;
 }
 
 interface SearchAndFilterProps {
@@ -24,6 +27,8 @@ interface SearchAndFilterProps {
     sortOptions?: { value: string; label: string }[];
   };
   hideCreateButton?: boolean;
+  isStudentPage?: boolean;
+  currentFilters?: FilterOptions;
 }
 
 export const SearchAndFilter = ({
@@ -31,11 +36,20 @@ export const SearchAndFilter = ({
   onFilter,
   onCreateNew,
   createButtonText = "Crear Nuevo",
+  isStudentPage = false,
   filterOptions,
   hideCreateButton = false,
+  currentFilters: externalFilters,
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentFilters, setCurrentFilters] = useState<FilterOptions>({});
+  const [currentFilters, setCurrentFilters] = useState<FilterOptions>(externalFilters || {});
+  
+  // Sincronizar filtros externos con el estado interno
+  useEffect(() => {
+    if (externalFilters) {
+      setCurrentFilters(externalFilters);
+    }
+  }, [externalFilters]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -55,7 +69,7 @@ export const SearchAndFilter = ({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Buscar formaciones..."
+            placeholder="Buscar..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10"
@@ -80,6 +94,23 @@ export const SearchAndFilter = ({
             </SelectContent>
           </Select>
 
+          {/* Rol - Solo mostrar en la página de estudiantes */}
+          {isStudentPage && (
+            <Select
+              value={currentFilters.role || "all"}
+              onValueChange={(value) => handleFilterChange("role", value)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Rol" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los roles</SelectItem>
+                <SelectItem value="student">Estudiante</SelectItem>
+                <SelectItem value="admin">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
           {/* Ordenar por */}
           {filterOptions?.sortOptions && (
             <Select
@@ -100,12 +131,16 @@ export const SearchAndFilter = ({
         </div>
       </div>
 
-      {/* Botón crear (opcional) */}
+
       {!hideCreateButton && onCreateNew && (
-        <Button onClick={onCreateNew}>
-          <Plus className="w-4 h-4 mr-2" />
-          {createButtonText}
-        </Button>
+        isStudentPage ? (
+          <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
+        ) : (
+          <Button onClick={onCreateNew} className="cursor-pointer" data-tour="create-course">
+            <Plus className="w-4 h-4 mr-2 cursor-pointer" />
+            {createButtonText}
+          </Button>
+        )
       )}
     </div>
   );

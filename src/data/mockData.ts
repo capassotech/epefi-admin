@@ -15,70 +15,77 @@ export const mockModules: Module[] = [
     titulo: "Introducción a la Moldería",
     descripcion: "Conceptos básicos de moldería y herramientas fundamentales",
     id_materia: "materia-molderia-basica",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Manual de Moldería Básica - Capítulo 1",
     url_miniatura: "https://http2.mlstatic.com/D_NQ_NP_766761-MLA82625997088_032025-O.webp",
-    url_contenido: "https://www.youtube.com/embed/k6GFz1kw1bY?si=lEf81Qfu7UpPEP58"
+    url_video: ["https://www.youtube.com/embed/k6GFz1kw1bY?si=lEf81Qfu7UpPEP58"],
+    url_archivo: ""
   },
   {
-    id: "modulo-2", 
+    id: "modulo-2",
     titulo: "Patronaje Base",
     descripcion: "Creación de patrones base para cuerpo y manga",
     id_materia: "materia-patronaje",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Técnicas de Patronaje - Capítulo 3",
     url_miniatura: "https://patterncos.com/wp-content/uploads/2018/06/Manga_sastre_Tutorial_01-1024x683.png",
-    url_contenido: "https://www.youtube.com/embed/mvCttGLNwE0?si=TWYd9d3vjGH9Jx9d"
+    url_video: ["https://www.youtube.com/embed/mvCttGLNwE0?si=TWYd9d3vjGH9Jx9d"],
+    url_archivo: ""
   },
   {
     id: "modulo-3",
     titulo: "Moldería Específica de Campera",
     descripcion: "Técnicas específicas para camperas tipo parka",
     id_materia: "materia-molderia-especifica",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Confección de Prendas Exteriores - Capítulo 5",
     url_miniatura: "https://i.pinimg.com/564x/47/92/49/47924957309ea96cee07ea9f525bad67.jpg",
-    url_contenido: "https://www.youtube.com/embed/ZYuizK01p-U?si=Wb3V1qokJReRB7fU"
+    url_video: ["https://www.youtube.com/embed/ZYuizK01p-U?si=Wb3V1qokJReRB7fU"],
+    url_archivo: ""
   },
   {
     id: "modulo-4",
     titulo: "Armado y Confección",
     descripcion: "Proceso completo de armado de la prenda",
     id_materia: "materia-confeccion",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Técnicas de Confección Avanzada",
     url_miniatura: "https://www.localesbambaci.com.ar/cdn/shop/files/11MRUB2213-SUNDAYPARKA-NEGRO_2x_905f8935-47b3-44c6-b973-b9ef7f099690_480x480.webp?v=1684275467",
-    url_contenido: "https://www.youtube.com/embed/f7MpCD_BXH8?si=U38KnMb_-vtyjQRQ"
+    url_video: ["https://www.youtube.com/embed/f7MpCD_BXH8?si=U38KnMb_-vtyjQRQ"],
+    url_archivo: ""
   },
   {
     id: "modulo-5",
     titulo: "Fundamentos de Emprendimiento",
     descripcion: "Conceptos básicos para iniciar un negocio",
     id_materia: "materia-emprendimiento",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Guía del Emprendedor - Capítulo 1",
     url_miniatura: "https://i.ytimg.com/vi/xrv2K3p6sfM/maxresdefault.jpg",
-    url_contenido: "https://www.youtube.com/embed/video-negocio-1"
+    url_video: ["https://www.youtube.com/embed/video-negocio-1"],
+    url_archivo: ""
   },
   {
     id: "modulo-6",
     titulo: "Marketing Digital Básico",
     descripcion: "Estrategias fundamentales de marketing digital",
     id_materia: "materia-marketing",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Marketing Digital para Empresas",
     url_miniatura: "https://www.aticma.org.ar/wp-content/uploads/2021/04/Portadas-de-WordPres-3-1024x614.png",
-    url_contenido: "https://www.youtube.com/embed/video-marketing-1"
+    url_video: ["https://www.youtube.com/embed/video-marketing-1"],
+    url_archivo: ""
   },
   {
     id: "modulo-7",
     titulo: "Gestión Financiera Básica",
     descripcion: "Fundamentos de gestión financiera empresarial",
     id_materia: "materia-finanzas",
-    tipo_contenido: "VIDEO",
+    tipo_contenido: "video",
     bibliografia: "Manual de Finanzas para Empresas",
     url_miniatura: "https://ag-utn.com.ar/wp-content/uploads/2024/09/Campana-UTN-2_14C-scaled.jpg",
-    url_contenido: "https://www.youtube.com/embed/video-finanzas-1"
+    url_video: ["https://www.youtube.com/embed/video-finanzas-1"],
+    url_archivo: ""
   }
 ];
 
@@ -223,8 +230,9 @@ export const mockContentStats: ContentStats[] = [
 // Mock data para estadísticas del dashboard
 export const mockDashboardStats: DashboardStats = {
   totalStudents: mockStudents.length,
-  activeStudents: mockStudents.filter((s) => s.activo).length,
+  totalUsers: mockStudents.length,
   totalProducts: mockCourses.length,
   totalRevenue: mockCourses.reduce((sum, c) => sum + c.precio, 0),
-  popularProducts: mockDegrees.slice(0, 3),
+  activeUsers: mockStudents.filter((s) => s.activo).length,
+  popularProducts: mockCourses.slice(0, 3),
 };

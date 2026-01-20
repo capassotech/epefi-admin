@@ -1,0 +1,194 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import ToastNotification from '../ui/ToastNotification';
+import { CoursesAPI } from '@/service/courses';
+import { type Subject } from '@/types/types';
+import { Edit2, X, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+
+interface SubjectListProps {
+  subjects: Subject[];
+  onDelete?: (id: string) => void;
+  onEdit?: (subject: Subject) => void;
+  onUnassign?: (id: string) => void; // Nueva función para desasignar materia del curso
+  showUnassign?: boolean; // Flag para mostrar el botón de desasignar
+  showTitle?: boolean; // Flag para mostrar/ocultar el título
+  onStatusChange?: () => void;
+  onSubjectStatusUpdated?: (id: string, newEstado: "activo" | "inactivo") => void;
+}
+
+export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false, showTitle = true, onStatusChange, onSubjectStatusUpdated }: SubjectListProps) => {
+  const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isUnassigning, setIsUnassigning] = useState(false);
+  const [unassigningId, setUnassigningId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  const closeToast = () => setToastState(null);
+
+  const handleStatusChange = async (id: string, _newCheckedState: boolean) => {
+    setUpdatingStatusId(id);
+    try {
+      // Usar el endpoint específico para alternar el estado
+      const response = await CoursesAPI.toggleMateriaStatus(id);
+      // El backend retorna { materia: { id, activo, ... } }
+      const updatedSubject = response.materia || response;
+      const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : (updatedSubject.estado === 'activo');
+      const newEstado = newActivo ? 'activo' : 'inactivo';
+      
+      console.log('Estado actualizado de la materia:', {
+        id,
+        activoAnterior: subjects.find(m => String(m.id) === String(id))?.activo,
+        activoNuevo: newActivo,
+        estadoNuevo: newEstado,
+        updatedSubject
+      });
+      
+      toast.success(`Materia ${newActivo ? 'activada' : 'desactivada'} exitosamente`);
+      
+      // Actualizar el estado local inmediatamente
+      if (onSubjectStatusUpdated) {
+        console.log('Llamando a onSubjectStatusUpdated con:', { id, newEstado });
+        onSubjectStatusUpdated(id, newEstado);
+      } else if (onStatusChange) {
+        // Solo recargar todo si no hay callback de actualización local
+        onStatusChange();
+      }
+    } catch (error) {
+      console.error('Error al actualizar estado de la materia:', error);
+      toast.error('Error al actualizar el estado de la materia');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {showTitle && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">Materias asociadas</h2>
+        </div>
+      )}
+
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <ul role="list" className="divide-y divide-gray-200">
+          {subjects.length === 0 ? (
+            <li className="px-4 py-6 text-center text-gray-500">
+              No hay materias registradas.
+            </li>
+          ) : (
+            subjects.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors duration-150"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={`/subjects/${encodeURIComponent(m.id)}`}
+                        className="text-lg font-semibold text-gray-900 hover:text-[#7a1a3a] hover:underline transition-colors duration-200 block"
+                      >
+                        {m.nombre}
+                      </Link>
+                      <p className='text-sm text-gray-500 mt-1'>
+                        {m.modulos ? m.modulos.length : 0} {m.modulos && m.modulos.length !== 1 ? 'módulos' : 'módulo'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.(m);
+                    }}
+                  >
+                    <Edit2 className="w-4 h-4 mr-1.5" />
+                    Editar
+                  </Button>
+                  {showUnassign && onUnassign && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 px-3 border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setUnassigningId(m.id);
+                        setIsUnassigning(true);
+                        try {
+                          await onUnassign(m.id);
+                        } catch (err) {
+                          console.error('Error al desasignar:', err);
+                        } finally {
+                          setIsUnassigning(false);
+                          setUnassigningId(null);
+                        }
+                      }}
+                      disabled={isUnassigning && unassigningId === m.id}
+                    >
+                      {isUnassigning && unassigningId === m.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                          Desasignando...
+                        </>
+                      ) : (
+                        <>
+                          <X className="w-4 h-4 mr-1.5" />
+                          Desasignar
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {updatingStatusId === m.id ? 'Actualizando...' : ((m.activo !== undefined ? m.activo : (m.estado === 'activo')) ? 'Activo' : 'Inactivo')}
+                    </span>
+                    {updatingStatusId === m.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                    ) : (
+                      <Switch
+                        checked={m.activo !== undefined ? m.activo : (m.estado === 'activo')}
+                        onCheckedChange={(checked) => {
+                          handleStatusChange(m.id, checked);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        disabled={updatingStatusId !== null}
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                      />
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+      {toastState && (
+        <ToastNotification
+          message={toastState.message}
+          type={toastState.type}
+          onClose={closeToast}
+        />
+      )}
+    </div>
+  );
+};
+
+export default SubjectList;

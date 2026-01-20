@@ -1,16 +1,31 @@
 export type ProductType = "ON_DEMAND" | "ASYNC" | "VIVO" | "EBOOK";
-// src/main.tsx o src/index.tsx
-localStorage.setItem("adminToken", "eyJhbGciOiJSUzI1NiIsImtpZCI6ImUzZWU3ZTAyOGUzODg1YTM0NWNlMDcwNTVmODQ2ODYyMjU1YTcwNDYiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiRmVkZXJpY28gSGVycmVyYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9pbmVlLWFkbWluIiwiYXVkIjoiaW5lZS1hZG1pbiIsImF1dGhfdGltZSI6MTc1NzY5OTA2NiwidXNlcl9pZCI6Ilg1R2d6WU9LSmJZODVQcjNFRHEwckhHQ05mbjIiLCJzdWIiOiJYNUdnellPS0piWTg1UHIzRURxMHJIR0NOZm4yIiwiaWF0IjoxNzU3Njk5MDY2LCJleHAiOjE3NTc3MDI2NjYsImVtYWlsIjoiZmVkZS5qdWFuLmhlcnJlcmFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsiZmVkZS5qdWFuLmhlcnJlcmFAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.K9_9zmqWDfqIjSzM0ir_fG60SA-lAiqtAM_BoNhGGvFw4t1GkwqlUBZyptSwGMu7JCDDHPtq59GP8BRHlliWwVohFFls1tZBcpZty9sTOptuq7J_VyKiCpz-ZJgPKeA-_ulhhTeLb71t-cA3DOJs3h1o5xbKhlctGwBFK--CeZoqN4BOpo3afnQXtc3GdHWsb5bEqUJh-4-pLf6PEX8LTeKVjdBOEoNWXAemx1bexQJQ-_h722DXL3gpxZCMwtMKjP2GP5h_oiIKaomaz5fD7_CbTZWAHUFXLIRrynFqq57mft7WnhcnvJ8MjL-xkQu6VJorT-V53Ve335y8TBUY-g");
+
+// Tipo para Timestamp de Firestore
+export interface FirestoreTimestamp {
+  _seconds: number;
+  _nanoseconds: number;
+}
 
 export interface Module {
   id: string;
   titulo: string;
   descripcion: string;
   id_materia: string;
-  tipo_contenido: 'VIDEO' | 'PDF' | 'QUIZ' | 'DOCX' | 'IMAGE';
+  tipo_contenido: "video" | "pdf" | "imagen" | "contenido_extra" | "evaluacion";
   bibliografia: string;
   url_miniatura: string;
-  url_contenido: string;
+  url_archivo: string;
+  url_video: string[];
+}
+
+export interface Subject {
+  id: string;
+  id_cursos: string[];
+  modulos: string[];
+  nombre: string;
+  imagen?: string;
+  activo?: boolean;
+  estado?: "activo" | "inactivo"; // Mantener para compatibilidad, pero usar activo del backend
 }
 
 export interface Degree {
@@ -24,12 +39,34 @@ export interface Course {
   id: string;
   titulo: string;
   descripcion: string;
-  image: string; 
-  estado: 'activo' | 'inactivo';
+  image: string;
+  estado: "activo" | "inactivo";
   materias: string[];
   precio: number;
+  fechaInicioDictado?: string; // Formato: YYYY-MM-DD
+  fechaFinDictado?: string; // Formato: YYYY-MM-DD
+  planDeEstudiosUrl?: string;
+  fechasDeExamenesUrl?: string;
+  planDeEstudiosActualizado?: string;
+  fechasDeExamenesActualizado?: string;
 }
 
+export interface StudentDB {
+  id: string;
+  uid?: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  dni: string;
+  role: {
+    admin: boolean;
+    student: boolean;
+  };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
+  fechaRegistro: FirestoreTimestamp;
+}
 
 export interface Student {
   id: string;
@@ -39,17 +76,20 @@ export interface Student {
   fechaActualizacion: string;
   fechaRegistro: string;
   activo: boolean;
-  role: [
-    { admin: boolean },
-    { student: boolean },
-  ]
+  role: Array<{
+    admin?: boolean;
+    student?: boolean;
+  }>;
 }
+
+
 export interface DashboardStats {
   totalStudents: number;
-  activeStudents: number;
+  popularProducts: Course[];
+  totalUsers: number;
   totalProducts: number;
   totalRevenue: number;
-  popularProducts: Degree[];
+  activeUsers: number;
 }
 
 export interface ContentItemProps {
@@ -67,7 +107,7 @@ export interface ModuleFormData {
 
 export interface ContentItemFormData {
   id?: string;
-  type: "VIDEO" | "PDF" | "QUIZ" | "DOCX" | "IMAGE";
+  type: "video" | "pdf" | "evaluacion" | "imagen" | "contenido_extra";
   title: string;
   description: string;
   url: string;
@@ -124,7 +164,6 @@ export interface CourseFilter {
   isActive?: boolean;
 }
 
-
 export interface RegisterData {
   email: string;
   password: string;
@@ -132,10 +171,6 @@ export interface RegisterData {
   apellido: string;
   dni: string;
   aceptaTerminos: boolean;
-}
-
-export interface CreateUserFormData extends RegisterData {
-  confirmPassword: string;
 }
 
 export interface CreateUserResponse {
@@ -149,18 +184,25 @@ export interface CreateUserResponse {
   };
 }
 
+// ✅ UserProfile corregido para coincidir con el backend
 export interface UserProfile {
   uid: string;
   email: string;
   nombre: string;
   apellido: string;
   dni: string;
-  role: string;
-  fechaRegistro: string;
+  role: {
+    admin: boolean;
+    student: boolean;
+  };
+  fechaRegistro: FirestoreTimestamp | string; // Acepta ambos formatos
+  fechaActualizacion?: FirestoreTimestamp | string;
+  fechaUltimoAcceso?: FirestoreTimestamp | string;
   aceptaTerminos: boolean;
-  ruta_aprendizaje: string | null;
+  emailVerificado?: boolean;
+  activo?: boolean;
+  ruta_aprendizaje?: string | null;
 }
-
 
 export interface LoginData {
   email: string;
@@ -169,12 +211,23 @@ export interface LoginData {
 
 export interface AuthResponse {
   message: string;
-  user: {
-      uid: string;
-      email: string;
-      nombre: string;
-      apellido: string;
-      role: string;
-  };
+  user: UserProfile; // ✅ Usar UserProfile completo
   customToken?: string;
+}
+
+
+// Este es el type del Student
+export interface CreateUserFormData {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  dni: string;
+  role: {
+    admin: boolean;
+    student: boolean;
+  };
+  emailVerificado: boolean;
+  cursos_asignados: string[];
+  activo?: boolean;
 }

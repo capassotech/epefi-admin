@@ -2,23 +2,31 @@
 import { z } from "zod";
 
 export const productFormSchema = z.object({
-  title: z.string().min(1, "El título es obligatorio"),
-  description: z.string().min(1, "La descripción es obligatoria"),
-  price: z.number().min(0, "El precio debe ser positivo"),
-  duration: z.string().min(1, "La duración es obligatoria"),
-  level: z.enum(["principiante", "intermedio", "avanzado"], {
-    message: "Selecciona un nivel válido",
-  }),
-  pilar: z.enum(["liderazgo", "consultoria-estrategica", "emprendimiento"], {
-    message: "Selecciona un pilar válido",
-  }),
-  modality: z.enum(["presencial", "virtual", "on-demand"], {
-    message: "Selecciona una modalidad válida",
-  }),
-  id_profesor: z.string().min(1, "Selecciona un profesor"),
-  imagen: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  isActive: z.boolean().default(true),
-});
+  titulo: z.string().min(1, "El título es obligatorio"),
+  descripcion: z.string().min(1, "La descripción es obligatoria"),
+  precio: z.number().min(0, "El precio debe ser positivo"),
+  estado: z.enum(["activo", "inactivo"]),
+  imagen: z.instanceof(File, { message: "La imagen es obligatoria" }).optional(),
+  materias: z.array(z.string()),
+  fechaInicioDictado: z.string().min(1, "La fecha de inicio del dictado es obligatoria").refine(
+    (val) => /^\d{4}-\d{2}-\d{2}$/.test(val),
+    { message: "Formato de fecha inválido. Use YYYY-MM-DD" }
+  ),
+  fechaFinDictado: z.string().min(1, "La fecha de fin del dictado es obligatoria").refine(
+    (val) => /^\d{4}-\d{2}-\d{2}$/.test(val),
+    { message: "Formato de fecha inválido. Use YYYY-MM-DD" }
+  ),
+  planDeEstudios: z.instanceof(File).optional(),
+  fechasDeExamenes: z.instanceof(File).optional(),
+}).refine(
+  (data) => {
+    // La fecha de fin debe ser posterior o igual a la fecha de inicio
+    return new Date(data.fechaFinDictado) >= new Date(data.fechaInicioDictado);
+  },
+  {
+    message: "La fecha de fin debe ser posterior o igual a la fecha de inicio",
+    path: ["fechaFinDictado"],
+  }
+);
 
 export type ProductFormData = z.infer<typeof productFormSchema>;

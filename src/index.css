@@ -118,3 +118,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para reproductor de video sin opción de descarga */
+.video-no-download video::-webkit-media-controls {
+  display: flex !important;
+}
+
+.video-no-download video::-webkit-media-controls-enclosure {
+  display: flex !important;
+}
+
+.video-no-download video::-webkit-media-controls-panel {
+  display: flex !important;
+}
+
+.video-no-download video::-webkit-media-controls-download-button {
+  display: none !important;
+}
+
+.video-no-download video::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+}
