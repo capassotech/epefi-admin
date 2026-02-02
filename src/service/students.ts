@@ -125,18 +125,52 @@ export const StudentsAPI = {
 
   updateStudent: async (id: string, userData: Partial<CreateUserFormData & { uid?: string }>) => {
     try {
-      console.log(id, userData)
-      const res = await api.put(`/usuarios/${id}`, userData);
+      // Limpiar el ID de espacios en blanco y caracteres especiales
+      const cleanId = id?.trim();
+      
+      console.log('🔄 Actualizando estudiante:', { 
+        originalId: id,
+        cleanId,
+        idType: typeof cleanId,
+        idLength: cleanId?.length,
+        userDataKeys: Object.keys(userData),
+        cursosAsignados: userData.cursos_asignados?.length || 0
+      });
+      
+      if (!cleanId || cleanId === '') {
+        throw new Error('El ID del estudiante es requerido');
+      }
+
+      const res = await api.put(`/usuarios/${cleanId}`, userData);
+      console.log('✅ Estudiante actualizado exitosamente:', res.data);
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
-        response?: { data?: { error?: string } };
+        response?: { 
+          data?: { error?: string; message?: string }; 
+          status?: number;
+        };
         message?: string;
       };
+      
+      // Manejar errores específicos
+      if (axiosError.response?.status === 404) {
+        const errorMsg = axiosError.response?.data?.error || 'Usuario no encontrado';
+        console.error('❌ Usuario no encontrado:', { id, error: errorMsg });
+        throw new Error(`El estudiante no fue encontrado en el sistema. Por favor, verifica que el usuario existe. (${errorMsg})`);
+      }
+      
+      if (axiosError.response?.status === 403) {
+        throw new Error('No tienes permisos para actualizar este estudiante');
+      }
+
       const errorMessage =
         axiosError.response?.data?.error ||
+        axiosError.response?.data?.message ||
         axiosError.message ||
         "Error al actualizar estudiante";
+      
+      console.error('❌ Error al actualizar estudiante:', { id, error: errorMessage });
       throw new Error(errorMessage);
     }
   },
