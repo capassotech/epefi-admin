@@ -6,7 +6,7 @@ import { storage } from "../../config/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com";
+  (import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com").trim();
 
 // Debug: Log de la configuración
 console.log('🔧 Configuración API:', {
