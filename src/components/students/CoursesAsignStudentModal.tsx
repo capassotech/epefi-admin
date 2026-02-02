@@ -43,6 +43,27 @@ export const CoursesAsignStudentModal = ({
     const buildUpdatePayload = (cursosAsignados: string[]) => {
         if (!student) return null;
 
+        // El ID del documento en Firestore debe ser el mismo que el uid
+        // Priorizar: student.id (ID del documento) > student.uid > id (parámetro)
+        const studentId = student.id || student.uid || id;
+        if (!studentId) {
+            console.error('❌ No se pudo obtener el ID del estudiante:', { student, id });
+            return null;
+        }
+
+        console.log('📝 Construyendo payload de actualización:', {
+            studentId,
+            studentIdType: typeof studentId,
+            studentIdLength: studentId.length,
+            cursosAsignados: cursosAsignados.length,
+            student: {
+                id: student.id,
+                uid: student.uid,
+                nombre: student.nombre,
+                apellido: student.apellido
+            }
+        });
+
         return {
             nombre: student.nombre ?? "",
             apellido: student.apellido ?? "",
@@ -52,7 +73,7 @@ export const CoursesAsignStudentModal = ({
             emailVerificado: student.emailVerificado ?? false,
             activo: student.activo ?? true,
             cursos_asignados: cursosAsignados,
-            uid: student.uid ?? student.id ?? id ?? "",
+            uid: studentId,
         };
     };
 
@@ -78,7 +99,21 @@ export const CoursesAsignStudentModal = ({
                 return;
             }
 
-            await StudentsAPI.updateStudent(payload.uid, payload);
+            // Validar que el UID no esté vacío
+            const userIdToUpdate = payload.uid || student.uid || student.id || id;
+            if (!userIdToUpdate) {
+                toast.error("No se pudo identificar al estudiante. Por favor, recarga la página.");
+                setAssigning(false);
+                return;
+            }
+
+            console.log('🔄 Actualizando estudiante:', {
+                userId: userIdToUpdate,
+                cursos: updatedCursos,
+                payload
+            });
+
+            await StudentsAPI.updateStudent(userIdToUpdate, payload);
 
             const newlyAssignedCourses = allCourses.filter((c: Course) => newAssignments.includes(c.id));
             if (newlyAssignedCourses.length > 0) {
@@ -134,7 +169,21 @@ export const CoursesAsignStudentModal = ({
                 return;
             }
 
-            await StudentsAPI.updateStudent(payload.uid, payload);
+            // Validar que el UID no esté vacío
+            const userIdToUpdate = payload.uid || student.uid || student.id || id;
+            if (!userIdToUpdate) {
+                toast.error("No se pudo identificar al estudiante. Por favor, recarga la página.");
+                setAssigning(false);
+                return;
+            }
+
+            console.log('🔄 Removiendo curso del estudiante:', {
+                userId: userIdToUpdate,
+                courseId,
+                cursos: updatedCursos
+            });
+
+            await StudentsAPI.updateStudent(userIdToUpdate, payload);
 
             setStudent((prev) => prev ? ({
                 ...prev,
@@ -161,14 +210,36 @@ export const CoursesAsignStudentModal = ({
             setLoading(true);
             if (!id) return;
             try {
+                console.log('📥 Cargando datos del estudiante con ID:', id);
                 const [found, coursesData] = await Promise.all([
                     StudentsAPI.getById(id),
                     CoursesAPI.getAll(),
                 ]);
+                
+                console.log('📦 Datos recibidos del backend:', {
+                    found,
+                    foundId: found?.id,
+                    foundUid: found?.uid,
+                    paramId: id
+                });
+                
+                // El ID del documento en Firestore debe ser el mismo que el uid
+                // Priorizar: found.id (ID del documento) > found.uid > id (parámetro)
+                const documentId = found?.id || found?.uid || id;
+                
                 const normalizedStudent: StudentDB = {
                     ...found,
-                    uid: (found as StudentDB).uid ?? found.id ?? id,
+                    id: documentId,
+                    uid: documentId,
                 };
+                
+                console.log('✅ Estudiante normalizado:', {
+                    id: normalizedStudent.id,
+                    uid: normalizedStudent.uid,
+                    nombre: normalizedStudent.nombre,
+                    apellido: normalizedStudent.apellido
+                });
+                
                 setStudent(normalizedStudent);
 
                 setAllCourses(coursesData);
