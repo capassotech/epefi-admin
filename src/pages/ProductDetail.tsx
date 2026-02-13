@@ -25,6 +25,19 @@ import type { Course, Subject, Module } from '@/types/types';
 import ModulesList from '@/components/subject/ModulesList';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+// Componente para mostrar la vista previa cuadrada
+const SquareImagePreview = ({ src }: { src: string }) => {
+  return (
+    <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100">
+      <img
+        src={src}
+        alt="Vista previa"
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+};
+
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -161,7 +174,7 @@ const ProductDetail = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <div 
-                  className="relative w-full aspect-video overflow-hidden rounded-lg border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity group"
+                  className="relative w-full aspect-square overflow-hidden rounded-lg border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity group"
                   onClick={() => setPreviewImageOpen(true)}
                 >
                   <img
@@ -456,16 +469,16 @@ const ProductDetail = () => {
 
       {/* Modal de vista previa de portada */}
       <Dialog open={previewImageOpen} onOpenChange={setPreviewImageOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Vista previa de la portada</DialogTitle>
           </DialogHeader>
-          <div className="w-full">
-            <img
-              src={curso.image || (curso as any).imagen || '/placeholder.svg'}
-              alt={curso.titulo}
-              className="w-full h-auto rounded-lg"
-            />
+          <div className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden p-4">
+              <div className="w-full max-w-[700px] aspect-square max-h-[calc(90vh-140px)]">
+                <SquareImagePreview src={curso.image || (curso as any).imagen || '/placeholder.svg'} />
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

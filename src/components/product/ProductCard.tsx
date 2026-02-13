@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-gray-200/50 bg-white hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-500 h-full flex flex-col">
       {/* Image */}
-      <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden relative">
+      <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden relative">
         <img
           src={product.image || (product as any).imagen || '/placeholder.svg'}
           alt={product.titulo}
