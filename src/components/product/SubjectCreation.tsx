@@ -772,6 +772,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                                     {subjectModules.length > 0 ? (
                                         <ModulesList
                                             modules={subjectModules}
+                                            materiaId={currentSubjectForModules?.id || ''}
                                             onDelete={(moduleId: string) => {
                                                 setConfirmDeleteModuleId(moduleId);
                                                 setIsDeleteModuleModalOpen(true);
