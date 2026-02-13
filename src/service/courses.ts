@@ -386,4 +386,29 @@ export const CoursesAPI = {
       throw new Error("Error al eliminar módulo");
     }
   },
+
+  // Habilitar/deshabilitar módulos de manera grupal para todos los estudiantes con esa materia
+  toggleModuleForAllStudents: async (materiaId: string, moduleId: string, enabled: boolean) => {
+    try {
+      const res = await api.patch(`/materias/${materiaId}/modulos/toggle`, {
+        moduleId,
+        enabled,
+      });
+      return res.data;
+    } catch (error: unknown) {
+      const axiosError = error as {
+        response?: { 
+          data?: { message?: string; error?: string }; 
+          status?: number;
+        };
+        message?: string;
+      };
+      const errorMessage =
+        axiosError.response?.data?.message ||
+        axiosError.response?.data?.error ||
+        axiosError.message ||
+        "Error al actualizar módulos de manera grupal";
+      throw new Error(errorMessage);
+    }
+  },
 };

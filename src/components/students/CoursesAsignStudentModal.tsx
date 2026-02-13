@@ -90,7 +90,117 @@ export const CoursesAsignStudentModal = ({
                 return;
             }
 
+            // Obtener el ID del usuario primero
+            const userIdToUpdate = student.id || student.uid || id;
+            if (!userIdToUpdate || userIdToUpdate.trim() === '') {
+                toast.error("No se pudo identificar al estudiante. Por favor, recarga la página.");
+                setAssigning(false);
+                return;
+            }
+
             const updatedCursos = Array.from(new Set([...currentAssigned, ...newAssignments]));
+
+            // Validar que todos los cursos seleccionados existan en la lista de cursos disponibles
+            const invalidCourses = newAssignments.filter((courseId) => {
+                return !allCourses.some((course: Course) => course.id === courseId);
+            });
+
+            if (invalidCourses.length > 0) {
+                console.error('❌ Cursos inválidos detectados:', {
+                    invalidCourses,
+                    allCourseIds: allCourses.map((c: Course) => c.id),
+                    selectedCourseIds: selectedCourseIds
+                });
+                toast.error(`Uno o más cursos seleccionados no son válidos. Por favor, recarga la página e intenta nuevamente.`);
+                setAssigning(false);
+                return;
+            }
+
+            // Validar también los cursos ya asignados
+            const invalidExistingCourses = currentAssigned.filter((courseId) => {
+                return !allCourses.some((course: Course) => course.id === courseId);
+            });
+
+            if (invalidExistingCourses.length > 0) {
+                console.warn('⚠️ Cursos asignados previamente que ya no existen:', {
+                    invalidExistingCourses,
+                    totalCursosAsignados: currentAssigned.length
+                });
+                // Filtrar los cursos inválidos de la lista actual
+                const validCurrentAssigned = currentAssigned.filter((courseId) => {
+                    return allCourses.some((course: Course) => course.id === courseId);
+                });
+                // Actualizar la lista de cursos asignados para excluir los inválidos
+                const validUpdatedCursos = Array.from(new Set([...validCurrentAssigned, ...newAssignments]));
+                console.log('🔧 Limpiando cursos inválidos:', {
+                    removed: invalidExistingCourses,
+                    validUpdatedCursos: validUpdatedCursos.length
+                });
+                // Actualizar el estado del estudiante para reflejar solo cursos válidos
+                setStudent((prev) => prev ? ({
+                    ...prev,
+                    cursos_asignados: validCurrentAssigned
+                }) : prev);
+                // Usar la lista limpia
+                const cleanedPayload = buildUpdatePayload(validUpdatedCursos);
+                if (!cleanedPayload || !cleanedPayload.uid) {
+                    toast.error("No se pudo preparar la información del estudiante");
+                    setAssigning(false);
+                    return;
+                }
+                const finalCleanedPayload = {
+                    ...cleanedPayload,
+                    uid: userIdToUpdate
+                };
+                console.log('🔄 Actualizando estudiante (con limpieza de cursos inválidos):', {
+                    userId: userIdToUpdate,
+                    cursos: validUpdatedCursos
+                });
+                await StudentsAPI.updateStudent(userIdToUpdate, finalCleanedPayload);
+                // Continuar con el flujo normal pero con cursos válidos
+                const newlyAssignedCourses = allCourses.filter((c: Course) => newAssignments.includes(c.id));
+                if (newlyAssignedCourses.length > 0) {
+                    setCourses((prev) => {
+                        const existingIds = new Set(prev.map((c) => c.id));
+                        const merged = [...prev];
+                        newlyAssignedCourses.forEach((course) => {
+                            if (!existingIds.has(course.id)) {
+                                merged.push(course);
+                            }
+                        });
+                        return merged;
+                    });
+                }
+                setStudent((prev) => prev ? ({
+                    ...prev,
+                    cursos_asignados: validUpdatedCursos
+                }) : prev);
+                setAssignedCourses((prev) => {
+                    const currentIds = new Set(prev.map((c) => c.id));
+                    const merged = [...prev];
+                    newlyAssignedCourses.forEach((course) => {
+                        if (!currentIds.has(course.id)) {
+                            merged.push(course);
+                        }
+                    });
+                    return merged;
+                });
+                setAvailableCourses((prev) => prev.filter((course) => !validUpdatedCursos.includes(course.id)));
+                toast.success(newAssignments.length > 1 ? 'Cursos asignados correctamente (algunos cursos inválidos fueron removidos)' : 'Curso asignado correctamente');
+                setAssignDialogOpen(false);
+                setSelectedCourseIds([]);
+                setAssigning(false);
+                return;
+            }
+
+            console.log('📋 Cursos a asignar:', {
+                currentAssigned: currentAssigned.length,
+                newAssignments: newAssignments.length,
+                newAssignmentIds: newAssignments,
+                updatedCursos: updatedCursos.length,
+                updatedCursosIds: updatedCursos,
+                allCoursesAvailable: allCourses.length
+            });
 
             const payload = buildUpdatePayload(updatedCursos);
             if (!payload || !payload.uid) {
@@ -99,21 +209,22 @@ export const CoursesAsignStudentModal = ({
                 return;
             }
 
-            // Validar que el UID no esté vacío
-            const userIdToUpdate = payload.uid || student.uid || student.id || id;
-            if (!userIdToUpdate) {
-                toast.error("No se pudo identificar al estudiante. Por favor, recarga la página.");
-                setAssigning(false);
-                return;
-            }
+            // Asegurar que el payload tenga el uid correcto (userIdToUpdate ya está definido arriba)
+            const finalPayload = {
+                ...payload,
+                uid: userIdToUpdate
+            };
 
             console.log('🔄 Actualizando estudiante:', {
                 userId: userIdToUpdate,
+                studentId: student.id,
+                studentUid: student.uid,
+                payloadUid: payload.uid,
                 cursos: updatedCursos,
-                payload
+                payload: finalPayload
             });
 
-            await StudentsAPI.updateStudent(userIdToUpdate, payload);
+            await StudentsAPI.updateStudent(userIdToUpdate, finalPayload);
 
             const newlyAssignedCourses = allCourses.filter((c: Course) => newAssignments.includes(c.id));
             if (newlyAssignedCourses.length > 0) {
@@ -170,20 +281,30 @@ export const CoursesAsignStudentModal = ({
             }
 
             // Validar que el UID no esté vacío
-            const userIdToUpdate = payload.uid || student.uid || student.id || id;
-            if (!userIdToUpdate) {
+            // Usar el ID del documento (student.id) como prioridad, ya que es el ID real en Firestore
+            const userIdToUpdate = student.id || student.uid || payload.uid || id;
+            if (!userIdToUpdate || userIdToUpdate.trim() === '') {
                 toast.error("No se pudo identificar al estudiante. Por favor, recarga la página.");
                 setAssigning(false);
                 return;
             }
 
+            // Asegurar que el payload tenga el uid correcto
+            const finalPayload = {
+                ...payload,
+                uid: userIdToUpdate
+            };
+
             console.log('🔄 Removiendo curso del estudiante:', {
                 userId: userIdToUpdate,
+                studentId: student.id,
+                studentUid: student.uid,
+                payloadUid: payload.uid,
                 courseId,
                 cursos: updatedCursos
             });
 
-            await StudentsAPI.updateStudent(userIdToUpdate, payload);
+            await StudentsAPI.updateStudent(userIdToUpdate, finalPayload);
 
             setStudent((prev) => prev ? ({
                 ...prev,
