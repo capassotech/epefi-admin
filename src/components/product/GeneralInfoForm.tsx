@@ -19,6 +19,19 @@ import type { ProductFormData } from "@/schemas/product-schema";
 import { FileText, X, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+// Componente para mostrar la vista previa cuadrada
+const SquareImagePreview = ({ src }: { src: string }) => {
+  return (
+    <div className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100">
+      <img
+        src={src}
+        alt="Vista previa"
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+};
+
 interface GeneralInfoFormProps {
   control: Control<ProductFormData>;
   setImagePreviewUrl: Dispatch<SetStateAction<string | null>>;
@@ -322,19 +335,19 @@ const GeneralInfoForm = ({
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                      <DialogContent className="max-w-3xl">
-                        <DialogHeader>
+                      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+                        <DialogHeader className="flex-shrink-0">
                           <DialogTitle>Vista previa</DialogTitle>
                           <DialogDescription>
                             Vista previa de la imagen que se mostrará en el curso
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="w-full">
-                          <img
-                            src={getImageSrc()}
-                            alt="Vista previa"
-                            className="w-full h-auto rounded"
-                          />
+                        <div className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
+                          <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden p-4">
+                            <div className="w-full max-w-[600px] aspect-square max-h-[calc(90vh-180px)]">
+                              <SquareImagePreview src={getImageSrc()} />
+                            </div>
+                          </div>
                         </div>
                       </DialogContent>
                     </Dialog>
