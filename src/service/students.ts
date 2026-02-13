@@ -156,8 +156,16 @@ export const StudentsAPI = {
     } catch (error: unknown) {
       const axiosError = error as {
         response?: { 
-          data?: { error?: string; message?: string }; 
+          data?: { error?: string; message?: string; tipo?: string; cursoId?: string }; 
           status?: number;
+          config?: {
+            url?: string;
+            baseURL?: string;
+          };
+        };
+        config?: {
+          url?: string;
+          baseURL?: string;
         };
         message?: string;
       };
@@ -166,13 +174,14 @@ export const StudentsAPI = {
       if (axiosError.response?.status === 404) {
         const errorMsg = axiosError.response?.data?.error || 'Usuario no encontrado';
         const finalId = (userData?.uid && userData.uid.trim() !== '') ? userData.uid.trim() : id?.trim();
+        const config = axiosError.config || axiosError.response?.config;
         console.error('❌ Usuario no encontrado:', { 
           originalId: id,
           finalId,
           userDataUid: userData?.uid,
           error: errorMsg,
-          url: axiosError.response?.config?.url,
-          fullUrl: axiosError.response?.config?.baseURL + axiosError.response?.config?.url
+          url: config?.url,
+          fullUrl: config?.baseURL ? `${config.baseURL}${config.url || ''}` : undefined
         });
         throw new Error(`El estudiante no fue encontrado en el sistema. ID usado: ${finalId}. Por favor, verifica que el usuario existe. (${errorMsg})`);
       }

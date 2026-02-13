@@ -336,7 +336,12 @@ export default function CreateModule() {
                         <div className="text-sm text-gray-500">Sin módulos</div>
                     ) : (
                         <div className="space-y-3">
-                            <ModulesList modules={modules} onDelete={handleDeleteClick} onEdit={handleEditClick} />
+                            <ModulesList 
+                                modules={modules} 
+                                materiaId={subjectFromQuery?.id || pendingSubject?.id || ''}
+                                onDelete={handleDeleteClick} 
+                                onEdit={handleEditClick} 
+                            />
                         </div>
                     )}
                 </CardContent>
