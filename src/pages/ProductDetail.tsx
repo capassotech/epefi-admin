@@ -18,7 +18,9 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
-import type { Course, Subject } from '@/types/types';
+import type { Course, Subject, Module } from '@/types/types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import ModulesList from '@/components/subject/ModulesList';
 
 
 const ProductDetail = () => {
@@ -26,6 +28,8 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const [curso, setCurso] = useState<Course | null>(null);
   const [materias, setMaterias] = useState<Subject[]>([]); 
+  const [modulosPorMateria, setModulosPorMateria] = useState<Record<string, Module[]>>({});
+  const [loadingModulos, setLoadingModulos] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +76,23 @@ const ProductDetail = () => {
 
     fetchData();
   }, [id]);
+
+  // Función para cargar módulos de una materia
+  const loadModulosForMateria = async (materiaId: string, moduloIds: string[]) => {
+    if (modulosPorMateria[materiaId] || loadingModulos[materiaId] || !moduloIds.length) {
+      return;
+    }
+
+    setLoadingModulos(prev => ({ ...prev, [materiaId]: true }));
+    try {
+      const modulosData = await CoursesAPI.getModulesByIds(moduloIds);
+      setModulosPorMateria(prev => ({ ...prev, [materiaId]: modulosData }));
+    } catch (error) {
+      console.error(`Error al cargar módulos de materia ${materiaId}:`, error);
+    } finally {
+      setLoadingModulos(prev => ({ ...prev, [materiaId]: false }));
+    }
+  };
 
   if (loading) return (
     <InteractiveLoader
@@ -199,17 +220,53 @@ const ProductDetail = () => {
               {loadingMaterias ? (
                 <p>Cargando materias...</p> 
               ) : materias.length > 0 ? (
-                <div className="space-y-3">
+                <Accordion 
+                  type="single" 
+                  collapsible 
+                  className="w-full"
+                  onValueChange={(value) => {
+                    // Cuando se expande una materia, cargar sus módulos
+                    if (value) {
+                      const materia = materias.find(m => m.id === value);
+                      if (materia && materia.modulos && materia.modulos.length > 0) {
+                        loadModulosForMateria(materia.id, materia.modulos);
+                      }
+                    }
+                  }}
+                >
                   {materias.map((materia) => (
-                    <div
-                      key={materia.id}
-                      className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
-                    >
-                      <h4 className="font-semibold text-lg">Nombre: {materia.nombre}</h4>
-                      <p>Cantidad de modulos: {materia.modulos.length}</p>
-                    </div>
+                    <AccordionItem key={materia.id} value={materia.id}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <div className="text-left">
+                            <h4 className="font-semibold text-lg">{materia.nombre}</h4>
+                            <p className="text-sm text-gray-500">Cantidad de módulos: {materia.modulos?.length || 0}</p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="pt-4">
+                          {materia.modulos && materia.modulos.length > 0 ? (
+                            <>
+                              {loadingModulos[materia.id] ? (
+                                <p className="text-gray-500">Cargando módulos...</p>
+                              ) : modulosPorMateria[materia.id] ? (
+                                <ModulesList 
+                                  modules={modulosPorMateria[materia.id]} 
+                                  materiaId={materia.id}
+                                />
+                              ) : (
+                                <p className="text-gray-500">Haz clic para cargar los módulos.</p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-gray-500">Esta materia no tiene módulos.</p>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               ) : (
                 <p className="text-gray-500">No se pudieron cargar los detalles de las materias.</p>
               )}

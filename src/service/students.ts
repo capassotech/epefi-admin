@@ -125,23 +125,32 @@ export const StudentsAPI = {
 
   updateStudent: async (id: string, userData: Partial<CreateUserFormData & { uid?: string }>) => {
     try {
-      // Limpiar el ID de espacios en blanco y caracteres especiales
+      // Limpiar el ID de espacios en blanco
       const cleanId = id?.trim();
+      
+      // Usar el uid del userData si está disponible y es diferente, ya que puede ser más preciso
+      // Pero priorizar el ID pasado como parámetro si el uid no está presente
+      const finalId = (userData?.uid && userData.uid.trim() !== '') ? userData.uid.trim() : cleanId;
       
       console.log('🔄 Actualizando estudiante:', { 
         originalId: id,
         cleanId,
-        idType: typeof cleanId,
-        idLength: cleanId?.length,
+        finalId,
+        userDataUid: userData?.uid,
+        idType: typeof finalId,
+        idLength: finalId?.length,
         userDataKeys: Object.keys(userData),
-        cursosAsignados: userData.cursos_asignados?.length || 0
+        cursosAsignados: userData.cursos_asignados?.length || 0,
+        fullUrl: `/usuarios/${encodeURIComponent(finalId)}`
       });
       
-      if (!cleanId || cleanId === '') {
+      if (!finalId || finalId === '') {
         throw new Error('El ID del estudiante es requerido');
       }
 
-      const res = await api.put(`/usuarios/${cleanId}`, userData);
+      // Codificar el ID para la URL por si tiene caracteres especiales
+      const encodedId = encodeURIComponent(finalId);
+      const res = await api.put(`/usuarios/${encodedId}`, userData);
       console.log('✅ Estudiante actualizado exitosamente:', res.data);
       return res.data;
     } catch (error: unknown) {
@@ -156,8 +165,37 @@ export const StudentsAPI = {
       // Manejar errores específicos
       if (axiosError.response?.status === 404) {
         const errorMsg = axiosError.response?.data?.error || 'Usuario no encontrado';
-        console.error('❌ Usuario no encontrado:', { id, error: errorMsg });
-        throw new Error(`El estudiante no fue encontrado en el sistema. Por favor, verifica que el usuario existe. (${errorMsg})`);
+        const finalId = (userData?.uid && userData.uid.trim() !== '') ? userData.uid.trim() : id?.trim();
+        console.error('❌ Usuario no encontrado:', { 
+          originalId: id,
+          finalId,
+          userDataUid: userData?.uid,
+          error: errorMsg,
+          url: axiosError.response?.config?.url,
+          fullUrl: axiosError.response?.config?.baseURL + axiosError.response?.config?.url
+        });
+        throw new Error(`El estudiante no fue encontrado en el sistema. ID usado: ${finalId}. Por favor, verifica que el usuario existe. (${errorMsg})`);
+      }
+      
+      // Manejar errores de validación (400) - como curso no encontrado
+      if (axiosError.response?.status === 400) {
+        const errorData = axiosError.response?.data;
+        const errorMsg = errorData?.error || 'Error de validación';
+        const errorType = errorData?.tipo;
+        const cursoId = errorData?.cursoId;
+        
+        console.error('❌ Error de validación:', { 
+          error: errorMsg,
+          tipo: errorType,
+          cursoId: cursoId,
+          errorData: errorData
+        });
+        
+        if (errorType === 'curso_no_encontrado') {
+          throw new Error(`No se pudo asignar el curso. El curso con ID "${cursoId}" no existe en el sistema. Por favor, verifica que todos los cursos seleccionados existen.`);
+        }
+        
+        throw new Error(errorMsg);
       }
       
       if (axiosError.response?.status === 403) {

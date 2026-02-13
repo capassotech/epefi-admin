@@ -1,20 +1,26 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import ToastNotification from '../ui/ToastNotification';
 import { type Module } from '@/types/types';
-import { Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, Loader2, Users } from 'lucide-react';
+import { CoursesAPI } from '@/service/courses';
+import { toast } from 'sonner';
 
 interface ModulesListProps {
   modules: Module[];
+  materiaId: string;
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
 }
 
-export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit }: ModulesListProps) => {
+  const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
+  const [moduleEnabledStates, setModuleEnabledStates] = useState<Record<string, boolean>>({});
 
-  const closeToast = () => setToast(null);
+  const closeToast = () => setToastState(null);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -22,6 +28,24 @@ export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => 
       await onDelete(id);
     }
     setTimeout(() => setDeletingId(null), 1000);
+  };
+
+  const handleToggleModuleForAll = async (moduleId: string, enabled: boolean) => {
+    setTogglingModuleId(moduleId);
+    try {
+      const response = await CoursesAPI.toggleModuleForAllStudents(materiaId, moduleId, enabled);
+      setModuleEnabledStates(prev => ({ ...prev, [moduleId]: enabled }));
+      toast.success(
+        response.message || 
+        `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar módulos';
+      toast.error(errorMessage);
+      setToastState({ message: errorMessage, type: 'error' });
+    } finally {
+      setTogglingModuleId(null);
+    }
   };
 
   return (
@@ -93,16 +117,41 @@ export const ModulesList = ({ modules, onDelete, onEdit }: ModulesListProps) => 
                       </>
                     )}
                   </Button>
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <Users className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {togglingModuleId === m.id ? 'Actualizando...' : 'Todos los estudiantes'}
+                    </span>
+                    {togglingModuleId === m.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                    ) : (
+                      <Switch
+                        checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (modules.findIndex(mod => mod.id === m.id) === 0)}
+                        onCheckedChange={(checked) => {
+                          handleToggleModuleForAll(m.id, checked);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        disabled={togglingModuleId !== null}
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                      />
+                    )}
+                  </div>
                 </div>
               </li>
             ))
           )}
         </ul>
       </div>
-      {toast && (
+      {toastState && (
         <ToastNotification
-          message={toast.message}
-          type={toast.type}
+          message={toastState.message}
+          type={toastState.type}
           onClose={closeToast}
         />
       )}

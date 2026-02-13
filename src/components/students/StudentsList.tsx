@@ -105,9 +105,9 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {students.map((student) => (
+            {students.map((student, index) => (
               <tr
-                key={student.dni}
+                key={student.id || student.uid || `student-${index}`}
                 className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                 onClick={() => navigate(`/students/${student.id}`)}
               >

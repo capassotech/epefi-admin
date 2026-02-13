@@ -248,7 +248,7 @@ export const SubjectDetail = () => {
                             {loadingModulos ? (
                                 <p>Cargando materias...</p>
                             ) : modulos.length > 0 ? (
-                                <ModulesList modules={modulos} onDelete={handleDeleteClick} onEdit={handleEditClick} />
+                                <ModulesList modules={modulos} materiaId={id || ''} onDelete={handleDeleteClick} onEdit={handleEditClick} />
                             ) : (
                                 <p className="text-gray-500">No se pudieron cargar los detalles de los modulos.</p>
                             )}
