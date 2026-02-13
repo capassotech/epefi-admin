@@ -10,8 +10,6 @@ import {
   ArrowLeft,
   Clock,
   BookOpen,
-  Tag,
-  Users,
   Image as ImageIcon,
   Calendar,
   FileText,
