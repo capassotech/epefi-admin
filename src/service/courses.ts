@@ -203,9 +203,17 @@ export const CoursesAPI = {
   },
 
   // Materias CRUD
-  getMateriaById: async (id: string) => {
-    const res = await api.get(`/materias/${id}`);
+  getMateriaById: async (id: string, options?: { skipCache?: boolean }) => {
+    const res = await api.get(`/materias/${id}`, {
+      params: options?.skipCache ? { _: Date.now() } : undefined,
+    });
     return res.data;
+  },
+
+  /** Estado habilitado de cada módulo según la BD (usuarios con esta materia) */
+  getModulosHabilitadosEstado: async (materiaId: string) => {
+    const res = await api.get(`/materias/${materiaId}/modulos-habilitados-estado`);
+    return (res.data?.modulos_habilitados_estado ?? {}) as Record<string, boolean>;
   },
 
   getMateriasByIds: async (ids: string[]) => {

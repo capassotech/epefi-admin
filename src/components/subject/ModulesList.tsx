@@ -12,9 +12,13 @@ interface ModulesListProps {
   materiaId: string;
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
+  /** Estado habilitado por módulo desde la BD (usuarios con esta materia) para el Switch */
+  defaultEnabledByModule?: Record<string, boolean>;
+  /** Llamado tras un toggle exitoso para que el padre pueda refetch la materia y actualizar el estado */
+  onToggleSuccess?: () => void | Promise<void>;
 }
 
-export const ModulesList = ({ modules, materiaId, onDelete, onEdit }: ModulesListProps) => {
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
@@ -39,6 +43,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit }: ModulesLis
         response.message || 
         `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
       );
+      await onToggleSuccess?.();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al actualizar módulos';
       toast.error(errorMessage);
@@ -130,7 +135,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit }: ModulesLis
                       <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
                       <Switch
-                        checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (modules.findIndex(mod => mod.id === m.id) === 0)}
+                        checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
                         onCheckedChange={(checked) => {
                           handleToggleModuleForAll(m.id, checked);
                         }}

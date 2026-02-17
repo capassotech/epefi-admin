@@ -31,6 +31,7 @@ export default function CreateModule() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [modulosHabilitadosEstado, setModulosHabilitadosEstado] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -42,10 +43,15 @@ export default function CreateModule() {
                     const subject = await CoursesAPI.getMateriaById(subjectId);
                     setSubjectFromQuery(subject);
                     if (Array.isArray(subject.modulos) && subject.modulos.length > 0) {
-                        const fetched = await CoursesAPI.getModulesByIds(subject.modulos);
+                        const [fetched, estado] = await Promise.all([
+                            CoursesAPI.getModulesByIds(subject.modulos),
+                            CoursesAPI.getModulosHabilitadosEstado(subjectId),
+                        ]);
                         setModules(fetched);
+                        setModulosHabilitadosEstado(estado);
                     } else {
                         setModules([]);
+                        setModulosHabilitadosEstado({});
                     }
                 } catch (e) {
                     console.error('Error al cargar materia/modulos:', e);
@@ -340,7 +346,14 @@ export default function CreateModule() {
                                 modules={modules} 
                                 materiaId={subjectFromQuery?.id || pendingSubject?.id || ''}
                                 onDelete={handleDeleteClick} 
-                                onEdit={handleEditClick} 
+                                onEdit={handleEditClick}
+                                defaultEnabledByModule={modulosHabilitadosEstado}
+                                onToggleSuccess={async () => {
+                                  if (subjectFromQuery?.id) {
+                                    const estado = await CoursesAPI.getModulosHabilitadosEstado(subjectFromQuery.id);
+                                    setModulosHabilitadosEstado(estado);
+                                  }
+                                }}
                             />
                         </div>
                     )}

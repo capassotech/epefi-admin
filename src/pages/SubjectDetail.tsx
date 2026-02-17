@@ -47,6 +47,7 @@ export const SubjectDetail = () => {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [isDeletingMateria, setIsDeletingMateria] = useState(false);
+    const [modulosHabilitadosEstado, setModulosHabilitadosEstado] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (!id) {
@@ -57,19 +58,25 @@ export const SubjectDetail = () => {
 
         const fetchData = async () => {
             try {
-                const data = await CoursesAPI.getMateriaById(id);
+                const data = await CoursesAPI.getMateriaById(id, { skipCache: true });
                 setMateria(data);
 
                 if (data.modulos && data.modulos.length > 0) {
                     setLoadingModulos(true);
                     try {
-                        const materiasData = await CoursesAPI.getModulesByIds(data.modulos);
+                        const [materiasData, estado] = await Promise.all([
+                            CoursesAPI.getModulesByIds(data.modulos),
+                            CoursesAPI.getModulosHabilitadosEstado(id),
+                        ]);
                         setModulos(materiasData);
+                        setModulosHabilitadosEstado(estado);
                     } catch (moduloError) {
                         console.error("⚠️ Error al cargar materias:", moduloError);
                     } finally {
                         setLoadingModulos(false);
                     }
+                } else {
+                    setModulosHabilitadosEstado({});
                 }
             } catch (error) {
                 const err = error as { message?: string };
@@ -248,7 +255,19 @@ export const SubjectDetail = () => {
                             {loadingModulos ? (
                                 <p>Cargando materias...</p>
                             ) : modulos.length > 0 ? (
-                                <ModulesList modules={modulos} materiaId={id || ''} onDelete={handleDeleteClick} onEdit={handleEditClick} />
+<ModulesList
+                                modules={modulos}
+                                materiaId={id || ''}
+                                onDelete={handleDeleteClick}
+                                onEdit={handleEditClick}
+                                defaultEnabledByModule={modulosHabilitadosEstado}
+                                onToggleSuccess={async () => {
+                                    if (id) {
+                                        const estado = await CoursesAPI.getModulosHabilitadosEstado(id);
+                                        setModulosHabilitadosEstado(estado);
+                                    }
+                                }}
+                            />
                             ) : (
                                 <p className="text-gray-500">No se pudieron cargar los detalles de los modulos.</p>
                             )}

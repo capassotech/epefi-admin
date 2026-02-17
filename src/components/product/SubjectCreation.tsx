@@ -57,6 +57,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
     const [isModulesModalOpen, setIsModulesModalOpen] = useState(false);
     const [currentSubjectForModules, setCurrentSubjectForModules] = useState<Subject | null>(null);
     const [subjectModules, setSubjectModules] = useState<Module[]>([]);
+    const [subjectModulosHabilitadosEstado, setSubjectModulosHabilitadosEstado] = useState<Record<string, boolean>>({});
     const [loadingModules, setLoadingModules] = useState(false);
     const [isCreateModuleModalOpen, setIsCreateModuleModalOpen] = useState(false);
     const [editingModule, setEditingModule] = useState<Module | null>(null);
@@ -663,12 +664,17 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                         const subject = await CoursesAPI.getMateriaById(subjectId);
                         setCurrentSubjectForModules(subject);
                         
-                        // Cargar módulos de la materia
+                        // Cargar módulos y estado habilitado desde BD
                         if (Array.isArray(subject.modulos) && subject.modulos.length > 0) {
-                            const modules = await CoursesAPI.getModulesByIds(subject.modulos);
+                            const [modules, estado] = await Promise.all([
+                                CoursesAPI.getModulesByIds(subject.modulos),
+                                CoursesAPI.getModulosHabilitadosEstado(subjectId),
+                            ]);
                             setSubjectModules(modules);
+                            setSubjectModulosHabilitadosEstado(estado);
                         } else {
                             setSubjectModules([]);
+                            setSubjectModulosHabilitadosEstado({});
                         }
                         
                         setIsModulesModalOpen(true);
@@ -718,6 +724,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                     setIsModulesModalOpen(false);
                     setCurrentSubjectForModules(null);
                     setSubjectModules([]);
+                    setSubjectModulosHabilitadosEstado({});
                     setEditingModule(null);
                     
                     // Si el modal de materia está abierto y debe cerrarse, cerrarlo también
@@ -773,6 +780,13 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                                         <ModulesList
                                             modules={subjectModules}
                                             materiaId={currentSubjectForModules?.id || ''}
+                                            defaultEnabledByModule={subjectModulosHabilitadosEstado}
+                                            onToggleSuccess={async () => {
+                                                if (currentSubjectForModules?.id) {
+                                                    const estado = await CoursesAPI.getModulosHabilitadosEstado(currentSubjectForModules.id);
+                                                    setSubjectModulosHabilitadosEstado(estado);
+                                                }
+                                            }}
                                             onDelete={(moduleId: string) => {
                                                 setConfirmDeleteModuleId(moduleId);
                                                 setIsDeleteModuleModalOpen(true);
@@ -805,6 +819,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                                     setIsModulesModalOpen(false);
                                     setCurrentSubjectForModules(null);
                                     setSubjectModules([]);
+                                    setSubjectModulosHabilitadosEstado({});
                                     setEditingModule(null);
                                     
                                     // Si el modal de materia está abierto y debe cerrarse, cerrarlo también
@@ -871,12 +886,17 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                             const updatedSubjectData = await CoursesAPI.getMateriaById(currentSubjectForModules.id);
                             setCurrentSubjectForModules(updatedSubjectData);
                             
-                            // Cargar todos los módulos actualizados
+                            // Cargar todos los módulos actualizados y estado desde BD
                             if (Array.isArray(updatedSubjectData.modulos) && updatedSubjectData.modulos.length > 0) {
-                                const updatedModules = await CoursesAPI.getModulesByIds(updatedSubjectData.modulos);
+                                const [updatedModules, estado] = await Promise.all([
+                                    CoursesAPI.getModulesByIds(updatedSubjectData.modulos),
+                                    CoursesAPI.getModulosHabilitadosEstado(currentSubjectForModules.id),
+                                ]);
                                 setSubjectModules(updatedModules);
+                                setSubjectModulosHabilitadosEstado(estado);
                             } else {
                                 setSubjectModules([]);
+                                setSubjectModulosHabilitadosEstado({});
                             }
                             
                             // Refrescar las materias del curso
@@ -911,10 +931,15 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                                 setCurrentSubjectForModules(updatedSubjectData);
                                 
                                 if (Array.isArray(updatedSubjectData.modulos) && updatedSubjectData.modulos.length > 0) {
-                                    const updatedModules = await CoursesAPI.getModulesByIds(updatedSubjectData.modulos);
+                                    const [updatedModules, estado] = await Promise.all([
+                                        CoursesAPI.getModulesByIds(updatedSubjectData.modulos),
+                                        CoursesAPI.getModulosHabilitadosEstado(currentSubjectForModules.id),
+                                    ]);
                                     setSubjectModules(updatedModules);
+                                    setSubjectModulosHabilitadosEstado(estado);
                                 } else {
                                     setSubjectModules([]);
+                                    setSubjectModulosHabilitadosEstado({});
                                 }
                                 
                                 // Refrescar las materias del curso
@@ -966,12 +991,17 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                         const updatedSubjectData = await CoursesAPI.getMateriaById(currentSubjectForModules.id);
                         setCurrentSubjectForModules(updatedSubjectData);
                         
-                        // Cargar módulos actualizados
+                        // Cargar módulos actualizados y estado desde BD
                         if (Array.isArray(updatedSubjectData.modulos) && updatedSubjectData.modulos.length > 0) {
-                            const updatedModules = await CoursesAPI.getModulesByIds(updatedSubjectData.modulos);
+                            const [updatedModules, estado] = await Promise.all([
+                                CoursesAPI.getModulesByIds(updatedSubjectData.modulos),
+                                CoursesAPI.getModulosHabilitadosEstado(currentSubjectForModules.id),
+                            ]);
                             setSubjectModules(updatedModules);
+                            setSubjectModulosHabilitadosEstado(estado);
                         } else {
                             setSubjectModules([]);
+                            setSubjectModulosHabilitadosEstado({});
                         }
                         
                         // Refrescar las materias del curso
