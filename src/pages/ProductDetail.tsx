@@ -45,6 +45,7 @@ const ProductDetail = () => {
   const [curso, setCurso] = useState<Course | null>(null);
   const [materias, setMaterias] = useState<Subject[]>([]); 
   const [modulosPorMateria, setModulosPorMateria] = useState<Record<string, Module[]>>({});
+  const [modulosHabilitadosEstadoPorMateria, setModulosHabilitadosEstadoPorMateria] = useState<Record<string, Record<string, boolean>>>({});
   const [loadingModulos, setLoadingModulos] = useState<Record<string, boolean>>({});
   const [expandedMaterias, setExpandedMaterias] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -103,8 +104,12 @@ const ProductDetail = () => {
 
     setLoadingModulos(prev => ({ ...prev, [materiaId]: true }));
     try {
-      const modulosData = await CoursesAPI.getModulesByIds(moduloIds);
+      const [modulosData, estado] = await Promise.all([
+        CoursesAPI.getModulesByIds(moduloIds),
+        CoursesAPI.getModulosHabilitadosEstado(materiaId),
+      ]);
       setModulosPorMateria(prev => ({ ...prev, [materiaId]: modulosData }));
+      setModulosHabilitadosEstadoPorMateria(prev => ({ ...prev, [materiaId]: estado }));
     } catch (error) {
       console.error(`Error al cargar módulos de materia ${materiaId}:`, error);
     } finally {
@@ -347,6 +352,11 @@ const ProductDetail = () => {
                               <ModulesList 
                                 modules={modulosCargados} 
                                 materiaId={materia.id}
+                                defaultEnabledByModule={modulosHabilitadosEstadoPorMateria[materia.id] ?? {}}
+                                onToggleSuccess={async () => {
+                                  const estado = await CoursesAPI.getModulosHabilitadosEstado(materia.id);
+                                  setModulosHabilitadosEstadoPorMateria(prev => ({ ...prev, [materia.id]: estado }));
+                                }}
                               />
                             ) : (
                               <p className="text-sm text-gray-500 text-center py-4">
