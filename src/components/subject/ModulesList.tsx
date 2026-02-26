@@ -23,13 +23,13 @@ interface ModulesListProps {
   onToggleSuccess?: () => void | Promise<void>;
 }
 
-export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
   const [moduleEnabledStates, setModuleEnabledStates] = useState<Record<string, boolean>>({});
   const [moduloExcepciones, setModuloExcepciones] = useState<Record<string, Array<{ id: string; nombre: string }>>>({});
-  const [totalStudentsWithMateria, setTotalStudentsWithMateria] = useState(0);
+  const [, setTotalStudentsWithMateria] = useState(0);
   const [loadingExcepciones, setLoadingExcepciones] = useState(true);
 
   const closeToast = () => setToastState(null);
