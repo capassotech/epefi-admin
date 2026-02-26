@@ -216,6 +216,56 @@ export const CoursesAPI = {
     return (res.data?.modulos_habilitados_estado ?? {}) as Record<string, boolean>;
   },
 
+  /**
+   * Obtiene los estudiantes que tienen un módulo deshabilitado individualmente (excepciones).
+   * Útil para mostrar "Deshabilitado para: X, Y" cuando el módulo está habilitado para todos
+   * pero algunos usuarios lo tienen deshabilitado.
+   */
+  getModuloExcepciones: async (
+    materiaId: string,
+    moduleIds: string[]
+  ): Promise<{ excepciones: Record<string, Array<{ id: string; nombre: string }>>; totalStudentsWithMateria: number }> => {
+    const { StudentsAPI } = await import("@/service/students");
+    const excepciones: Record<string, Array<{ id: string; nombre: string }>> = {};
+    for (const mid of moduleIds) excepciones[mid] = [];
+
+    try {
+      const [allCourses, allStudents] = await Promise.all([
+        api.get("/cursos").then((r) => r.data || []),
+        StudentsAPI.getAll(),
+      ]);
+      const courseIdsWithMateria = (allCourses as { id: string; materias?: string[] }[])
+        .filter((c) => c.materias?.includes(materiaId))
+        .map((c) => c.id);
+      if (courseIdsWithMateria.length === 0) return { excepciones, totalStudentsWithMateria: 0 };
+
+      const studentsWithMateria = (allStudents as { id: string; nombre?: string; apellido?: string; cursos_asignados?: string[] }[]).filter(
+        (s) => s.cursos_asignados?.some((cid: string) => courseIdsWithMateria.includes(cid))
+      );
+      if (studentsWithMateria.length === 0) return { excepciones, totalStudentsWithMateria: 0 };
+
+      for (const student of studentsWithMateria) {
+        try {
+          const modData = await StudentsAPI.getStudentModules(student.id);
+          const modulosHabilitados = (modData as { modulos_habilitados?: Record<string, boolean> })?.modulos_habilitados ?? {};
+          for (const mid of moduleIds) {
+            if (modulosHabilitados[mid] === false) {
+              excepciones[mid].push({
+                id: student.id,
+                nombre: [student.nombre, student.apellido].filter(Boolean).join(" ").trim() || "Sin nombre",
+              });
+            }
+          }
+        } catch {
+          // Ignorar errores por estudiante individual
+        }
+      }
+      return { excepciones, totalStudentsWithMateria: studentsWithMateria.length };
+    } catch {
+      return { excepciones, totalStudentsWithMateria: 0 };
+    }
+  },
+
   getMateriasByIds: async (ids: string[]) => {
     if (!ids || ids.length === 0) return [];
     const materias: Subject[] = [];
