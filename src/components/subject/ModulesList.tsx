@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import ToastNotification from '../ui/ToastNotification';
 import { type Module } from '@/types/types';
-import { Edit2, Trash2, Loader2, Users } from 'lucide-react';
+import { Edit2, Trash2, Loader2, Users, UserMinus } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import { toast } from 'sonner';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface ModulesListProps {
   modules: Module[];
@@ -23,8 +28,36 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
   const [moduleEnabledStates, setModuleEnabledStates] = useState<Record<string, boolean>>({});
+  const [moduloExcepciones, setModuloExcepciones] = useState<Record<string, Array<{ id: string; nombre: string }>>>({});
+  const [totalStudentsWithMateria, setTotalStudentsWithMateria] = useState(0);
+  const [loadingExcepciones, setLoadingExcepciones] = useState(true);
 
   const closeToast = () => setToastState(null);
+
+  const refetchExcepciones = (silent = false) => {
+    if (!materiaId || !modules.length) return;
+    if (!silent) setLoadingExcepciones(true);
+    CoursesAPI.getModuloExcepciones(materiaId, modules.map((m) => m.id))
+      .then(({ excepciones, totalStudentsWithMateria: total }) => {
+        setModuloExcepciones(excepciones);
+        setTotalStudentsWithMateria(total);
+      })
+      .catch(() => {
+        setModuloExcepciones({});
+        setTotalStudentsWithMateria(0);
+      })
+      .finally(() => { if (!silent) setLoadingExcepciones(false); });
+  };
+
+  useEffect(() => {
+    if (!materiaId || !modules.length) {
+      setModuloExcepciones({});
+      setTotalStudentsWithMateria(0);
+      setLoadingExcepciones(false);
+      return;
+    }
+    refetchExcepciones();
+  }, [materiaId, modules.map((m) => m.id).join(',')]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -44,6 +77,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
         `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
       );
       await onToggleSuccess?.();
+      refetchExcepciones(true);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al actualizar módulos';
       toast.error(errorMessage);
@@ -122,29 +156,69 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                       </>
                     )}
                   </Button>
-                  <div 
-                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <Users className="w-4 h-4 text-gray-500" />
-                    <span className="text-xs text-gray-600 whitespace-nowrap">
-                      {togglingModuleId === m.id ? 'Actualizando...' : 'Todos los estudiantes'}
-                    </span>
-                    {togglingModuleId === m.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                  <div className="flex flex-col gap-1">
+                    {loadingExcepciones ? (
+                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 min-w-[180px]">
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                        <span className="text-xs text-gray-600 whitespace-nowrap">Cargando...</span>
+                      </div>
                     ) : (
-                      <Switch
-                        checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
-                        onCheckedChange={(checked) => {
-                          handleToggleModuleForAll(m.id, checked);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        disabled={togglingModuleId !== null}
-                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                      />
+                      <>
+                        <div 
+                          className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <Users className="w-4 h-4 text-gray-500" />
+                          <span className="text-xs text-gray-600 whitespace-nowrap">
+                            {togglingModuleId === m.id ? 'Actualizando...' : 'Habilitado por defecto'}
+                          </span>
+                          {togglingModuleId === m.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                          ) : (
+                            <Switch
+                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : true}
+                              onCheckedChange={(checked) => {
+                                handleToggleModuleForAll(m.id, checked);
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              disabled={togglingModuleId !== null}
+                              className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                            />
+                          )}
+                        </div>
+                        {(moduloExcepciones[m.id]?.length ?? 0) > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <UserMinus className="w-4 h-4 mr-1.5" />
+                            {moduloExcepciones[m.id].length} estudiante{moduloExcepciones[m.id].length !== 1 ? 's' : ''} no habilitado{moduloExcepciones[m.id].length !== 1 ? 's' : ''}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="end" onClick={(e) => e.stopPropagation()}>
+                          <p className="font-medium text-amber-800 mb-2">Estudiantes sin este módulo habilitado</p>
+                          <p className="text-sm text-gray-600 mb-2">
+                            Los siguientes tienen este módulo deshabilitado individualmente:
+                          </p>
+                          <ul className="text-sm space-y-1 max-h-48 overflow-y-auto">
+                            {moduloExcepciones[m.id].map((s) => (
+                              <li key={s.id} className="flex items-center gap-2 py-1 px-2 rounded bg-amber-50">
+                                <UserMinus className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                {s.nombre}
+                              </li>
+                            ))}
+                          </ul>
+                        </PopoverContent>
+                      </Popover>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
