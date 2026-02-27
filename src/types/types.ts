@@ -16,6 +16,8 @@ export interface Module {
   url_miniatura: string;
   url_archivo: string;
   url_video: string[];
+  /** Nombres personalizados para archivos, separados por ||| en el mismo orden que url_archivo */
+  nombres_archivos?: string;
 }
 
 export interface Subject {

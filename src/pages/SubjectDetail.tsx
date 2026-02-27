@@ -180,6 +180,7 @@ export const SubjectDetail = () => {
                 url_miniatura: subjectData.url_miniatura,
                 url_archivo: subjectData.url_archivo,
                 url_video: subjectData.url_video,
+                nombres_archivos: subjectData.nombres_archivos || "",
             });
 
             // Refrescar el módulo en el estado local

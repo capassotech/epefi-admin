@@ -192,6 +192,7 @@ export default function CreateModule() {
                 url_miniatura: moduleData.url_miniatura,
                 url_archivo: moduleData.url_archivo,
                 url_video: moduleData.url_video,
+                nombres_archivos: moduleData.nombres_archivos || "",
             });
             setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
         }
