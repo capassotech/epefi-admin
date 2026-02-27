@@ -707,6 +707,10 @@ export const StudentDetail = () => {
                                                                                                     {/* Videos */}
                                                                                                     {videos.map((_, index) => {
                                                                                                         const isCompleted = isContentCompleted(module.id, index, 'video');
+                                                                                                        const customVideoNames = module.nombres_videos
+                                                                                                            ? (module.nombres_videos.includes('|||') ? module.nombres_videos.split('|||') : [module.nombres_videos])
+                                                                                                            : [];
+                                                                                                        const videoName = customVideoNames[index]?.trim() || `Video ${index + 1}`;
                                                                                                         return (
                                                                                                             <div key={`video-${index}`} className="flex items-center gap-2 text-xs">
                                                                                                                 {isCompleted ? (
@@ -715,7 +719,7 @@ export const StudentDetail = () => {
                                                                                                                     <Play className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                                                                                                                 )}
                                                                                                                 <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                                                                                                    Video {index + 1} {isCompleted ? '(Completado)' : '(Pendiente)'}
+                                                                                                                    {videoName} {isCompleted ? '(Completado)' : '(Pendiente)'}
                                                                                                                 </span>
                                                                                                             </div>
                                                                                                         );

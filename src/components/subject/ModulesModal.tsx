@@ -60,6 +60,7 @@ const ModulesModal = ({
     const [archivosFiles, setArchivosFiles] = useState<File[]>([]);
     const [archivosNombres, setArchivosNombres] = useState<string[]>([]);
     const [existingNombres, setExistingNombres] = useState<string[]>([]);
+    const [videoNombres, setVideoNombres] = useState<string[]>([]);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -117,6 +118,7 @@ const ModulesModal = ({
                     }
                 }
                 
+                const videos = editingModule.url_video || [];
                 setModuleForm({
                     id: editingModule.id,
                     titulo: editingModule.titulo,
@@ -126,8 +128,9 @@ const ModulesModal = ({
                     bibliografia: editingModule.bibliografia || "",
                     url_miniatura: editingModule.url_miniatura || "",
                     url_archivo: urlArchivoValue,
-                    url_video: editingModule.url_video || [],
+                    url_video: videos,
                     nombres_archivos: editingModule.nombres_archivos || "",
+                    nombres_videos: editingModule.nombres_videos || "",
                 });
 
                 const existingUrls = urlArchivoValue
@@ -138,6 +141,11 @@ const ModulesModal = ({
                     : [];
                 const padded = existingUrls.map((_: string, i: number) => savedNames[i] || '');
                 setExistingNombres(padded);
+
+                const savedVideoNames = editingModule.nombres_videos
+                    ? (editingModule.nombres_videos.includes('|||') ? editingModule.nombres_videos.split('|||') : [editingModule.nombres_videos])
+                    : [];
+                setVideoNombres(videos.map((_: string, i: number) => savedVideoNames[i] || ''));
             } else {
                 setModuleForm({
                     id: "",
@@ -154,6 +162,7 @@ const ModulesModal = ({
                 setArchivosFiles([]);
                 setArchivosNombres([]);
                 setExistingNombres([]);
+                setVideoNombres([]);
                 setIsVideoModalOpen(false);
                 setSelectedVideoUrl(null);
                 setValidatingVideo(false);
@@ -310,11 +319,11 @@ const ModulesModal = ({
             }
         }
 
-        // Si todo está bien, agregar la URL
         setModuleForm((prev) => ({
             ...prev,
             url_video: [...prev.url_video, url],
         }));
+        setVideoNombres((prev) => [...prev, '']);
         setVideoUrlInput("");
         setValidatingVideo(false);
         setVideoError(null);
@@ -501,6 +510,12 @@ const ModulesModal = ({
                 url_archivo: urlArchivoValue,
                 url_video: Array.isArray(moduleForm.url_video) ? moduleForm.url_video : [],
                 nombres_archivos: nombresArchivosValue,
+                nombres_videos: (() => {
+                    const paddedVideoNames = (Array.isArray(moduleForm.url_video) ? moduleForm.url_video : []).map((_, i) => (videoNombres[i] || '').trim());
+                    return paddedVideoNames.some(n => n)
+                        ? (paddedVideoNames.length === 1 ? paddedVideoNames[0] : paddedVideoNames.join('|||'))
+                        : "";
+                })(),
             };
             
             const subjectDataToSend = editingModule
@@ -964,6 +979,10 @@ const ModulesModal = ({
                                                         const newVideos = [...moduleForm.url_video];
                                                         const [removed] = newVideos.splice(draggedVideoIndex, 1);
                                                         newVideos.splice(index, 0, removed);
+                                                        const newNames = [...videoNombres];
+                                                        const [removedName] = newNames.splice(draggedVideoIndex, 1);
+                                                        newNames.splice(index, 0, removedName);
+                                                        setVideoNombres(newNames);
                                                         setModuleForm((prev) => ({
                                                             ...prev,
                                                             url_video: newVideos,
@@ -983,35 +1002,56 @@ const ModulesModal = ({
                                                 }`}
                                             >
                                                 <GripVertical className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                                <span className="text-sm text-blue-800 flex-1 truncate" title={url}>
-                                                    {url}
-                                                </span>
-                                                {(isVideoUrl || isYouTubeUrl || isGoogleDriveUrl) && (
+                                                <div className="flex-1 min-w-0 space-y-1">
+                                                    <span className="text-xs text-gray-500 truncate block" title={url}>
+                                                        {url}
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        value={videoNombres[index] || ''}
+                                                        onChange={(e) => {
+                                                            setVideoNombres((prev) => {
+                                                                const updated = [...prev];
+                                                                updated[index] = e.target.value;
+                                                                return updated;
+                                                            });
+                                                        }}
+                                                        placeholder="Nombre visible para el usuario"
+                                                        className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {(isVideoUrl || isYouTubeUrl || isGoogleDriveUrl) && (
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                                                            onClick={() => {
+                                                                setSelectedVideoUrl(url);
+                                                                setIsVideoModalOpen(true);
+                                                            }}
+                                                            title="Ver video"
+                                                        >
+                                                            Ver
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
-                                                        className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
                                                         onClick={() => {
-                                                            setSelectedVideoUrl(url);
-                                                            setIsVideoModalOpen(true);
+                                                            const videoIndex = moduleForm.url_video.indexOf(url);
+                                                            setModuleForm((prev) => ({
+                                                                ...prev,
+                                                                url_video: prev.url_video.filter((u) => u !== url),
+                                                            }));
+                                                            if (videoIndex !== -1) {
+                                                                setVideoNombres((prev) => prev.filter((_, i) => i !== videoIndex));
+                                                            }
                                                         }}
-                                                        title="Ver video"
+                                                        title="Quitar URL"
                                                     >
-                                                        Ver
+                                                        Quitar
                                                     </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    className="text-xs text-red-600 hover:text-red-800 font-medium"
-                                                    onClick={() =>
-                                                        setModuleForm((prev) => ({
-                                                            ...prev,
-                                                            url_video: prev.url_video.filter((u) => u !== url),
-                                                        }))
-                                                    }
-                                                    title="Quitar URL"
-                                                >
-                                                    Quitar
-                                                </button>
+                                                </div>
                                             </div>
                                         );
                                     })}

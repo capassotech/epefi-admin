@@ -181,6 +181,7 @@ export const SubjectDetail = () => {
                 url_archivo: subjectData.url_archivo,
                 url_video: subjectData.url_video,
                 nombres_archivos: subjectData.nombres_archivos || "",
+                nombres_videos: subjectData.nombres_videos || "",
             });
 
             // Refrescar el módulo en el estado local

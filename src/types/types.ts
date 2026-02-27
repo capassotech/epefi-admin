@@ -18,6 +18,8 @@ export interface Module {
   url_video: string[];
   /** Nombres personalizados para archivos, separados por ||| en el mismo orden que url_archivo */
   nombres_archivos?: string;
+  /** Nombres personalizados para videos, separados por ||| en el mismo orden que url_video */
+  nombres_videos?: string;
 }
 
 export interface Subject {
