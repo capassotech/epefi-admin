@@ -23,7 +23,7 @@ interface ModulesListProps {
   onToggleSuccess?: () => void | Promise<void>;
 }
 
-export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSuccess }: ModulesListProps) => {
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
@@ -177,7 +177,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
                             <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                           ) : (
                             <Switch
-                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : true}
+                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
                               onCheckedChange={(checked) => {
                                 handleToggleModuleForAll(m.id, checked);
                               }}
