@@ -58,6 +58,9 @@ const ModulesModal = ({
     });
     const [videoUrlInput, setVideoUrlInput] = useState<string>("");
     const [archivosFiles, setArchivosFiles] = useState<File[]>([]);
+    const [archivosNombres, setArchivosNombres] = useState<string[]>([]);
+    const [existingNombres, setExistingNombres] = useState<string[]>([]);
+    const [videoNombres, setVideoNombres] = useState<string[]>([]);
     const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -115,17 +118,34 @@ const ModulesModal = ({
                     }
                 }
                 
+                const videos = editingModule.url_video || [];
                 setModuleForm({
                     id: editingModule.id,
                     titulo: editingModule.titulo,
                     descripcion: editingModule.descripcion || "",
                     id_materia: editingModule.id_materia || "",
-                    tipo_contenido: "pdf", // Siempre PDF, incluso al editar
+                    tipo_contenido: "pdf",
                     bibliografia: editingModule.bibliografia || "",
                     url_miniatura: editingModule.url_miniatura || "",
                     url_archivo: urlArchivoValue,
-                    url_video: editingModule.url_video || [],
+                    url_video: videos,
+                    nombres_archivos: editingModule.nombres_archivos || "",
+                    nombres_videos: editingModule.nombres_videos || "",
                 });
+
+                const existingUrls = urlArchivoValue
+                    ? (urlArchivoValue.includes('|||') ? urlArchivoValue.split('|||').filter((u: string) => u.trim()) : [urlArchivoValue].filter((u: string) => u.trim()))
+                    : [];
+                const savedNames = editingModule.nombres_archivos
+                    ? (editingModule.nombres_archivos.includes('|||') ? editingModule.nombres_archivos.split('|||') : [editingModule.nombres_archivos])
+                    : [];
+                const padded = existingUrls.map((_: string, i: number) => savedNames[i] || '');
+                setExistingNombres(padded);
+
+                const savedVideoNames = editingModule.nombres_videos
+                    ? (editingModule.nombres_videos.includes('|||') ? editingModule.nombres_videos.split('|||') : [editingModule.nombres_videos])
+                    : [];
+                setVideoNombres(videos.map((_: string, i: number) => savedVideoNames[i] || ''));
             } else {
                 setModuleForm({
                     id: "",
@@ -140,6 +160,9 @@ const ModulesModal = ({
                 });
                 setVideoUrlInput("");
                 setArchivosFiles([]);
+                setArchivosNombres([]);
+                setExistingNombres([]);
+                setVideoNombres([]);
                 setIsVideoModalOpen(false);
                 setSelectedVideoUrl(null);
                 setValidatingVideo(false);
@@ -296,11 +319,11 @@ const ModulesModal = ({
             }
         }
 
-        // Si todo está bien, agregar la URL
         setModuleForm((prev) => ({
             ...prev,
             url_video: [...prev.url_video, url],
         }));
+        setVideoNombres((prev) => [...prev, '']);
         setVideoUrlInput("");
         setValidatingVideo(false);
         setVideoError(null);
@@ -462,31 +485,37 @@ const ModulesModal = ({
                 }
             }
 
-            // Combinar URLs existentes con las nuevas (mantener el orden: existentes primero, luego nuevos)
             const allUrls = [...existingUrls, ...uploadedUrls].filter(url => url.trim() !== '');
 
-            // Preparar datos para enviar
-            // Si es creación, no incluir el campo 'id'
-            // Si es edición, incluir todos los campos incluyendo 'id'
-            // El backend espera tipo_contenido en minúsculas: "pdf", "video", etc.
-            // Siempre usar "pdf" (minúsculas) ya que es el único tipo permitido ahora
+            const allNombres = [...existingNombres, ...archivosNombres];
+            const paddedNombres = allUrls.map((_, i) => (allNombres[i] || '').trim());
+
             const tipoContenidoNormalized = "pdf";
             
-            // Para compatibilidad con el backend, si hay múltiples URLs, las combinamos con un delimitador
-            // Si el backend soporta arrays, podríamos enviar allUrls directamente
             const urlArchivoValue = allUrls.length > 0 
                 ? (allUrls.length === 1 ? allUrls[0] : allUrls.join('|||'))
+                : "";
+
+            const nombresArchivosValue = paddedNombres.some(n => n)
+                ? (paddedNombres.length === 1 ? paddedNombres[0] : paddedNombres.join('|||'))
                 : "";
             
             const baseData = {
                 titulo: moduleForm.titulo.trim(),
                 descripcion: (moduleForm.descripcion || "").trim(),
                 id_materia: moduleForm.id_materia,
-                tipo_contenido: tipoContenidoNormalized as any, // Siempre "pdf" en minúsculas
+                tipo_contenido: tipoContenidoNormalized as any,
                 bibliografia: (moduleForm.bibliografia || "").trim(),
                 url_miniatura: (moduleForm.url_miniatura || "").trim(),
                 url_archivo: urlArchivoValue,
                 url_video: Array.isArray(moduleForm.url_video) ? moduleForm.url_video : [],
+                nombres_archivos: nombresArchivosValue,
+                nombres_videos: (() => {
+                    const paddedVideoNames = (Array.isArray(moduleForm.url_video) ? moduleForm.url_video : []).map((_, i) => (videoNombres[i] || '').trim());
+                    return paddedVideoNames.some(n => n)
+                        ? (paddedVideoNames.length === 1 ? paddedVideoNames[0] : paddedVideoNames.join('|||'))
+                        : "";
+                })(),
             };
             
             const subjectDataToSend = editingModule
@@ -603,6 +632,7 @@ const ModulesModal = ({
                                         onChange={(e) => {
                                             const files = Array.from(e.target.files || []);
                                             setArchivosFiles((prev) => [...prev, ...files]);
+                                            setArchivosNombres((prev) => [...prev, ...files.map(() => '')]);
                                             if (fileInputRef.current) {
                                                 fileInputRef.current.value = '';
                                             }
@@ -649,14 +679,30 @@ const ModulesModal = ({
                                                     }`}
                                                 >
                                                     <GripVertical className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                                    <span className="text-sm text-blue-800 flex-1 truncate" title={file.name}>
-                                                        {file.name}
-                                                    </span>
+                                                    <div className="flex-1 min-w-0 space-y-1">
+                                                        <span className="text-xs text-gray-500 truncate block" title={file.name}>
+                                                            {file.name}
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            value={archivosNombres[index] || ''}
+                                                            onChange={(e) => {
+                                                                setArchivosNombres((prev) => {
+                                                                    const updated = [...prev];
+                                                                    updated[index] = e.target.value;
+                                                                    return updated;
+                                                                });
+                                                            }}
+                                                            placeholder="Nombre visible para el usuario"
+                                                            className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                        />
+                                                    </div>
                                                     <button
                                                         type="button"
-                                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                                        className="text-xs text-red-600 hover:text-red-800 font-medium flex-shrink-0"
                                                         onClick={() => {
                                                             setArchivosFiles((prev) => prev.filter((_, i) => i !== index));
+                                                            setArchivosNombres((prev) => prev.filter((_, i) => i !== index));
                                                         }}
                                                         title="Quitar archivo"
                                                     >
@@ -770,6 +816,10 @@ const ModulesModal = ({
                                                                 const newUrls = [...existingUrls];
                                                                 const [removed] = newUrls.splice(draggedIndex, 1);
                                                                 newUrls.splice(index, 0, removed);
+                                                                const newNames = [...existingNombres];
+                                                                const [removedName] = newNames.splice(draggedIndex, 1);
+                                                                newNames.splice(index, 0, removedName);
+                                                                setExistingNombres(newNames);
                                                                 setModuleForm((prev) => ({
                                                                     ...prev,
                                                                     url_archivo: newUrls.length > 0 
@@ -791,10 +841,25 @@ const ModulesModal = ({
                                                         }`}
                                                     >
                                                         <GripVertical className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                                        <span className="text-sm text-blue-800 flex-1 truncate" title={url}>
-                                                            {fileName}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex-1 min-w-0 space-y-1">
+                                                            <span className="text-xs text-gray-500 truncate block" title={url}>
+                                                                {fileName}
+                                                            </span>
+                                                            <input
+                                                                type="text"
+                                                                value={existingNombres[index] || ''}
+                                                                onChange={(e) => {
+                                                                    setExistingNombres((prev) => {
+                                                                        const updated = [...prev];
+                                                                        updated[index] = e.target.value;
+                                                                        return updated;
+                                                                    });
+                                                                }}
+                                                                placeholder="Nombre visible para el usuario"
+                                                                className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
                                                             <button
                                                                 type="button"
                                                                 className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
@@ -810,6 +875,8 @@ const ModulesModal = ({
                                                                 className="text-xs text-red-600 hover:text-red-800 font-medium"
                                                                 onClick={() => {
                                                                     const updatedUrls = existingUrls.filter((_, i) => i !== index);
+                                                                    const updatedNombres = existingNombres.filter((_, i) => i !== index);
+                                                                    setExistingNombres(updatedNombres);
                                                                     setModuleForm((prev) => ({
                                                                         ...prev,
                                                                         url_archivo: updatedUrls.length > 0 
@@ -912,6 +979,10 @@ const ModulesModal = ({
                                                         const newVideos = [...moduleForm.url_video];
                                                         const [removed] = newVideos.splice(draggedVideoIndex, 1);
                                                         newVideos.splice(index, 0, removed);
+                                                        const newNames = [...videoNombres];
+                                                        const [removedName] = newNames.splice(draggedVideoIndex, 1);
+                                                        newNames.splice(index, 0, removedName);
+                                                        setVideoNombres(newNames);
                                                         setModuleForm((prev) => ({
                                                             ...prev,
                                                             url_video: newVideos,
@@ -931,35 +1002,56 @@ const ModulesModal = ({
                                                 }`}
                                             >
                                                 <GripVertical className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                                <span className="text-sm text-blue-800 flex-1 truncate" title={url}>
-                                                    {url}
-                                                </span>
-                                                {(isVideoUrl || isYouTubeUrl || isGoogleDriveUrl) && (
+                                                <div className="flex-1 min-w-0 space-y-1">
+                                                    <span className="text-xs text-gray-500 truncate block" title={url}>
+                                                        {url}
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        value={videoNombres[index] || ''}
+                                                        onChange={(e) => {
+                                                            setVideoNombres((prev) => {
+                                                                const updated = [...prev];
+                                                                updated[index] = e.target.value;
+                                                                return updated;
+                                                            });
+                                                        }}
+                                                        placeholder="Nombre visible para el usuario"
+                                                        className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {(isVideoUrl || isYouTubeUrl || isGoogleDriveUrl) && (
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                                                            onClick={() => {
+                                                                setSelectedVideoUrl(url);
+                                                                setIsVideoModalOpen(true);
+                                                            }}
+                                                            title="Ver video"
+                                                        >
+                                                            Ver
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
-                                                        className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
                                                         onClick={() => {
-                                                            setSelectedVideoUrl(url);
-                                                            setIsVideoModalOpen(true);
+                                                            const videoIndex = moduleForm.url_video.indexOf(url);
+                                                            setModuleForm((prev) => ({
+                                                                ...prev,
+                                                                url_video: prev.url_video.filter((u) => u !== url),
+                                                            }));
+                                                            if (videoIndex !== -1) {
+                                                                setVideoNombres((prev) => prev.filter((_, i) => i !== videoIndex));
+                                                            }
                                                         }}
-                                                        title="Ver video"
+                                                        title="Quitar URL"
                                                     >
-                                                        Ver
+                                                        Quitar
                                                     </button>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    className="text-xs text-red-600 hover:text-red-800 font-medium"
-                                                    onClick={() =>
-                                                        setModuleForm((prev) => ({
-                                                            ...prev,
-                                                            url_video: prev.url_video.filter((u) => u !== url),
-                                                        }))
-                                                    }
-                                                    title="Quitar URL"
-                                                >
-                                                    Quitar
-                                                </button>
+                                                </div>
                                             </div>
                                         );
                                     })}
