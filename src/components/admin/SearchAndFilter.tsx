@@ -16,6 +16,7 @@ export interface FilterOptions {
   status?: string;
   sortBy?: string;
   role?: string;
+  courseId?: string;
 }
 
 interface SearchAndFilterProps {
@@ -25,6 +26,7 @@ interface SearchAndFilterProps {
   createButtonText?: string;
   filterOptions?: {
     sortOptions?: { value: string; label: string }[];
+    courses?: { id: string; titulo: string }[];
   };
   hideCreateButton?: boolean;
   isStudentPage?: boolean;
@@ -107,6 +109,27 @@ export const SearchAndFilter = ({
                 <SelectItem value="all">Todos los roles</SelectItem>
                 <SelectItem value="student">Estudiante</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Curso asignado - Solo en la página de estudiantes */}
+          {isStudentPage && filterOptions?.courses && filterOptions.courses.length > 0 && (
+            <Select
+              value={currentFilters.courseId || "all"}
+              onValueChange={(value) => handleFilterChange("courseId", value)}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Curso asignado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los cursos</SelectItem>
+                <SelectItem value="none">Sin curso asignado</SelectItem>
+                {filterOptions.courses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.titulo}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           )}
