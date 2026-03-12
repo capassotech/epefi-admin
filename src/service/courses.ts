@@ -210,7 +210,12 @@ export const CoursesAPI = {
     return res.data;
   },
 
-  /** Estado habilitado de cada módulo según la BD (usuarios con esta materia) */
+  /**
+   * Estado GLOBAL habilitado de cada módulo por materia.
+   * Devuelve { moduleId: boolean } donde true = habilitado globalmente, false = deshabilitado.
+   * Módulos nuevos o sin registro deben devolverse como false (deshabilitados por defecto).
+   * Ver docs/BACKEND_ESPEC_MODULOS_HABILITACION.md para la lógica completa.
+   */
   getModulosHabilitadosEstado: async (materiaId: string) => {
     const res = await api.get(`/materias/${materiaId}/modulos-habilitados-estado`);
     return (res.data?.modulos_habilitados_estado ?? {}) as Record<string, boolean>;
@@ -445,7 +450,12 @@ export const CoursesAPI = {
     }
   },
 
-  // Habilitar/deshabilitar módulos de manera grupal para todos los estudiantes con esa materia
+  /**
+   * Habilita o deshabilita un módulo GLOBALMENTE para una materia.
+   * Solo debe actualizar el estado global. NO debe crear registros individuales por usuario.
+   * Los usuarios nuevos heredan este estado automáticamente.
+   * Ver docs/BACKEND_ESPEC_MODULOS_HABILITACION.md
+   */
   toggleModuleForAllStudents: async (materiaId: string, moduleId: string, enabled: boolean) => {
     try {
       const res = await api.patch(`/materias/${materiaId}/modulos/toggle`, {

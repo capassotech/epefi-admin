@@ -23,7 +23,7 @@ interface ModulesListProps {
   onToggleSuccess?: () => void | Promise<void>;
 }
 
-export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSuccess }: ModulesListProps) => {
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
@@ -31,6 +31,12 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
   const [moduloExcepciones, setModuloExcepciones] = useState<Record<string, Array<{ id: string; nombre: string }>>>({});
   const [, setTotalStudentsWithMateria] = useState(0);
   const [loadingExcepciones, setLoadingExcepciones] = useState(true);
+
+  useEffect(() => {
+    if (defaultEnabledByModule && Object.keys(defaultEnabledByModule).length > 0) {
+      setModuleEnabledStates(defaultEnabledByModule);
+    }
+  }, [defaultEnabledByModule]);
 
   const closeToast = () => setToastState(null);
 
@@ -72,6 +78,13 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
     try {
       const response = await CoursesAPI.toggleModuleForAllStudents(materiaId, moduleId, enabled);
       setModuleEnabledStates(prev => ({ ...prev, [moduleId]: enabled }));
+      // Limpieza optimista de excepciones para que el contador se actualice sin recargar
+      if (enabled) {
+        setModuloExcepciones(prev => ({
+          ...prev,
+          [moduleId]: [],
+        }));
+      }
       toast.success(
         response.message || 
         `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
@@ -177,7 +190,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
                             <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                           ) : (
                             <Switch
-                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : true}
+                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
                               onCheckedChange={(checked) => {
                                 handleToggleModuleForAll(m.id, checked);
                               }}
