@@ -212,7 +212,7 @@ export const StudentDetail = () => {
                                     
                                     modulos.push({
                                         ...module,
-                                        enabled: modulesHabilitados[module.id] !== false,
+                                        enabled: modulesHabilitados[module.id] === true,
                                         progress: moduleProgressPercentage,
                                         progressPercentage: moduleProgressPercentage,
                                         completedContents: {

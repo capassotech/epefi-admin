@@ -32,6 +32,12 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
   const [, setTotalStudentsWithMateria] = useState(0);
   const [loadingExcepciones, setLoadingExcepciones] = useState(true);
 
+  useEffect(() => {
+    if (defaultEnabledByModule && Object.keys(defaultEnabledByModule).length > 0) {
+      setModuleEnabledStates(defaultEnabledByModule);
+    }
+  }, [defaultEnabledByModule]);
+
   const closeToast = () => setToastState(null);
 
   const refetchExcepciones = (silent = false) => {
@@ -72,6 +78,13 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
     try {
       const response = await CoursesAPI.toggleModuleForAllStudents(materiaId, moduleId, enabled);
       setModuleEnabledStates(prev => ({ ...prev, [moduleId]: enabled }));
+      // Limpieza optimista de excepciones para que el contador se actualice sin recargar
+      if (enabled) {
+        setModuloExcepciones(prev => ({
+          ...prev,
+          [moduleId]: [],
+        }));
+      }
       toast.success(
         response.message || 
         `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
