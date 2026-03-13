@@ -41,9 +41,9 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
   const closeToast = () => setToastState(null);
 
   const refetchExcepciones = (silent = false) => {
-    if (!materiaId || !modules.length) return;
+    if (!materiaId) return;
     if (!silent) setLoadingExcepciones(true);
-    CoursesAPI.getModuloExcepciones(materiaId, modules.map((m) => m.id))
+    CoursesAPI.getModuloExcepciones(materiaId)
       .then(({ excepciones, totalStudentsWithMateria: total }) => {
         setModuloExcepciones(excepciones);
         setTotalStudentsWithMateria(total);
@@ -51,19 +51,22 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
       .catch(() => {
         setModuloExcepciones({});
         setTotalStudentsWithMateria(0);
+        if (!silent) {
+          toast.error("No se pudo cargar la lista de excepciones por módulo");
+        }
       })
       .finally(() => { if (!silent) setLoadingExcepciones(false); });
   };
 
   useEffect(() => {
-    if (!materiaId || !modules.length) {
+    if (!materiaId) {
       setModuloExcepciones({});
       setTotalStudentsWithMateria(0);
       setLoadingExcepciones(false);
       return;
     }
     refetchExcepciones();
-  }, [materiaId, modules.map((m) => m.id).join(',')]);
+  }, [materiaId, modules.length]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -78,13 +81,6 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
     try {
       const response = await CoursesAPI.toggleModuleForAllStudents(materiaId, moduleId, enabled);
       setModuleEnabledStates(prev => ({ ...prev, [moduleId]: enabled }));
-      // Limpieza optimista de excepciones para que el contador se actualice sin recargar
-      if (enabled) {
-        setModuloExcepciones(prev => ({
-          ...prev,
-          [moduleId]: [],
-        }));
-      }
       toast.success(
         response.message || 
         `Módulo ${enabled ? 'habilitado' : 'deshabilitado'} para ${response.updatedUsers || 0} estudiantes`
