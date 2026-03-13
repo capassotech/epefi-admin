@@ -258,8 +258,9 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
         selectedCourseIds={selectedCourseIds}
         setSelectedCourseIds={setSelectedCourseIds}
         getErrorMessage={getErrorMessage}
-        setCourses={(/* _courses */) => { }}
+        setCourses={() => {}}
         showTrigger={false}
+        onCoursesUpdated={onUserUpdated}
       />
     </div>
   );

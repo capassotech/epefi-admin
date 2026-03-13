@@ -21,6 +21,8 @@ interface CoursesAsignStudentModalProps {
     getErrorMessage: (e: unknown) => string;
     setCourses: Dispatch<SetStateAction<Course[]>>;
     showTrigger?: boolean;
+    /** Llamado tras asignar o desasignar cursos, para que el padre actualice la lista */
+    onCoursesUpdated?: () => void | Promise<void>;
 }
 
 export const CoursesAsignStudentModal = ({
@@ -32,6 +34,7 @@ export const CoursesAsignStudentModal = ({
     getErrorMessage,
     setCourses,
     showTrigger = true,
+    onCoursesUpdated,
 }: CoursesAsignStudentModalProps) => {
     const [allCourses, setAllCourses] = useState<Course[]>([]);
     const [assignedCourses, setAssignedCourses] = useState<Course[]>([]);
@@ -189,6 +192,7 @@ export const CoursesAsignStudentModal = ({
                 toast.success(newAssignments.length > 1 ? 'Cursos asignados correctamente (algunos cursos inválidos fueron removidos)' : 'Curso asignado correctamente');
                 setAssignDialogOpen(false);
                 setSelectedCourseIds([]);
+                await onCoursesUpdated?.();
                 setAssigning(false);
                 return;
             }
@@ -261,6 +265,7 @@ export const CoursesAsignStudentModal = ({
             toast.success(newAssignments.length > 1 ? 'Cursos asignados correctamente' : 'Curso asignado correctamente');
             setAssignDialogOpen(false);
             setSelectedCourseIds([]);
+            await onCoursesUpdated?.();
         } catch (e: unknown) {
             toast.error(getErrorMessage(e));
         } finally {
@@ -319,6 +324,7 @@ export const CoursesAsignStudentModal = ({
             setSelectedCourseIds((prev) => prev.filter((cid: string) => cid !== courseId));
 
             toast.success('Curso removido correctamente');
+            await onCoursesUpdated?.();
         } catch (e: unknown) {
             toast.error(getErrorMessage(e));
         } finally {
