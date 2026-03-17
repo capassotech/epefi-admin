@@ -23,7 +23,7 @@ interface ModulesListProps {
   onToggleSuccess?: () => void | Promise<void>;
 }
 
-export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSuccess }: ModulesListProps) => {
+export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
@@ -32,12 +32,18 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
   const [, setTotalStudentsWithMateria] = useState(0);
   const [loadingExcepciones, setLoadingExcepciones] = useState(true);
 
+  useEffect(() => {
+    if (defaultEnabledByModule && Object.keys(defaultEnabledByModule).length > 0) {
+      setModuleEnabledStates(defaultEnabledByModule);
+    }
+  }, [defaultEnabledByModule]);
+
   const closeToast = () => setToastState(null);
 
   const refetchExcepciones = (silent = false) => {
-    if (!materiaId || !modules.length) return;
+    if (!materiaId) return;
     if (!silent) setLoadingExcepciones(true);
-    CoursesAPI.getModuloExcepciones(materiaId, modules.map((m) => m.id))
+    CoursesAPI.getModuloExcepciones(materiaId)
       .then(({ excepciones, totalStudentsWithMateria: total }) => {
         setModuloExcepciones(excepciones);
         setTotalStudentsWithMateria(total);
@@ -45,19 +51,22 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
       .catch(() => {
         setModuloExcepciones({});
         setTotalStudentsWithMateria(0);
+        if (!silent) {
+          toast.error("No se pudo cargar la lista de excepciones por módulo");
+        }
       })
       .finally(() => { if (!silent) setLoadingExcepciones(false); });
   };
 
   useEffect(() => {
-    if (!materiaId || !modules.length) {
+    if (!materiaId) {
       setModuloExcepciones({});
       setTotalStudentsWithMateria(0);
       setLoadingExcepciones(false);
       return;
     }
     refetchExcepciones();
-  }, [materiaId, modules.map((m) => m.id).join(',')]);
+  }, [materiaId, modules.length]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -177,7 +186,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, onToggleSucc
                             <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                           ) : (
                             <Switch
-                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : true}
+                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
                               onCheckedChange={(checked) => {
                                 handleToggleModuleForAll(m.id, checked);
                               }}

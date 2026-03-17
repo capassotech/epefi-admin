@@ -7,6 +7,7 @@ import {
 } from "@/components/admin/SearchAndFilter";
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
+import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { type StudentDB } from "@/types/types";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -19,6 +20,7 @@ export default function Students() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
+  const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterOptions>({});
@@ -64,6 +66,17 @@ export default function Students() {
       }
     }
 
+    // Filtrar por curso asignado
+    if (filterOptions.courseId && filterOptions.courseId !== "all") {
+      if (filterOptions.courseId === "none") {
+        filtered = filtered.filter((s) => !(s.cursos_asignados || []).length);
+      } else {
+        filtered = filtered.filter((s) =>
+          (s.cursos_asignados || []).includes(filterOptions.courseId!)
+        );
+      }
+    }
+
     if (filterOptions.sortBy) {
       switch (filterOptions.sortBy) {
         case "name":
@@ -103,6 +116,20 @@ export default function Students() {
       }
     };
     fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await CoursesAPI.getAll();
+        const data = Array.isArray(res) ? res : [];
+        setCourses(data.map((c: { id: string; titulo: string }) => ({ id: c.id, titulo: c.titulo })));
+      } catch (err) {
+        console.error("Error al cargar cursos:", err);
+        setCourses([]);
+      }
+    };
+    fetchCourses();
   }, []);
 
   // Aplicar filtros cuando cambien los estudiantes, la búsqueda o los filtros
@@ -190,6 +217,7 @@ export default function Students() {
       { value: "email", label: "Email" },
       { value: "date", label: "Fecha de registro" },
     ],
+    courses,
   };
 
   if (loading) {

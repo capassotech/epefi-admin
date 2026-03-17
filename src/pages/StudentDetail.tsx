@@ -212,7 +212,7 @@ export const StudentDetail = () => {
                                     
                                     modulos.push({
                                         ...module,
-                                        enabled: modulesHabilitados[module.id] !== false,
+                                        enabled: modulesHabilitados[module.id] === true,
                                         progress: moduleProgressPercentage,
                                         progressPercentage: moduleProgressPercentage,
                                         completedContents: {
@@ -687,6 +687,10 @@ export const StudentDetail = () => {
                                                                                                     {/* Documentos */}
                                                                                                     {documents.map((_, index) => {
                                                                                                         const isCompleted = isContentCompleted(module.id, index, 'document');
+                                                                                                        const customNames = module.nombres_archivos
+                                                                                                            ? (module.nombres_archivos.includes('|||') ? module.nombres_archivos.split('|||') : [module.nombres_archivos])
+                                                                                                            : [];
+                                                                                                        const docName = customNames[index]?.trim() || `Documento ${index + 1}`;
                                                                                                         return (
                                                                                                             <div key={`doc-${index}`} className="flex items-center gap-2 text-xs">
                                                                                                                 {isCompleted ? (
@@ -695,7 +699,7 @@ export const StudentDetail = () => {
                                                                                                                     <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                                                                                                                 )}
                                                                                                                 <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                                                                                                    Documento {index + 1} {isCompleted ? '(Completado)' : '(Pendiente)'}
+                                                                                                                    {docName} {isCompleted ? '(Completado)' : '(Pendiente)'}
                                                                                                                 </span>
                                                                                                             </div>
                                                                                                         );
@@ -703,6 +707,10 @@ export const StudentDetail = () => {
                                                                                                     {/* Videos */}
                                                                                                     {videos.map((_, index) => {
                                                                                                         const isCompleted = isContentCompleted(module.id, index, 'video');
+                                                                                                        const customVideoNames = module.nombres_videos
+                                                                                                            ? (module.nombres_videos.includes('|||') ? module.nombres_videos.split('|||') : [module.nombres_videos])
+                                                                                                            : [];
+                                                                                                        const videoName = customVideoNames[index]?.trim() || `Video ${index + 1}`;
                                                                                                         return (
                                                                                                             <div key={`video-${index}`} className="flex items-center gap-2 text-xs">
                                                                                                                 {isCompleted ? (
@@ -711,7 +719,7 @@ export const StudentDetail = () => {
                                                                                                                     <Play className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                                                                                                                 )}
                                                                                                                 <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                                                                                                    Video {index + 1} {isCompleted ? '(Completado)' : '(Pendiente)'}
+                                                                                                                    {videoName} {isCompleted ? '(Completado)' : '(Pendiente)'}
                                                                                                                 </span>
                                                                                                             </div>
                                                                                                         );
@@ -823,7 +831,6 @@ export const StudentDetail = () => {
                     }
                 }}
                 setCourses={async () => {
-                    // Recargar datos del estudiante después de asignar cursos
                     if (!id) return;
                     try {
                         const studentData = await StudentsAPI.getById(id);
@@ -843,6 +850,25 @@ export const StudentDetail = () => {
                     }
                 }}
                 showTrigger={false}
+                onCoursesUpdated={async () => {
+                    if (!id) return;
+                    try {
+                        const studentData = await StudentsAPI.getById(id);
+                        setStudent(studentData);
+                        if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
+                            const [modulesData, progressData] = await Promise.all([
+                                StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
+                                StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
+                            ]);
+                            setProgress(progressData.progreso || {});
+                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
+                        } else {
+                            setCourses([]);
+                        }
+                    } catch (error) {
+                        console.error("Error al recargar datos del estudiante:", error);
+                    }
+                }}
             />
         </div>
     );

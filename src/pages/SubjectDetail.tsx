@@ -51,7 +51,7 @@ export const SubjectDetail = () => {
 
     useEffect(() => {
         if (!id) {
-            setError('ID de curso no proporcionado');
+            setError('ID de materia no proporcionado');
             setLoading(false);
             return;
         }
@@ -71,7 +71,8 @@ export const SubjectDetail = () => {
                         setModulos(materiasData);
                         setModulosHabilitadosEstado(estado);
                     } catch (moduloError) {
-                        console.error("⚠️ Error al cargar materias:", moduloError);
+                        console.error("⚠️ Error al cargar módulos o estado:", moduloError);
+                        setError("No se pudo cargar el estado de los módulos. Verificá tu conexión e iniciá sesión como admin.");
                     } finally {
                         setLoadingModulos(false);
                     }
@@ -160,6 +161,16 @@ export const SubjectDetail = () => {
             const newModule: Module = { ...subjectData, id: newModuleId } as Module;
             setModulos((prev) => [...prev, newModule]);
 
+            // Refetch estado y excepciones para el nuevo módulo (el backend ya creó modulos_estado vía syncModulosEstado)
+            if (id) {
+                try {
+                    const estado = await CoursesAPI.getModulosHabilitadosEstado(id);
+                    setModulosHabilitadosEstado(estado);
+                } catch {
+                    // Si falla, el usuario puede recargar
+                }
+            }
+
             setIsCreateModalOpen(false);
             return { id: newModuleId };
         } catch (e) {
@@ -180,6 +191,8 @@ export const SubjectDetail = () => {
                 url_miniatura: subjectData.url_miniatura,
                 url_archivo: subjectData.url_archivo,
                 url_video: subjectData.url_video,
+                nombres_archivos: subjectData.nombres_archivos || "",
+                nombres_videos: subjectData.nombres_videos || "",
             });
 
             // Refrescar el módulo en el estado local

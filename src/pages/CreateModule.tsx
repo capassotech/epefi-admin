@@ -79,6 +79,12 @@ export default function CreateModule() {
                 await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
                 setSubjectFromQuery(updatedSubject);
                 setModules((prev) => [...prev, { ...moduleData, id: created.id } as Module]);
+                try {
+                    const estado = await CoursesAPI.getModulosHabilitadosEstado(subjectFromQuery.id);
+                    setModulosHabilitadosEstado(estado);
+                } catch {
+                    // Si falla, el usuario puede recargar
+                }
                 toast.success('Módulo agregado correctamente');
                 return { id: created.id };
             } else if (pendingSubject) {
@@ -192,6 +198,8 @@ export default function CreateModule() {
                 url_miniatura: moduleData.url_miniatura,
                 url_archivo: moduleData.url_archivo,
                 url_video: moduleData.url_video,
+                nombres_archivos: moduleData.nombres_archivos || "",
+                nombres_videos: moduleData.nombres_videos || "",
             });
             setModules((prev) => prev.map(m => m.id === moduleData.id ? ({ ...m, ...moduleData }) as Module : m));
         }
