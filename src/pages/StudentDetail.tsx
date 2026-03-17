@@ -831,7 +831,6 @@ export const StudentDetail = () => {
                     }
                 }}
                 setCourses={async () => {
-                    // Recargar datos del estudiante después de asignar cursos
                     if (!id) return;
                     try {
                         const studentData = await StudentsAPI.getById(id);
@@ -851,6 +850,25 @@ export const StudentDetail = () => {
                     }
                 }}
                 showTrigger={false}
+                onCoursesUpdated={async () => {
+                    if (!id) return;
+                    try {
+                        const studentData = await StudentsAPI.getById(id);
+                        setStudent(studentData);
+                        if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
+                            const [modulesData, progressData] = await Promise.all([
+                                StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
+                                StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
+                            ]);
+                            setProgress(progressData.progreso || {});
+                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
+                        } else {
+                            setCourses([]);
+                        }
+                    } catch (error) {
+                        console.error("Error al recargar datos del estudiante:", error);
+                    }
+                }}
             />
         </div>
     );
