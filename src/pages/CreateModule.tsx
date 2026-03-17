@@ -79,6 +79,12 @@ export default function CreateModule() {
                 await CoursesAPI.updateMateria(subjectFromQuery.id, updatedSubject);
                 setSubjectFromQuery(updatedSubject);
                 setModules((prev) => [...prev, { ...moduleData, id: created.id } as Module]);
+                try {
+                    const estado = await CoursesAPI.getModulosHabilitadosEstado(subjectFromQuery.id);
+                    setModulosHabilitadosEstado(estado);
+                } catch {
+                    // Si falla, el usuario puede recargar
+                }
                 toast.success('Módulo agregado correctamente');
                 return { id: created.id };
             } else if (pendingSubject) {
