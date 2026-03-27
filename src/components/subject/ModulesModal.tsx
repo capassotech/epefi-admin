@@ -103,6 +103,19 @@ const ModulesModal = ({
 
     useEffect(() => {
         if (isOpen) {
+            // Limpiar estado temporal del formulario en cada apertura/cambio de módulo
+            // para evitar arrastrar archivos seleccionados entre módulos distintos.
+            setVideoUrlInput("");
+            setArchivosFiles([]);
+            setArchivosNombres([]);
+            setIsVideoModalOpen(false);
+            setSelectedVideoUrl(null);
+            setValidatingVideo(false);
+            setVideoError(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+
             if (editingModule) {
                 // Preservar url_archivo tal como viene (puede ser string simple o con delimitador |||)
                 // Si viene como array, lo convertimos a string con delimitador
@@ -158,18 +171,8 @@ const ModulesModal = ({
                     url_archivo: "",
                     url_video: [],
                 });
-                setVideoUrlInput("");
-                setArchivosFiles([]);
-                setArchivosNombres([]);
                 setExistingNombres([]);
                 setVideoNombres([]);
-                setIsVideoModalOpen(false);
-                setSelectedVideoUrl(null);
-                setValidatingVideo(false);
-                setVideoError(null);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
             }
         } else {
             // Cerrar modal de video cuando se cierra el modal principal
