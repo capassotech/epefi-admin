@@ -342,7 +342,7 @@ export const StudentDetail = () => {
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Volver
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">{student.nombre} {student.apellido}</h1>
+                    <h1 className="text-lg sm:text-3xl font-bold text-gray-900 leading-tight">{student.nombre} {student.apellido}</h1>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                     <CreateUserModal
@@ -469,10 +469,10 @@ export const StudentDetail = () => {
             {/* Cursos y Módulos */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <GraduationCap className="w-5 h-5 mr-2 text-gray-600" />
-                            Cursos y Módulos ({courses.length})
+                    <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center min-w-0">
+                            <GraduationCap className="w-5 h-5 mr-2 text-gray-600 flex-shrink-0" />
+                            <span className="text-sm sm:text-base font-semibold truncate">Cursos y Módulos ({courses.length})</span>
                         </div>
                         <Button
                             size="sm"
@@ -481,13 +481,13 @@ export const StudentDetail = () => {
                                 setSelectedCourseIds([]);
                                 setAssignDialogOpen(true);
                             }}
-                            className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer"
+                            className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer flex-shrink-0"
                             title="Asignar cursos"
                         >
                             <Calendar className="w-4 h-4 mr-1.5 text-white" />
                             Asignar Cursos
                         </Button>
-                            </CardTitle>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loadingCourses ? (
@@ -515,7 +515,7 @@ export const StudentDetail = () => {
                                             )}
                                             <BookOpen className="w-6 h-6 text-blue-500 flex-shrink-0" />
                                             <div className="text-left flex-1">
-                                                <h3 className="font-semibold text-lg text-gray-900">{course.titulo}</h3>
+                                                <h3 className="font-semibold text-base sm:text-lg text-gray-900">{course.titulo}</h3>
                                                 {/* Progreso del curso */}
                                                 {(() => {
                                                     let courseCompleted = 0;
@@ -533,8 +533,8 @@ export const StudentDetail = () => {
                                                     
                                                     if (courseTotal > 0) {
                                                         return (
-                                                            <div className="mt-2 flex items-center gap-2">
-                                                                <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[200px]">
+                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                                <div className="bg-gray-200 rounded-full h-2 w-24 sm:flex-1 sm:max-w-[200px]">
                                                                     <div
                                                                         className="bg-green-500 h-2 rounded-full transition-all"
                                                                         style={{ width: `${courseProgressPercentage}%` }}
@@ -550,7 +550,7 @@ export const StudentDetail = () => {
                                                 })()}
                                             </div>
                                         </div>
-                                        <span className="text-sm text-gray-500 ml-2">
+                                        <span className="text-xs sm:text-sm text-gray-500 ml-2 flex-shrink-0">
                                             {course.materias.length} materia{course.materias.length !== 1 ? 's' : ''}
                                         </span>
                                     </button>
@@ -604,7 +604,7 @@ export const StudentDetail = () => {
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <span className="text-xs text-gray-500 ml-2">
+                                                                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                                                                         {subject.modulos.length} módulo{subject.modulos.length !== 1 ? 's' : ''}
                                                                     </span>
                                                                 </button>
@@ -635,7 +635,7 @@ export const StudentDetail = () => {
                                                                                         key={module.id}
                                                                                         className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                                                                                     >
-                                                                                        <div className="flex items-center justify-between mb-2">
+                                                                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1 sm:gap-0">
                                                                                             <div className="flex items-center space-x-3 flex-1 min-w-0">
                                                                                                 {module.tipo_contenido === 'video' ? (
                                                                                                     <Play className="w-4 h-4 text-orange-500 flex-shrink-0" />
@@ -648,7 +648,7 @@ export const StudentDetail = () => {
                                                                                                     </p>
                                                                                                 </div>
                                                                                             </div>
-                                                                                            <div className="flex items-center space-x-3 ml-4">
+                                                                                            <div className="flex items-center gap-2 sm:space-x-3 sm:ml-4">
                                                                                                 {updatingModules.has(module.id) ? (
                                                                                                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                                                                                                 ) : (
@@ -658,7 +658,7 @@ export const StudentDetail = () => {
                                                                                                         className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
                                                                                                     />
                                                                                                 )}
-                                                                                                <span className={`text-xs font-medium w-20 text-right ${
+                                                                                                <span className={`text-xs font-medium ${
                                                                                                     module.enabled ? 'text-green-700' : 'text-red-700'
                                                                                                 }`}>
                                                                                                     {module.enabled ? 'Habilitado' : 'Deshabilitado'}

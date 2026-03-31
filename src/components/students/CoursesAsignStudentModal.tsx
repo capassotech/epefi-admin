@@ -391,7 +391,7 @@ export const CoursesAsignStudentModal = ({
                     <Button className="text-zinc-200" variant="outline" onClick={() => setAssignDialogOpen(true)}>Asignar Cursos</Button>
                 </DialogTrigger>
             )}
-            <DialogContent className='max-w-3xl max-h-[90vh] overflow-hidden flex flex-col'>
+            <DialogContent className='w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col'>
                 <DialogHeader>
                     <div className="space-y-1">
                         <DialogTitle className="text-2xl font-semibold text-gray-900">Asignar cursos</DialogTitle>
@@ -409,15 +409,18 @@ export const CoursesAsignStudentModal = ({
                         )}
                     </div>
                 </DialogHeader>
-                <div className="flex-1 overflow-hidden">
+                {/* En mobile el grid pasa a 1 columna; el wrapper scrollea verticalmente.
+                    En desktop cada columna tiene su propio ScrollArea de altura fija. */}
+                <div className="flex-1 overflow-y-auto lg:overflow-hidden">
                     {loading ? (
                         <div className="flex items-center justify-center py-10">
                             <Loader2 className="w-5 h-5 mr-2 animate-spin text-blue-600" />
                             <span className="text-sm text-gray-500">Cargando cursos...</span>
                         </div>
                     ) : (
-                        <div className="grid gap-6 lg:grid-cols-2 lg:divide-x lg:divide-gray-100 h-full">
-                            <div className="pr-0 lg:pr-6 space-y-4">
+                        <div className="grid gap-0 lg:gap-6 lg:grid-cols-2 lg:divide-x lg:divide-gray-100 lg:h-full">
+                            {/* ── Columna izquierda: cursos ya asignados ── */}
+                            <div className="pr-0 lg:pr-6 space-y-3 pb-4 lg:pb-0">
                                 <div className="flex items-center gap-2">
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Cursos asignados</h3>
@@ -425,12 +428,13 @@ export const CoursesAsignStudentModal = ({
                                         {assignedCourses.length}
                                     </Badge>
                                 </div>
-                                <ScrollArea className="h-[320px] pr-4">
+                                {/* h-auto en mobile para que no genere doble scroll, fijo en desktop */}
+                                <ScrollArea className="h-auto lg:h-[300px] pr-2">
                                     {assignedCourses.length === 0 ? (
                                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center">
                                             <BookOpen className="w-6 h-6 mx-auto mb-2 text-gray-300" />
                                             <p className="text-sm text-gray-500">El estudiante aún no tiene cursos asignados.</p>
-                                            <p className="text-xs text-gray-400 mt-1">Selecciona cursos desde la columna de la derecha.</p>
+                                            <p className="text-xs text-gray-400 mt-1">Selecciona cursos desde abajo.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
@@ -464,7 +468,12 @@ export const CoursesAsignStudentModal = ({
                                     )}
                                 </ScrollArea>
                             </div>
-                            <div className="pl-0 lg:pl-6 space-y-4">
+
+                            {/* Separador horizontal visible solo en mobile */}
+                            <div className="block lg:hidden border-t border-gray-200 my-2" />
+
+                            {/* ── Columna derecha: cursos disponibles ── */}
+                            <div className="pl-0 lg:pl-6 space-y-3 pt-2 lg:pt-0">
                                 <div className="flex items-center gap-2">
                                     <PlusCircle className="w-4 h-4 text-blue-600" />
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Agregar cursos</h3>
@@ -472,7 +481,7 @@ export const CoursesAsignStudentModal = ({
                                         {availableCourses.length}
                                     </Badge>
                                 </div>
-                                <ScrollArea className="h-[320px] pr-4">
+                                <ScrollArea className="h-auto lg:h-[300px] pr-2">
                                     {availableCourses.length === 0 ? (
                                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center">
                                             <BookOpen className="w-6 h-6 mx-auto mb-2 text-gray-300" />
@@ -527,8 +536,8 @@ export const CoursesAsignStudentModal = ({
                         </div>
                     )}
                 </div>
-                <DialogFooter className="border-t border-gray-100 pt-4 mt-4">
-                    <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <DialogFooter className="border-t border-gray-100 pt-3 mt-2">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm text-gray-500">
                             {selectedCourseIds.length === 0 ? (
                                 <span>No has seleccionado cursos nuevos.</span>
@@ -540,6 +549,7 @@ export const CoursesAsignStudentModal = ({
                         </div>
                         <Button
                             type="button"
+                            className="w-full sm:w-auto"
                             disabled={selectedCourseIds.length === 0 || assigning || !student}
                             onClick={assignCourse}
                         >
