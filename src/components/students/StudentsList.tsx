@@ -6,14 +6,17 @@ import {
   Loader2,
   Calendar,
   Eye,
+  Users,
 } from "lucide-react";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
+import { BulkAssignCoursesModal } from "./BulkAssignCoursesModal";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Checkbox } from "../ui/checkbox";
 import { StudentsAPI } from "@/service/students";
 import { toast } from "sonner";
 
@@ -29,7 +32,32 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkSelectedCourseIds, setBulkSelectedCourseIds] = useState<string[]>([]);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedRowIds((prev) => prev.filter((id) => students.some((s) => s.id === id)));
+  }, [students]);
+
+  const selectedStudents = students.filter((s) => selectedRowIds.includes(s.id));
+  const allRowIds = students.map((s) => s.id);
+  const selectedInViewCount = students.filter((s) => selectedRowIds.includes(s.id)).length;
+  const allSelected = students.length > 0 && selectedInViewCount === students.length;
+  const someSelected = selectedInViewCount > 0 && selectedInViewCount < students.length;
+
+  const toggleRow = (id: string) => {
+    setSelectedRowIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedRowIds((prev) => prev.filter((id) => !allRowIds.includes(id)));
+    } else {
+      setSelectedRowIds((prev) => Array.from(new Set([...prev, ...allRowIds])));
+    }
+  };
 
   const handleStatusChange = async (id: string, currentStatus: boolean) => {
     setUpdatingStatusId(id);
@@ -80,6 +108,37 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
 
   return (
     <div className="admin-card overflow-hidden">
+      {selectedStudents.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-sm">
+          <Users className="w-4 h-4 text-blue-700 shrink-0" />
+          <span className="font-medium text-blue-900">
+            {selectedStudents.length} usuario{selectedStudents.length !== 1 ? "s" : ""} seleccionado
+            {selectedStudents.length !== 1 ? "s" : ""}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 border-blue-200 text-blue-800 hover:bg-blue-100"
+            onClick={() => setSelectedRowIds([])}
+          >
+            Limpiar selección
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 bg-blue-600 text-white hover:bg-blue-700"
+            onClick={() => {
+              setBulkSelectedCourseIds([]);
+              setBulkAssignOpen(true);
+            }}
+            data-tour="bulk-assign-courses"
+          >
+            <Calendar className="w-3.5 h-3.5 mr-1.5" />
+            Asignar cursos al grupo
+          </Button>
+        </div>
+      )}
 
       {/* ── Vista mobile: tarjetas ── */}
       <div className="block md:hidden divide-y divide-gray-100">
@@ -93,6 +152,17 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => navigate(`/students/${student.id}`)}
             >
+              <div
+                className="flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  checked={selectedRowIds.includes(student.id)}
+                  onCheckedChange={() => toggleRow(student.id)}
+                  aria-label={`Seleccionar ${getFullName(student)}`}
+                />
+              </div>
               <div className="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center">
                 <span className="text-blue-600 font-semibold text-sm">
                   {student.nombre?.charAt(0).toUpperCase() || "?"}
@@ -206,6 +276,13 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th className="w-12 pl-4 pr-2 py-3 text-left align-middle">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Seleccionar todos los usuarios visibles"
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Nombre
               </th>
@@ -227,6 +304,17 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                 className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                 onClick={() => navigate(`/students/${student.id}`)}
               >
+                <td
+                  className="w-12 pl-4 pr-2 py-4 align-middle"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={selectedRowIds.includes(student.id)}
+                    onCheckedChange={() => toggleRow(student.id)}
+                    aria-label={`Seleccionar ${getFullName(student)}`}
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
@@ -368,6 +456,21 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
         setCourses={() => {}}
         showTrigger={false}
         onCoursesUpdated={onUserUpdated}
+      />
+      <BulkAssignCoursesModal
+        open={bulkAssignOpen}
+        onOpenChange={(open) => {
+          setBulkAssignOpen(open);
+          if (!open) setBulkSelectedCourseIds([]);
+        }}
+        students={selectedStudents}
+        selectedCourseIds={bulkSelectedCourseIds}
+        setSelectedCourseIds={setBulkSelectedCourseIds}
+        getErrorMessage={getErrorMessage}
+        onSuccess={async () => {
+          setSelectedRowIds([]);
+          await onUserUpdated?.();
+        }}
       />
     </div>
   );
