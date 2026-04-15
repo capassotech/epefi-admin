@@ -42,6 +42,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
   }, [students]);
 
   const selectedStudents = students.filter((s) => selectedRowIds.includes(s.id));
+  const disableIndividualCursos = selectedRowIds.length > 0;
   const allRowIds = students.map((s) => s.id);
   const selectedInViewCount = students.filter((s) => selectedRowIds.includes(s.id)).length;
   const allSelected = students.length > 0 && selectedInViewCount === students.length;
@@ -224,12 +225,18 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
               <Button
                 size="sm"
                 variant="outline"
+                disabled={disableIndividualCursos}
                 onClick={() => {
                   setSelectedStudentId(student.id);
                   setSelectedCourseIds([]);
                   setAssignDialogOpen(true);
                 }}
-                className="h-8 flex-1 min-w-[80px] bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                className="h-8 flex-1 min-w-[80px] bg-blue-600 text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
+                title={
+                  disableIndividualCursos
+                    ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
+                    : "Asignar cursos a este usuario"
+                }
                 data-tour="assign-courses"
               >
                 <Calendar className="w-3.5 h-3.5 mr-1 text-white" />
@@ -389,14 +396,19 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={disableIndividualCursos}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedStudentId(student.id);
                         setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer"
-                      title="Asignar cursos"
+                      className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
+                      title={
+                        disableIndividualCursos
+                          ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
+                          : "Asignar cursos"
+                      }
                       data-tour="assign-courses"
                     >
                       <Calendar className="w-4 h-4 mr-1.5 text-white" />
