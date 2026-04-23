@@ -20,6 +20,7 @@ import {
 } from "@/schemas/product-schema";
 import { CoursesAPI } from "@/service/courses";
 import { slugify } from "@/lib/utils";
+import { dictadoDateToIsoPayload } from "@/utils/courseDates";
 
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
@@ -136,12 +137,8 @@ export default function CreateProduct() {
         materias: data.materias || [],
       };
 
-      // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
-      const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
-      payload.fechaInicioDictado = fechaInicio.toISOString();
-      
-      const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
-      payload.fechaFinDictado = fechaFin.toISOString();
+      payload.fechaInicioDictado = dictadoDateToIsoPayload(data.fechaInicioDictado);
+      payload.fechaFinDictado = dictadoDateToIsoPayload(data.fechaFinDictado);
       if (planDeEstudiosUrl) {
         payload.planDeEstudiosUrl = planDeEstudiosUrl;
         payload.planDeEstudiosActualizado = now;
@@ -282,6 +279,11 @@ export default function CreateProduct() {
         if (course.fechasDeExamenesActualizado) {
           payload.fechasDeExamenesActualizado = course.fechasDeExamenesActualizado;
         }
+      }
+
+      if (currentFormData.fechaInicioDictado && currentFormData.fechaFinDictado) {
+        payload.fechaInicioDictado = dictadoDateToIsoPayload(currentFormData.fechaInicioDictado);
+        payload.fechaFinDictado = dictadoDateToIsoPayload(currentFormData.fechaFinDictado);
       }
       
       console.log("Actualizando curso existente (ID:", createdCourseId, ") con payload:", payload);
