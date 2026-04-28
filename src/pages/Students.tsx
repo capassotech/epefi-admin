@@ -1,5 +1,5 @@
 // src/pages/admin/Students.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { StudentList } from "@/components/students/StudentsList";
 import {
   SearchAndFilter,
@@ -15,9 +15,14 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { TourButton } from "@/components/tour/TourButton";
 import { studentsTourSteps } from "@/config/tourSteps";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { normalizePaginatedResponse } from "@/utils/pagination";
+import type { PaginationMeta } from "@/types/types";
+import { Loader } from "lucide-react";
 
 export default function Students() {
   const navigate = useNavigate();
+  const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
   const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
@@ -26,6 +31,13 @@ export default function Students() {
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -103,9 +115,15 @@ export default function Students() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const res = await StudentsAPI.getAll();
-        const data = Array.isArray(res) ? res : res?.data || [];
-        setStudents(data);
+        setPaginationLoading(true)
+        const res = await StudentsAPI.getAll({
+          page: pagination.page,
+          limit: pagination.limit,
+        });
+        const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
+        setStudents(paginated.data);
+        setPagination(paginated.pagination);
+        setPaginationLoading(false)
       } catch (err) {
         console.error("Error al cargar estudiantes:", err);
         setError("No se pudieron cargar los estudiantes");
@@ -116,7 +134,7 @@ export default function Students() {
       }
     };
     fetchStudents();
-  }, []);
+  }, [pagination.page, pagination.limit]);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -193,9 +211,13 @@ export default function Students() {
 
   const handleUserUpdated = async () => {
     try {
-      const res = await StudentsAPI.getAll();
-      const data = Array.isArray(res) ? res : res?.data || [];
-      setStudents(data);
+      const res = await StudentsAPI.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
+      });
+      const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
+      setStudents(paginated.data);
+      setPagination(paginated.pagination);
       // Los filtros se aplicarán automáticamente mediante el useEffect
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
@@ -254,47 +276,71 @@ export default function Students() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredStudents.length} de {students.length} usuarios
+          Mostrando {filteredStudents.length} de {pagination.total} usuarios
         </p>
       </div>
 
-      {filteredStudents.length > 0 ? (
-        <div data-tour="students-list">
-          <StudentList 
-            students={filteredStudents} 
-            onDelete={handleDeleteClick} 
-            onUserUpdated={handleUserUpdated}
-            onStatusChange={async () => {
-              // Recargar estudiantes después de cambiar estado
-              try {
-                const res = await StudentsAPI.getAll();
-                const data = Array.isArray(res) ? res : res?.data || [];
-                setStudents(data);
-                applyFilters(searchQuery, filters);
-              } catch (err) {
-                console.error("Error al recargar estudiantes:", err);
-              }
-            }}
-          />
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-4xl">👨‍🎓</span>
+      <div ref={listTopRef}>
+        {paginationLoading ? (
+          <div className="flex justify-center gap-3 h-full">
+            <Loader className="animate-spin"/> 
+            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No se encontraron usuarios
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Intenta ajustar los filtros o crear un nuevo estudiante.
-          </p>
-          <button
-            onClick={() => navigate("/students/create")}
-            className="admin-button"
-          >
-            Crear primer estudiante
-          </button>
-        </div>
+        ) : (
+          filteredStudents.length > 0 ? (
+            <div data-tour="students-list">
+              <StudentList 
+              students={filteredStudents} 
+              onDelete={handleDeleteClick} 
+              onUserUpdated={handleUserUpdated}
+              onStatusChange={async () => {
+                // Recargar estudiantes después de cambiar estado
+                try {
+                  const res = await StudentsAPI.getAll({
+                    page: pagination.page,
+                    limit: pagination.limit,
+                  });
+                  const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
+                  setStudents(paginated.data);
+                  setPagination(paginated.pagination);
+                  applyFilters(searchQuery, filters);
+                } catch (err) {
+                  console.error("Error al recargar estudiantes:", err);
+                }
+              }}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">👨‍🎓</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No se encontraron usuarios
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Intenta ajustar los filtros o crear un nuevo estudiante.
+            </p>
+            <button
+              onClick={() => navigate("/students/create")}
+              className="admin-button"
+            >
+              Crear primer estudiante
+            </button>
+            </div>
+          )
+        )}
+      </div>
+
+      {!paginationLoading && (
+        <PaginationControls
+          pagination={pagination}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onLimitChange={(limit) =>
+            setPagination((prev) => ({ ...prev, limit, page: 1 }))
+          }
+          scrollTargetRef={listTopRef}
+        />
       )}
 
       <ConfirmDeleteModal
