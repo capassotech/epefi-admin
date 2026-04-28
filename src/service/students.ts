@@ -68,9 +68,9 @@ api.interceptors.response.use(
 );
 
 export const StudentsAPI = {
-  getAll: async () => {
+  getAll: async (params?: { page?: number; limit?: number }) => {
     try {
-      const res = await api.get("/usuarios");
+      const res = await api.get("/usuarios", { params });
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {

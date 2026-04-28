@@ -77,8 +77,8 @@ api.interceptors.response.use(
 
 export const CoursesAPI = {
   // Cursos CRUD
-  getAll: async () => {
-    const res = await api.get("/cursos");
+  getAll: async (params?: { page?: number; limit?: number }) => {
+    const res = await api.get("/cursos", { params });
     return res.data;
   },
 
@@ -257,8 +257,8 @@ export const CoursesAPI = {
     }
   },
 
-  getMaterias: async () => {
-    const res = await api.get("/materias");
+  getMaterias: async (params?: { page?: number; limit?: number }) => {
+    const res = await api.get("/materias", { params });
     return res.data;
   },
 
