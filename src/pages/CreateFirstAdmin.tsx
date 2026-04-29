@@ -8,6 +8,13 @@ import { Mail, Lock, Eye, EyeOff, Loader2, Shield, User, BadgeIcon as IdCard } f
 import { toast } from "sonner";
 import authService from "@/service/authService";
 import { extractErrorMessage } from "@/utils/errorMessages";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import {
+  getPasswordRequirementStatus,
+  isPasswordPolicySatisfied,
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePassword,
+} from "@/utils/passwordValidation";
 
 const CreateFirstAdmin = () => {
   const navigate = useNavigate();
@@ -51,17 +58,12 @@ const CreateFirstAdmin = () => {
       newErrors.dni = "El DNI debe tener al menos 7 caracteres";
     }
 
-    if (!formData.password) {
-      newErrors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "La contraseña debe tener al menos 8 caracteres";
+    if (!formData.password.trim()) {
+      newErrors.password = PASSWORD_REQUIRED_MESSAGE;
     } else {
-      const hasUppercase = /[A-Z]/.test(formData.password);
-      const hasNumber = /[0-9]/.test(formData.password);
-      const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(formData.password);
-
-      if (!hasUppercase || !hasNumber || !hasSpecialChar) {
-        newErrors.password = "La contraseña debe tener mayúscula, número y carácter especial";
+      const { isValid, ruleViolationMessages } = validatePassword(formData.password);
+      if (!isValid) {
+        newErrors.password = ruleViolationMessages.join("\n");
       }
     }
 
@@ -142,6 +144,20 @@ const CreateFirstAdmin = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    if (field === "password") {
+      if (!value.trim()) {
+        setErrors((prev) => ({ ...prev, password: PASSWORD_REQUIRED_MESSAGE }));
+      } else {
+        const { isValid, ruleViolationMessages } = validatePassword(value);
+        setErrors((prev) => ({
+          ...prev,
+          password: isValid ? "" : ruleViolationMessages.join("\n"),
+        }));
+      }
+      return;
+    }
+
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -308,7 +324,18 @@ const CreateFirstAdmin = () => {
                     )}
                   </button>
                 </div>
-                {errors.password && <p className="form-error">{errors.password}</p>}
+                {errors.password && (
+                  <ul className="form-error list-disc pl-4 space-y-0.5">
+                    {errors.password.split("\n").map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+                <PasswordRequirements
+                  passwordRequirements={getPasswordRequirementStatus(
+                    formData.password
+                  )}
+                />
               </div>
 
               <div className="space-y-2">
@@ -347,7 +374,7 @@ const CreateFirstAdmin = () => {
               <Button
                 type="submit"
                 className="w-full btn-gradient dark:btn-gradient-dark hover:opacity-90 transition-all duration-200 font-medium"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isPasswordPolicySatisfied(formData.password)}
               >
                 {isSubmitting ? (
                   <>

@@ -7,6 +7,10 @@ import authService from "@/service/authService";
 import AuthFormView from "./AuthFormView";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { extractErrorMessage } from "@/utils/errorMessages";
+import {
+  getPasswordRequirementStatus,
+  validatePassword,
+} from "@/utils/passwordValidation";
 
 interface AuthFormProps {
   isLogin?: boolean;
@@ -29,15 +33,6 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
     acceptTerms: false,
   });
 
-  const getPasswordRequirements = (password: string) => {
-    return {
-      minLength: password.length >= 8,
-      hasUppercase: /[A-Z]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-    };
-  };
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -50,15 +45,11 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
     if (!formData.password) {
       newErrors.password = "La contraseña es requerida";
     } else if (!isLogin) {
-      const requirements = getPasswordRequirements(formData.password);
-      const allRequirementsMet =
-        requirements.minLength &&
-        requirements.hasUppercase &&
-        requirements.hasSpecialChar &&
-        requirements.hasNumber;
-
-      if (!allRequirementsMet) {
-        newErrors.password = "La contraseña no cumple con todos los requisitos";
+      const { isEmpty, isValid, ruleViolationMessages } = validatePassword(
+        formData.password
+      );
+      if (!isEmpty && !isValid) {
+        newErrors.password = ruleViolationMessages.join("\n");
       }
     }
 
@@ -157,7 +148,7 @@ const AuthFormController: React.FC<AuthFormProps> = ({ isLogin = false }) => {
         isSubmitting={isSubmitting}
         showPassword={showPassword}
         setShowPassword={setShowPassword}
-        passwordRequirements={getPasswordRequirements(
+        passwordRequirements={getPasswordRequirementStatus(
           (formData.password as string) || ""
         )}
       />

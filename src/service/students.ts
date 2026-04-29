@@ -1,6 +1,7 @@
 // src/service/students.ts
 import { auth } from "@/firebase";
 import type { CreateUserFormData } from "@/types/types";
+import { extractAxiosResponseDataMessage } from "@/utils/errorMessages";
 import axios from "axios";
 
 
@@ -107,9 +108,16 @@ export const StudentsAPI = {
       const res = await api.post("/usuarios", user);
       return res.data;
     } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
-      const errorMessage = axiosError.response?.data?.error || axiosError.message || "Error al crear usuario";
-      throw new Error(errorMessage);
+      const axiosError = error as {
+        response?: { status?: number; data?: unknown };
+        message?: string;
+      };
+      const bodyMsg = extractAxiosResponseDataMessage(axiosError.response?.data);
+      const errorMessage =
+        bodyMsg || axiosError.message || "Error al crear usuario";
+      const err = new Error(errorMessage) as Error & { httpStatus?: number };
+      err.httpStatus = axiosError.response?.status;
+      throw err;
     }
   },
 

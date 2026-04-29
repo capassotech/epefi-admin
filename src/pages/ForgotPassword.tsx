@@ -9,6 +9,13 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import { extractErrorMessage } from "@/utils/errorMessages";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import {
+  getPasswordRequirementStatus,
+  isPasswordPolicySatisfied,
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePassword,
+} from "@/utils/passwordValidation";
 
 const ForgotPassword = () => {
   const [searchParams] = useSearchParams();
@@ -30,15 +37,6 @@ const ForgotPassword = () => {
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const getPasswordRequirements = (password: string) => {
-    return {
-      minLength: password.length >= 8,
-      hasUppercase: /[A-Z]/.test(password),
-      hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-    };
   };
 
   const handleRequestReset = async (e: React.FormEvent) => {
@@ -81,18 +79,12 @@ const ForgotPassword = () => {
 
     const newErrors: Record<string, string> = {};
 
-    if (!password) {
-      newErrors.password = "La contraseña es requerida";
+    if (!password.trim()) {
+      newErrors.password = PASSWORD_REQUIRED_MESSAGE;
     } else {
-      const requirements = getPasswordRequirements(password);
-      const allRequirementsMet =
-        requirements.minLength &&
-        requirements.hasUppercase &&
-        requirements.hasSpecialChar &&
-        requirements.hasNumber;
-
-      if (!allRequirementsMet) {
-        newErrors.password = "La contraseña no cumple con todos los requisitos";
+      const { isValid, ruleViolationMessages } = validatePassword(password);
+      if (!isValid) {
+        newErrors.password = ruleViolationMessages.join("\n");
       }
     }
 
@@ -134,8 +126,6 @@ const ForgotPassword = () => {
       setIsSubmitting(false);
     }
   };
-
-  const passwordRequirements = getPasswordRequirements(password);
 
   return (
     <>
@@ -256,8 +246,17 @@ const ForgotPassword = () => {
                       }`}
                       value={password}
                       onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (errors.password) setErrors({ ...errors, password: "" });
+                        const v = e.target.value;
+                        setPassword(v);
+                        if (!v.trim()) {
+                          setErrors((prev) => ({ ...prev, password: "" }));
+                        } else {
+                          const { isValid, ruleViolationMessages } = validatePassword(v);
+                          setErrors((prev) => ({
+                            ...prev,
+                            password: isValid ? "" : ruleViolationMessages.join("\n"),
+                          }));
+                        }
                       }}
                       disabled={isSubmitting}
                     />
@@ -274,29 +273,17 @@ const ForgotPassword = () => {
                       )}
                     </button>
                   </div>
-                  {errors.password && <p className="form-error">{errors.password}</p>}
-
-                  {password.length > 0 && (
-                    <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                        Requisitos de la contraseña:
-                      </p>
-                      <div className="space-y-1 text-xs">
-                        <div className={passwordRequirements.minLength ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                          • Al menos 8 caracteres
-                        </div>
-                        <div className={passwordRequirements.hasUppercase ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                          • Una letra mayúscula
-                        </div>
-                        <div className={passwordRequirements.hasNumber ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                          • Al menos un número
-                        </div>
-                        <div className={passwordRequirements.hasSpecialChar ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                          • Un carácter especial (!@#$%^&*)
-                        </div>
-                      </div>
-                    </div>
+                  {errors.password && (
+                    <ul className="form-error list-disc pl-4 space-y-0.5">
+                      {errors.password.split("\n").map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
                   )}
+
+                  <PasswordRequirements
+                    passwordRequirements={getPasswordRequirementStatus(password)}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -340,7 +327,12 @@ const ForgotPassword = () => {
                 <Button
                   type="submit"
                   className="w-full btn-gradient dark:btn-gradient-dark hover:opacity-90 transition-all duration-200 font-medium"
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting ||
+                    !isPasswordPolicySatisfied(password) ||
+                    !confirmPassword.trim() ||
+                    password !== confirmPassword
+                  }
                 >
                   {isSubmitting ? (
                     <>
