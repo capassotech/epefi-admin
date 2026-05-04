@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject, Module } from '@/types/types';
+import { formatDictadoDateForDisplay } from '@/utils/courseDates';
 import ModulesList from '@/components/subject/ModulesList';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -264,20 +265,14 @@ const ProductDetail = () => {
                   <p className="text-sm font-medium text-gray-500 mb-2">Período de dictado</p>
                   {curso.fechaInicioDictado && (
                     <p className="text-sm text-gray-700 mb-1">
-                      <span className="font-medium">Inicio:</span> {new Date(curso.fechaInicioDictado).toLocaleDateString('es-AR', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                      <span className="font-medium">Inicio:</span>{' '}
+                      {formatDictadoDateForDisplay(curso.fechaInicioDictado)}
                     </p>
                   )}
                   {curso.fechaFinDictado && (
                     <p className="text-sm text-gray-700">
-                      <span className="font-medium">Fin:</span> {new Date(curso.fechaFinDictado).toLocaleDateString('es-AR', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                      <span className="font-medium">Fin:</span>{' '}
+                      {formatDictadoDateForDisplay(curso.fechaFinDictado)}
                     </p>
                   )}
                 </div>

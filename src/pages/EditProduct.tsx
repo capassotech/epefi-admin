@@ -24,6 +24,10 @@ import {
   type ProductFormData,
 } from "@/schemas/product-schema";
 import { slugify } from "@/lib/utils";
+import {
+  dictadoDateToIsoPayload,
+  parseDictadoDateForInput,
+} from "@/utils/courseDates";
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
 import SubjectCreation from "@/components/product/SubjectCreation";
@@ -110,40 +114,6 @@ export default function EditProduct() {
         // Resetear flags de eliminación al cargar
         setPlanDeEstudiosDeleted(false);
         setFechasDeExamenesDeleted(false);
-        // Función helper para convertir fecha ISO a formato YYYY-MM-DD
-        const formatDateForInput = (dateValue: string | undefined | null): string => {
-          if (!dateValue) {
-            // Retornar fecha por defecto si no hay valor
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-          try {
-            const date = new Date(dateValue);
-            if (isNaN(date.getTime())) {
-              // Retornar fecha por defecto si la fecha es inválida
-              const today = new Date();
-              const year = today.getFullYear();
-              const month = String(today.getMonth() + 1).padStart(2, '0');
-              const day = String(today.getDate()).padStart(2, '0');
-              return `${year}-${month}-${day}`;
-            }
-            // Convertir a formato YYYY-MM-DD
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          } catch {
-            // Retornar fecha por defecto si hay error
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-        };
         const formData = {
           titulo: data.titulo || "",
           descripcion: data.descripcion || "",
@@ -153,8 +123,8 @@ export default function EditProduct() {
           materias: Array.isArray(data.materias) ? data.materias : [],
           planDeEstudios: undefined,
           fechasDeExamenes: undefined,
-          fechaInicioDictado: formatDateForInput(data.fechaInicioDictado),
-          fechaFinDictado: formatDateForInput(data.fechaFinDictado),
+          fechaInicioDictado: parseDictadoDateForInput(data.fechaInicioDictado),
+          fechaFinDictado: parseDictadoDateForInput(data.fechaFinDictado),
         };
         
         form.reset(formData);
@@ -183,6 +153,8 @@ export default function EditProduct() {
       currentData.descripcion !== originalCourseData.descripcion ||
       currentData.precio !== originalCourseData.precio ||
       currentData.estado !== originalCourseData.estado ||
+      currentData.fechaInicioDictado !== originalCourseData.fechaInicioDictado ||
+      currentData.fechaFinDictado !== originalCourseData.fechaFinDictado ||
       JSON.stringify(currentData.materias) !== JSON.stringify(originalCourseData.materias) ||
       currentData.imagen instanceof File || // Si hay una nueva imagen, hay cambios
       currentData.planDeEstudios instanceof File || // Si hay un nuevo PDF de plan de estudios
@@ -284,12 +256,8 @@ export default function EditProduct() {
         materias: data.materias || [],
       };
 
-      // Convertir fechas a formato ISO con hora local para evitar problemas de zona horaria
-      const fechaInicio = new Date(data.fechaInicioDictado + 'T00:00:00');
-      payload.fechaInicioDictado = fechaInicio.toISOString();
-      
-      const fechaFin = new Date(data.fechaFinDictado + 'T00:00:00');
-      payload.fechaFinDictado = fechaFin.toISOString();
+      payload.fechaInicioDictado = dictadoDateToIsoPayload(data.fechaInicioDictado);
+      payload.fechaFinDictado = dictadoDateToIsoPayload(data.fechaFinDictado);
 
       // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
       const course = await CoursesAPI.getById(id);
@@ -406,40 +374,6 @@ export default function EditProduct() {
       // Limpiar los campos del formulario después de guardar
       form.setValue("planDeEstudios", undefined);
       form.setValue("fechasDeExamenes", undefined);
-      
-      // Función helper para formatear fechas
-      const formatDateForInput = (dateValue: string | undefined | null): string => {
-        if (!dateValue) {
-          // Retornar fecha por defecto si no hay valor
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        }
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            // Retornar fecha por defecto si la fecha es inválida
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        } catch {
-          // Retornar fecha por defecto si hay error
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        }
-      };
 
       // Actualizar los datos originales con los nuevos datos, incluyendo materias, PDFs y fechas actualizados
       setOriginalCourseData({
@@ -451,8 +385,8 @@ export default function EditProduct() {
         materias: Array.isArray(updatedCourse?.materias) ? updatedCourse.materias : data.materias || [],
         planDeEstudios: undefined,
         fechasDeExamenes: undefined,
-        fechaInicioDictado: formatDateForInput(updatedCourse?.fechaInicioDictado),
-        fechaFinDictado: formatDateForInput(updatedCourse?.fechaFinDictado),
+        fechaInicioDictado: parseDictadoDateForInput(updatedCourse?.fechaInicioDictado),
+        fechaFinDictado: parseDictadoDateForInput(updatedCourse?.fechaFinDictado),
       });
       
       // Mostrar mensaje de cambios guardados
@@ -737,40 +671,6 @@ export default function EditProduct() {
                       setCurrentFechasDeExamenesUrl(course.fechasDeExamenesUrl || null);
                       
                       // Actualizar originalCourseData con los datos actuales del curso
-                      // Función helper para formatear fechas
-                      const formatDateForInput = (dateValue: string | undefined | null): string => {
-                        if (!dateValue) {
-                          // Retornar fecha por defecto si no hay valor
-                          const today = new Date();
-                          const year = today.getFullYear();
-                          const month = String(today.getMonth() + 1).padStart(2, '0');
-                          const day = String(today.getDate()).padStart(2, '0');
-                          return `${year}-${month}-${day}`;
-                        }
-                        try {
-                          const date = new Date(dateValue);
-                          if (isNaN(date.getTime())) {
-                            // Retornar fecha por defecto si la fecha es inválida
-                            const today = new Date();
-                            const year = today.getFullYear();
-                            const month = String(today.getMonth() + 1).padStart(2, '0');
-                            const day = String(today.getDate()).padStart(2, '0');
-                            return `${year}-${month}-${day}`;
-                          }
-                          const year = date.getFullYear();
-                          const month = String(date.getMonth() + 1).padStart(2, '0');
-                          const day = String(date.getDate()).padStart(2, '0');
-                          return `${year}-${month}-${day}`;
-                        } catch {
-                          // Retornar fecha por defecto si hay error
-                          const today = new Date();
-                          const year = today.getFullYear();
-                          const month = String(today.getMonth() + 1).padStart(2, '0');
-                          const day = String(today.getDate()).padStart(2, '0');
-                          return `${year}-${month}-${day}`;
-                        }
-                      };
-
                       const updatedFormData = {
                         titulo: course.titulo || "",
                         descripcion: course.descripcion || "",
@@ -780,8 +680,8 @@ export default function EditProduct() {
                         materias: Array.isArray(course.materias) ? course.materias : [],
                         planDeEstudios: undefined,
                         fechasDeExamenes: undefined,
-                        fechaInicioDictado: formatDateForInput(course.fechaInicioDictado),
-                        fechaFinDictado: formatDateForInput(course.fechaFinDictado),
+                        fechaInicioDictado: parseDictadoDateForInput(course.fechaInicioDictado),
+                        fechaFinDictado: parseDictadoDateForInput(course.fechaFinDictado),
                       };
                       
                       setOriginalCourseData(updatedFormData);
