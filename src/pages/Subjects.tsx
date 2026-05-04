@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SubjectCard } from '../components/subject/SubjectCard';
 import { SubjectList } from '../components/subject/SubjectList';
 import SubjectModal from '../components/subject/SubjectModal';
@@ -11,8 +11,13 @@ import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { TourButton } from '@/components/tour/TourButton';
 import { subjectsTourSteps } from '@/config/tourSteps';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { normalizePaginatedResponse } from '@/utils/pagination';
+import type { PaginationMeta } from '@/types/types';
+import { Loader } from 'lucide-react';
 
 export default function Subjects() {
+    const listTopRef = useRef<HTMLDivElement | null>(null);
     const [materias, setMaterias] = useState<Subject[]>([]);
     const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -20,36 +25,50 @@ export default function Subjects() {
     const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const navigate = useNavigate();
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const [pagination, setPagination] = useState<PaginationMeta>({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+    });
 
     useEffect(() => {
         const fetchMaterias = async () => {
             try {
-                const res = await CoursesAPI.getMaterias();
-                const data = Array.isArray(res) ? res : res?.data || [];
-                // Asegurar que todas las materias tengan el campo activo mapeado correctamente
-                const normalizedData = data.map((m: any) => ({
+                setPaginationLoading(true);
+                const res = await CoursesAPI.getMaterias({
+                    page: pagination.page,
+                    limit: pagination.limit,
+                });
+                const paginated = normalizePaginatedResponse<Subject>(res, pagination.page, pagination.limit);
+                const data = paginated.data;
+
+                const normalizedData = data.map((m) => ({
                     ...m,
                     activo: m.activo !== undefined ? m.activo : (m.estado === 'activo' || m.estado === undefined),
                 }));
                 setMaterias(normalizedData);
                 setFilteredSubjects(normalizedData);
+                setPagination(paginated.pagination);
             } catch (err) {
                 console.error("Error al cargar materias:", err);
                 setError('No se pudieron cargar las materias');
                 setMaterias([]);
                 setFilteredSubjects([]);
             } finally {
+                setPaginationLoading(false);
                 setLoading(false);
             }
         };
         fetchMaterias();
-    }, []);
+    }, [pagination.page, pagination.limit]);
 
     const handleDeleteClick = (id: string) => {
         setConfirmDeleteId(id);
@@ -233,7 +252,7 @@ export default function Subjects() {
 
             <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                    Mostrando {filteredSubjects.length} de {materias.length} materias
+                    Mostrando {filteredSubjects.length} de {pagination.total} materias
                 </p>
                 <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
                     <span>Vista:</span>
@@ -252,8 +271,14 @@ export default function Subjects() {
                 </div>
             </div>
 
-            {filteredSubjects.length > 0 ? (
-                <>
+            <div ref={listTopRef}>
+                {paginationLoading ? (
+                    <div className="flex justify-center gap-3 h-full">
+                        <Loader className="animate-spin" />
+                        <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
+                    </div>
+                ) : filteredSubjects.length > 0 ? (
+                    <>
                     {viewMode === 'cards' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="subjects-list">
                             {filteredSubjects.map((m, index) => (
@@ -277,11 +302,15 @@ export default function Subjects() {
                                 onEdit={handleEditClick} 
                                 showTitle={false}
                                 onStatusChange={async () => {
-                                    // Recargar materias después de cambiar estado
                                     try {
-                                        const res = await CoursesAPI.getMaterias();
-                                        const data = Array.isArray(res) ? res : res?.data || [];
+                                        const res = await CoursesAPI.getMaterias({
+                                            page: pagination.page,
+                                            limit: pagination.limit,
+                                        });
+                                        const paginated = normalizePaginatedResponse<Subject>(res, pagination.page, pagination.limit);
+                                        const data = paginated.data;
                                         setMaterias(data);
+                                        setPagination(paginated.pagination);
                                         applyFilters(searchQuery, filters);
                                     } catch (err) {
                                         console.error("Error al recargar materias:", err);
@@ -329,9 +358,9 @@ export default function Subjects() {
                             />
                         </div>
                     )}
-                </>
-            ) : (
-                <div className="text-center py-12">
+                    </>
+                ) : (
+                    <div className="text-center py-12">
                     <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-4xl">📖</span>
                     </div>
@@ -343,7 +372,19 @@ export default function Subjects() {
                     >
                         Crear primera materia
                     </button>
-                </div>
+                    </div>
+                )}
+            </div>
+
+            {!paginationLoading && (
+                <PaginationControls
+                    pagination={pagination}
+                    onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                    onLimitChange={(limit) =>
+                        setPagination((prev) => ({ ...prev, limit, page: 1 }))
+                    }
+                    scrollTargetRef={listTopRef}
+                />
             )}
 
             <ConfirmDeleteModal

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductList } from '@/components/product/ProductList';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
@@ -10,9 +10,14 @@ import { toast } from 'sonner';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { TourButton } from '@/components/tour/TourButton';
 import { productsTourSteps } from '@/config/tourSteps';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { normalizePaginatedResponse } from '@/utils/pagination';
+import type { PaginationMeta } from '@/types/types';
+import { Loader } from 'lucide-react';
 
 export default function Products() {
   const navigate = useNavigate();
+  const listTopRef = useRef<HTMLDivElement | null>(null);
   const [cursos, setCursos] = useState<Course[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +26,13 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -28,29 +40,35 @@ export default function Products() {
   useEffect(() => {
     const fetchCursos = async () => {
       try {
-        const res = await CoursesAPI.getAll();
-        const data = Array.isArray(res) ? res : res?.data || [];
+        setPaginationLoading(true);
+        const res = await CoursesAPI.getAll({
+          page: pagination.page,
+          limit: pagination.limit,
+        });
+        const paginated = normalizePaginatedResponse<Course>(res, pagination.page, pagination.limit);
+        const data = paginated.data;
         
-        // Normalizar IDs a string y mapear imagen a image para consistencia
-        const normalizedData = data.map((c: any) => ({
+        const normalizedData = data.map((c) => ({
           ...c,
           id: String(c.id),
-          image: c.imagen || c.image || '', // Mapear 'imagen' del backend a 'image'
+          image: (c as Course & { imagen?: string }).imagen || c.image || '', 
         } as Course));
         
         setCursos(normalizedData);
         setFilteredProducts(normalizedData);
+        setPagination(paginated.pagination);
       } catch (err) {
         console.error("Error al cargar cursos:", err);
         setError('No se pudieron cargar los cursos');
         setCursos([]);
         setFilteredProducts([]); 
       } finally {
+        setPaginationLoading(false);
         setLoading(false);
       }
     };
     fetchCursos();
-  }, []);
+  }, [pagination.page, pagination.limit]);
 
 
   const handleConfirmDelete = async (id: string) => {
@@ -59,32 +77,27 @@ export default function Products() {
       return;
     }
 
-    // Normalizar el ID a string para comparación consistente
     const normalizedId = String(id);
-
-    console.log("=== INICIANDO ELIMINACIÓN ===");
-    console.log("ID del curso a eliminar:", normalizedId, "tipo:", typeof normalizedId);
-    console.log("Cursos actuales:", cursos.map(c => ({ id: c.id, tipo: typeof c.id, titulo: c.titulo })));
 
     setDeleteLoading(true);
     try {
-      // Llamar a la API para eliminar el curso
-      console.log("Llamando a CoursesAPI.delete con ID:", normalizedId);
       const result = await CoursesAPI.delete(normalizedId);
       console.log("Resultado de CoursesAPI.delete:", result);
       
-      // Recargar los cursos desde el servidor para asegurar que estemos sincronizados
-      console.log("Recargando cursos desde el servidor...");
-      const res = await CoursesAPI.getAll();
-      const data = Array.isArray(res) ? res : res?.data || [];
+      const res = await CoursesAPI.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
+      });
+      const paginated = normalizePaginatedResponse<Course>(res, pagination.page, pagination.limit);
+      const data = paginated.data;
       console.log("Cursos recargados del servidor:", data.length, "cursos");
       console.log("IDs de cursos recargados:", data.map((c: Course) => c.id));
       
       // Convertir todos los IDs a string y mapear imagen a image para consistencia
-      const normalizedData = data.map((c: any) => ({
+      const normalizedData = data.map((c) => ({
         ...c,
         id: String(c.id),
-        image: c.imagen || c.image || '', // Mapear 'imagen' del backend a 'image'
+        image: (c as Course & { imagen?: string }).imagen || c.image || '',
       } as Course));
       
       console.log("Cursos normalizados:", normalizedData.map((c: Course) => ({ id: c.id, titulo: c.titulo })));
@@ -100,6 +113,7 @@ export default function Products() {
       
       // Actualizar el estado con los datos del servidor (crear nuevo array para que React detecte el cambio)
       setCursos([...normalizedData]);
+      setPagination(paginated.pagination);
       
       // Aplicar los filtros actuales a los nuevos datos
       let filtered = [...normalizedData];
@@ -301,7 +315,7 @@ export default function Products() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {cursos.length} cursos
+          Mostrando {filteredProducts.length} de {pagination.total} cursos
         </p>
         <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
           <span>Vista:</span>
@@ -320,8 +334,14 @@ export default function Products() {
         </div>
       </div>
 
-      {filteredProducts.length > 0 ? (
-        <>
+      <div ref={listTopRef}>
+        {paginationLoading ? (
+          <div className="flex justify-center gap-3 h-full">
+            <Loader className="animate-spin" />
+            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
+          </div>
+        ) : filteredProducts.length > 0 ? (
+          <>
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="courses-list">
               {filteredProducts.map((f, index) => (
@@ -381,9 +401,9 @@ export default function Products() {
               />
             </div>
           )}
-        </>
-      ) : (
-        <div className="text-center py-12">
+          </>
+        ) : (
+          <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-4xl">📚</span>
           </div>
@@ -395,7 +415,19 @@ export default function Products() {
           >
             Crear primer curso
           </button>
-        </div>
+          </div>
+        )}
+      </div>
+
+      {!paginationLoading && (
+        <PaginationControls
+          pagination={pagination}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onLimitChange={(limit) =>
+            setPagination((prev) => ({ ...prev, limit, page: 1 }))
+          }
+          scrollTargetRef={listTopRef}
+        />
       )}
 
       <ConfirmDeleteModal
