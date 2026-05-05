@@ -84,7 +84,7 @@ const SubjectModal = ({
     };
 
     const loadExistingCourses = async () => {
-        const courses = await CoursesAPI.getAll();
+        const courses = await CoursesAPI.getAllList();
         setCourses(courses);
         
         // Agregar los cursos cargados al caché
@@ -103,7 +103,7 @@ const SubjectModal = ({
         if (!subjectCourseIds || subjectCourseIds.length === 0) return [];
         
         // Cargar todos los cursos existentes
-        const allCourses = await CoursesAPI.getAll();
+        const allCourses = await CoursesAPI.getAllList();
         const validCourseIds = allCourses.map((c: Course) => String(c.id));
         
         // Filtrar solo los IDs que existen
