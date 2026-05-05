@@ -139,8 +139,7 @@ export default function Students() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await CoursesAPI.getAll();
-        const data = Array.isArray(res) ? res : [];
+        const data = await CoursesAPI.getAllList();
         setCourses(data.map((c: { id: string; titulo: string }) => ({ id: c.id, titulo: c.titulo })));
       } catch (err) {
         console.error("Error al cargar cursos:", err);
