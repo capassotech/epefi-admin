@@ -61,7 +61,7 @@ export function BulkAssignCoursesModal({
     const load = async () => {
       setLoading(true);
       try {
-        const coursesData = await CoursesAPI.getAll();
+        const coursesData = await CoursesAPI.getAllList();
         setAllCourses(coursesData);
       } catch (e) {
         toast.error(getErrorMessage(e));

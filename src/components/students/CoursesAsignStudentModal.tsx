@@ -340,7 +340,7 @@ export const CoursesAsignStudentModal = ({
                 console.log('📥 Cargando datos del estudiante con ID:', id);
                 const [found, coursesData] = await Promise.all([
                     StudentsAPI.getById(id),
-                    CoursesAPI.getAll(),
+                    CoursesAPI.getAllList(),
                 ]);
                 
                 console.log('📦 Datos recibidos del backend:', {
