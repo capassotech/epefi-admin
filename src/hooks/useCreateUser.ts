@@ -45,7 +45,12 @@ export const useCreateUser = () => {
       return {
         success: true,
         message: "Usuario creado exitosamente",
-        // user: response,
+        user: {
+          id: response?.id || response?.uid || "",
+          nombre: response?.nombre || userData.nombre,
+          apellido: response?.apellido || userData.apellido,
+          email: response?.email || userData.email,
+        },
       };
     } catch (error) {
       const errorMessage =
@@ -84,7 +89,12 @@ export const useCreateUser = () => {
       return {
         success: true,
         message: "Usuario actualizado exitosamente",
-        // user: response,
+        user: {
+          id: response?.id || response?.uid || id,
+          nombre: response?.nombre || userData.nombre || "",
+          apellido: response?.apellido || userData.apellido || "",
+          email: response?.email || userData.email || "",
+        },
       };
     } catch (error) {
       const errorMessage =

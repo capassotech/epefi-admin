@@ -70,6 +70,7 @@ export interface StudentDB {
   cursos_asignados: string[];
   activo?: boolean;
   fechaRegistro: FirestoreTimestamp;
+  fechaUltimaEdicion?: FirestoreTimestamp;
 }
 
 export interface Student {

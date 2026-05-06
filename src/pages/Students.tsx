@@ -28,7 +28,10 @@ export default function Students() {
   const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({});
+  const [filters, setFilters] = useState<FilterOptions>({
+    sortBy: "date",
+    sortDirection: "desc",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
@@ -90,20 +93,29 @@ export default function Students() {
     }
 
     if (filterOptions.sortBy) {
+      const sortDirection = filterOptions.sortDirection || "desc";
       switch (filterOptions.sortBy) {
         case "name":
-          filtered.sort((a, b) =>
-            (a.nombre || "").localeCompare(b.nombre || "")
-          );
+          filtered.sort((a, b) => {
+            const value = (a.nombre || "").localeCompare(b.nombre || "");
+            return sortDirection === "asc" ? value : -value;
+          });
           break;
         case "email":
-          filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
+          filtered.sort((a, b) => {
+            const value = (a.email || "").localeCompare(b.email || "");
+            return sortDirection === "asc" ? value : -value;
+          });
           break;
         case "date":
           filtered.sort((a, b) => {
-            const dateA = a.fechaRegistro?._seconds || 0;
-            const dateB = b.fechaRegistro?._seconds || 0;
-            return dateB - dateA;
+            const getTimestamp = (student: StudentDB) =>
+              student.fechaUltimaEdicion?._seconds ||
+              student.fechaRegistro?._seconds ||
+              0;
+            const dateA = getTimestamp(a);
+            const dateB = getTimestamp(b);
+            return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
           });
           break;
       }
@@ -223,6 +235,50 @@ export default function Students() {
     }
   };
 
+  const handleUserSaved = (savedUser?: StudentDB) => {
+    if (!savedUser?.id) {
+      handleUserUpdated();
+      return;
+    }
+
+    const existsInCurrentList = students.some(
+      (student) => student.id === savedUser.id
+    );
+    const timestampNow = Math.floor(Date.now() / 1000);
+    const normalizedSavedUser: StudentDB = {
+      ...savedUser,
+      fechaUltimaEdicion:
+        savedUser.fechaUltimaEdicion ||
+        {
+          _seconds: timestampNow,
+          _nanoseconds: 0,
+        },
+      fechaRegistro:
+        savedUser.fechaRegistro ||
+        {
+          _seconds: timestampNow,
+          _nanoseconds: 0,
+        },
+    };
+
+    setStudents((prev) => {
+      const exists = prev.some((student) => student.id === normalizedSavedUser.id);
+      if (exists) {
+        return prev.map((student) =>
+          student.id === normalizedSavedUser.id
+            ? { ...student, ...normalizedSavedUser }
+            : student
+        );
+      }
+      return [normalizedSavedUser, ...prev];
+    });
+
+    setPagination((prev) => ({
+      ...prev,
+      total: prev.total + (existsInCurrentList ? 0 : 1),
+    }));
+  };
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
@@ -266,7 +322,7 @@ export default function Students() {
           onSearch={handleSearch}
           onFilter={handleFilter}
           isStudentPage={true}
-          onCreateNew={handleUserUpdated}
+          onCreateNew={handleUserSaved}
           createButtonText="Crear usuario"
           filterOptions={filterOptions}
           currentFilters={filters}
@@ -291,7 +347,7 @@ export default function Students() {
               <StudentList 
               students={filteredStudents} 
               onDelete={handleDeleteClick} 
-              onUserUpdated={handleUserUpdated}
+              onUserUpdated={handleUserSaved}
               onStatusChange={async () => {
                 // Recargar estudiantes después de cambiar estado
                 try {

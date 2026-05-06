@@ -7,14 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { type StudentDB } from "@/types/types";
 
 export interface FilterOptions {
   status?: string;
   sortBy?: string;
+  sortDirection?: "asc" | "desc";
   role?: string;
   courseId?: string;
 }
@@ -22,7 +24,7 @@ export interface FilterOptions {
 interface SearchAndFilterProps {
   onSearch: (query: string) => void;
   onFilter: (filters: FilterOptions) => void;
-  onCreateNew?: () => void;
+  onCreateNew?: (user?: StudentDB) => void;
   createButtonText?: string;
   filterOptions?: {
     sortOptions?: { value: string; label: string }[];
@@ -59,9 +61,40 @@ export const SearchAndFilter = ({
   };
 
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
-    const newFilters = { ...currentFilters, [key]: value };
+    const normalizedValue = value === "all" || value === "none" ? undefined : value;
+    const newFilters = {
+      ...currentFilters,
+      [key]: normalizedValue,
+    };
     setCurrentFilters(newFilters);
     onFilter(newFilters);
+  };
+
+  const handleSortDirectionToggle = () => {
+    const newDirection = currentFilters.sortDirection === "asc" ? "desc" : "asc";
+    const newFilters: FilterOptions = {
+      ...currentFilters,
+      sortDirection: newDirection,
+    };
+    setCurrentFilters(newFilters);
+    onFilter(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    const hasDateSort = filterOptions?.sortOptions?.some(
+      (option) => option.value === "date"
+    );
+    const defaultFilters: FilterOptions =
+      isStudentPage && hasDateSort
+        ? {
+            sortBy: "date",
+            sortDirection: "desc",
+          }
+        : {};
+    setCurrentFilters(defaultFilters);
+    onSearch("");
+    onFilter(defaultFilters);
   };
 
   return (
@@ -84,6 +117,7 @@ export const SearchAndFilter = ({
 
           {/* Estado */}
           <Select
+            value={currentFilters.status || "all"}
             onValueChange={(value) => handleFilterChange("status", value)}
           >
             <SelectTrigger className="w-32">
@@ -137,12 +171,14 @@ export const SearchAndFilter = ({
           {/* Ordenar por */}
           {filterOptions?.sortOptions && (
             <Select
+              value={currentFilters.sortBy || "none"}
               onValueChange={(value) => handleFilterChange("sortBy", value)}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">Sin orden</SelectItem>
                 {filterOptions.sortOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -151,6 +187,31 @@ export const SearchAndFilter = ({
               </SelectContent>
             </Select>
           )}
+
+          {filterOptions?.sortOptions && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSortDirectionToggle}
+              className="px-3"
+              title={
+                currentFilters.sortDirection === "asc"
+                  ? "Orden ascendente (A-Z / más antiguos primero)"
+                  : "Orden descendente (Z-A / más recientes primero)"
+              }
+            >
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              {currentFilters.sortDirection === "asc" ? "Asc" : "Desc"}
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleClearFilters}
+          >
+            Limpiar filtros
+          </Button>
         </div>
       </div>
 

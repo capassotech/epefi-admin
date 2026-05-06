@@ -23,7 +23,7 @@ import { toast } from "sonner";
 interface StudentListProps {
   students: StudentDB[];
   onDelete: (id: string) => void;
-  onUserUpdated?: () => void;
+  onUserUpdated?: (user?: StudentDB) => void;
   onStatusChange?: () => void;
 }
 

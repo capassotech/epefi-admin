@@ -48,7 +48,7 @@ import { toast } from "sonner";
 
 
 interface CreateUserModalProps {
-  onUserCreated?: () => void;
+  onUserCreated?: (user?: StudentDB) => void;
   triggerText?: string;
   isEditing?: boolean;
   editingUser?: StudentDB;
@@ -84,6 +84,14 @@ export const CreateUserModal = ({
     fechaRegistro: undefined,
   });
   const { createUser, updateUser, isLoading } = useCreateUser();
+
+  const getCurrentTimestamp = (): FirestoreTimestamp => {
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    return {
+      _seconds: nowInSeconds,
+      _nanoseconds: 0,
+    };
+  };
 
   // Resetear formulario cuando el modal se cierra
   useEffect(() => {
@@ -208,8 +216,25 @@ export const CreateUserModal = ({
     }
 
     if (result.success) {
+      const timestampNow = getCurrentTimestamp();
+      const updatedUser: StudentDB = {
+        id: isEditing
+          ? formData.id || editingUser?.id || result.user?.id || ""
+          : result.user?.id || "",
+        uid: result.user?.id,
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        email: formData.email,
+        dni: formData.dni,
+        role: formData.role,
+        emailVerificado: formData.emailVerificado,
+        cursos_asignados: formData.cursos_asignados || [],
+        activo: true,
+        fechaRegistro: formData.fechaRegistro || editingUser?.fechaRegistro || timestampNow,
+        fechaUltimaEdicion: timestampNow,
+      };
       setIsOpen(false);
-      if (onUserCreated) onUserCreated();
+      if (onUserCreated) onUserCreated(updatedUser);
     }
   };
 
