@@ -7,7 +7,6 @@ import {
 } from "@/components/admin/SearchAndFilter";
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
-import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { type StudentDB } from "@/types/types";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -25,8 +24,6 @@ export default function Students() {
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
-  const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
@@ -43,116 +40,63 @@ export default function Students() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const applyFilters = useCallback((query: string, filterOptions: FilterOptions) => {
-    let filtered = [...students];
+  const fetchStudents = useCallback(async () => {
+    try {
+      setPaginationLoading(true);
+      const sortByMap: Record<string, "nombre" | "email" | "fechaRegistro"> = {
+        name: "nombre",
+        email: "email",
+        date: "fechaRegistro",
+      };
+      const statusMap: Record<string, "activo" | "inactivo"> = {
+        active: "activo",
+        inactive: "inactivo",
+      };
 
-    if (query) {
-      filtered = filtered.filter(
-        (s) =>
-          s.nombre?.toLowerCase().includes(query.toLowerCase()) ||
-          s.apellido?.toLowerCase().includes(query.toLowerCase()) ||
-          s.email?.toLowerCase().includes(query.toLowerCase()) ||
-          s.dni?.toLowerCase().includes(query.toLowerCase())
+      const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
+      const sortOrder = filters.sortBy
+        ? filters.sortBy === "date"
+          ? "desc"
+          : "asc"
+        : undefined;
+      const status =
+        filters.status && filters.status !== "all"
+          ? statusMap[filters.status]
+          : undefined;
+      const role =
+        filters.role && filters.role !== "all"
+          ? (filters.role as "admin" | "student")
+          : undefined;
+
+      const res = await StudentsAPI.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchQuery.trim() || undefined,
+        status,
+        role,
+        sortBy,
+        sortOrder,
+      });
+      const paginated = normalizePaginatedResponse<StudentDB>(
+        res,
+        pagination.page,
+        pagination.limit
       );
+      setStudents(paginated.data);
+      setPagination(paginated.pagination);
+    } catch (err) {
+      console.error("Error al cargar estudiantes:", err);
+      setError("No se pudieron cargar los estudiantes");
+      setStudents([]);
+    } finally {
+      setPaginationLoading(false);
+      setLoading(false);
     }
-
-    if (filterOptions.status && filterOptions.status !== "all") {
-      const isActive = filterOptions.status === "active";
-      filtered = filtered.filter((s) => s.activo === isActive);
-    }
-
-    // Filtrar por rol
-    if (filterOptions.role && filterOptions.role !== "all") {
-      switch (filterOptions.role) {
-        case "student":
-          filtered = filtered.filter((s) => s.role?.student === true);
-          break;
-        case "admin":
-          filtered = filtered.filter((s) => s.role?.admin === true);
-          break;
-        case "both":
-          filtered = filtered.filter(
-            (s) => s.role?.student === true && s.role?.admin === true
-          );
-          break;
-      }
-    }
-
-    // Filtrar por curso asignado
-    if (filterOptions.courseId && filterOptions.courseId !== "all") {
-      if (filterOptions.courseId === "none") {
-        filtered = filtered.filter((s) => !(s.cursos_asignados || []).length);
-      } else {
-        filtered = filtered.filter((s) =>
-          (s.cursos_asignados || []).includes(filterOptions.courseId!)
-        );
-      }
-    }
-
-    if (filterOptions.sortBy) {
-      switch (filterOptions.sortBy) {
-        case "name":
-          filtered.sort((a, b) =>
-            (a.nombre || "").localeCompare(b.nombre || "")
-          );
-          break;
-        case "email":
-          filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
-          break;
-        case "date":
-          filtered.sort((a, b) => {
-            const dateA = a.fechaRegistro?._seconds || 0;
-            const dateB = b.fechaRegistro?._seconds || 0;
-            return dateB - dateA;
-          });
-          break;
-      }
-    }
-
-    setFilteredStudents(filtered);
-  }, [students]);
+  }, [filters, pagination.limit, pagination.page, searchQuery]);
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setPaginationLoading(true)
-        const res = await StudentsAPI.getAll({
-          page: pagination.page,
-          limit: pagination.limit,
-        });
-        const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
-        setStudents(paginated.data);
-        setPagination(paginated.pagination);
-        setPaginationLoading(false)
-      } catch (err) {
-        console.error("Error al cargar estudiantes:", err);
-        setError("No se pudieron cargar los estudiantes");
-        setStudents([]);
-        setFilteredStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStudents();
-  }, [pagination.page, pagination.limit]);
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const data = await CoursesAPI.getAllList();
-        setCourses(data.map((c: { id: string; titulo: string }) => ({ id: c.id, titulo: c.titulo })));
-      } catch (err) {
-        console.error("Error al cargar cursos:", err);
-        setCourses([]);
-      }
-    };
-    fetchCourses();
-  }, []);
-
-  // Aplicar filtros cuando cambien los estudiantes, la búsqueda o los filtros
-  useEffect(() => {
-    applyFilters(searchQuery, filters);
-  }, [applyFilters, filters, searchQuery]);
+  }, [fetchStudents]);
 
   const handleDeleteClick = (id: string) => {
     // Verificar si el usuario intenta eliminar su propia cuenta
@@ -188,10 +132,7 @@ export default function Students() {
       await StudentsAPI.delete(id);
 
       setStudents((prev) => prev.filter((s) => s.id !== id));
-      setFilteredStudents((prev) =>
-        prev.filter((s) => s.id !== id)
-      );
-      
+
       toast.success("Usuario eliminado exitosamente");
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
@@ -210,14 +151,7 @@ export default function Students() {
 
   const handleUserUpdated = async () => {
     try {
-      const res = await StudentsAPI.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
-      });
-      const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
-      setStudents(paginated.data);
-      setPagination(paginated.pagination);
-      // Los filtros se aplicarán automáticamente mediante el useEffect
+      await fetchStudents();
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
     }
@@ -225,10 +159,12 @@ export default function Students() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleFilter = (newFilters: FilterOptions) => {
     setFilters(newFilters);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const filterOptions = {
@@ -238,7 +174,6 @@ export default function Students() {
       { value: "email", label: "Email" },
       { value: "date", label: "Fecha de registro" },
     ],
-    courses,
   };
 
   if (loading) {
@@ -275,7 +210,7 @@ export default function Students() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredStudents.length} de {pagination.total} usuarios
+          Mostrando {students.length} de {pagination.total} usuarios
         </p>
       </div>
 
@@ -286,23 +221,16 @@ export default function Students() {
             <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
           </div>
         ) : (
-          filteredStudents.length > 0 ? (
+          students.length > 0 ? (
             <div data-tour="students-list">
               <StudentList 
-              students={filteredStudents} 
+              students={students} 
               onDelete={handleDeleteClick} 
               onUserUpdated={handleUserUpdated}
               onStatusChange={async () => {
                 // Recargar estudiantes después de cambiar estado
                 try {
-                  const res = await StudentsAPI.getAll({
-                    page: pagination.page,
-                    limit: pagination.limit,
-                  });
-                  const paginated = normalizePaginatedResponse<StudentDB>(res, pagination.page, pagination.limit);
-                  setStudents(paginated.data);
-                  setPagination(paginated.pagination);
-                  applyFilters(searchQuery, filters);
+                  await fetchStudents();
                 } catch (err) {
                   console.error("Error al recargar estudiantes:", err);
                 }
