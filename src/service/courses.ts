@@ -77,8 +77,14 @@ api.interceptors.response.use(
 );
 
 export const CoursesAPI = {
-  // Cursos CRUD
-  getAll: async (params?: { page?: number; limit?: number }) => {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "activo" | "inactivo";
+    sortBy?: "titulo" | "precio" | "estudiantes" | "fechaCreacion";
+    sortOrder?: "asc" | "desc";
+  }) => {
     const res = await api.get("/cursos", { params });
     return res.data;
   },
@@ -274,7 +280,14 @@ export const CoursesAPI = {
     }
   },
 
-  getMaterias: async (params?: { page?: number; limit?: number }) => {
+  getMaterias: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "activo" | "inactivo";
+    sortBy?: "titulo" | "estado";
+    sortOrder?: "asc" | "desc";
+  }) => {
     const res = await api.get("/materias", { params });
     return res.data;
   },

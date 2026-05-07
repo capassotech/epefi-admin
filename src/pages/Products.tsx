@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductList } from '@/components/product/ProductList';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
@@ -19,7 +19,6 @@ export default function Products() {
   const navigate = useNavigate();
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [cursos, setCursos] = useState<Course[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
@@ -37,39 +36,61 @@ export default function Products() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchCursos = async () => {
-      try {
-        setPaginationLoading(true);
-        const res = await CoursesAPI.getAll({
-          page: pagination.page,
-          limit: pagination.limit,
-        });
-        const paginated = normalizePaginatedResponse<Course>(res, pagination.page, pagination.limit);
-        const data = paginated.data;
-        
-        const normalizedData = data.map((c) => ({
-          ...c,
-          id: String(c.id),
-          image: (c as Course & { imagen?: string }).imagen || c.image || '', 
-        } as Course));
-        
-        setCursos(normalizedData);
-        setFilteredProducts(normalizedData);
-        setPagination(paginated.pagination);
-      } catch (err) {
-        console.error("Error al cargar cursos:", err);
-        setError('No se pudieron cargar los cursos');
-        setCursos([]);
-        setFilteredProducts([]); 
-      } finally {
-        setPaginationLoading(false);
-        setLoading(false);
-      }
-    };
-    fetchCursos();
-  }, [pagination.page, pagination.limit]);
+  const fetchCursos = useCallback(async () => {
+    try {
+      setPaginationLoading(true);
+      const sortByMap: Record<string, "titulo" | "precio" | "estudiantes" | "fechaCreacion"> = {
+        title: "titulo",
+        price: "precio",
+        students: "estudiantes",
+        date: "fechaCreacion",
+      };
+      const statusMap: Record<string, "activo" | "inactivo"> = {
+        active: "activo",
+        inactive: "inactivo",
+      };
 
+      const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
+      const sortOrder = filters.sortBy
+        ? filters.sortBy === "price"
+          ? "desc"
+          : "asc"
+        : undefined;
+      const status =
+        filters.status && filters.status !== "all"
+          ? statusMap[filters.status]
+          : undefined;
+
+      const res = await CoursesAPI.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchQuery.trim() || undefined,
+        status,
+        sortBy,
+        sortOrder,
+      });
+      const paginated = normalizePaginatedResponse<Course>(res, pagination.page, pagination.limit);
+      const data = paginated.data;
+      
+      const normalizedData = data.map((c) => ({
+        ...c,
+        id: String(c.id),
+        image: (c as Course & { imagen?: string }).imagen || c.image || '', 
+      } as Course));
+      
+      setCursos(normalizedData);
+      setPagination(paginated.pagination);
+    } catch (err) {
+      console.error("Error al cargar cursos:", err);
+      setError('No se pudieron cargar los cursos');
+      setCursos([]);
+    } finally {
+      setPaginationLoading(false);
+      setLoading(false);
+    }
+  }, [filters, pagination.limit, pagination.page, searchQuery]);
+
+  useEffect(() => { fetchCursos() }, [fetchCursos]);
 
   const handleConfirmDelete = async (id: string) => {
     if (!id) {
@@ -84,74 +105,7 @@ export default function Products() {
       const result = await CoursesAPI.delete(normalizedId);
       console.log("Resultado de CoursesAPI.delete:", result);
       
-      const res = await CoursesAPI.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
-      });
-      const paginated = normalizePaginatedResponse<Course>(res, pagination.page, pagination.limit);
-      const data = paginated.data;
-      console.log("Cursos recargados del servidor:", data.length, "cursos");
-      console.log("IDs de cursos recargados:", data.map((c: Course) => c.id));
-      
-      // Convertir todos los IDs a string y mapear imagen a image para consistencia
-      const normalizedData = data.map((c) => ({
-        ...c,
-        id: String(c.id),
-        image: (c as Course & { imagen?: string }).imagen || c.image || '',
-      } as Course));
-      
-      console.log("Cursos normalizados:", normalizedData.map((c: Course) => ({ id: c.id, titulo: c.titulo })));
-      console.log("Verificando que el curso eliminado no esté en la lista:", normalizedData.find((c: Course) => c.id === normalizedId));
-      
-      // Verificar que el curso realmente fue eliminado
-      const cursoEliminadoAunPresente = normalizedData.find((c: Course) => c.id === normalizedId);
-      if (cursoEliminadoAunPresente) {
-        console.warn("⚠️ El curso eliminado todavía aparece en la respuesta del servidor");
-      } else {
-        console.log("✅ El curso fue eliminado correctamente del servidor");
-      }
-      
-      // Actualizar el estado con los datos del servidor (crear nuevo array para que React detecte el cambio)
-      setCursos([...normalizedData]);
-      setPagination(paginated.pagination);
-      
-      // Aplicar los filtros actuales a los nuevos datos
-      let filtered = [...normalizedData];
-      
-      if (searchQuery) {
-        filtered = filtered.filter(f =>
-          f.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.descripcion.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      
-      if (filters.status && filters.status !== 'all') {
-        const isActive = filters.status === 'active';
-        filtered = filtered.filter(f => f.estado === (isActive ? 'activo' : 'inactivo'));
-      }
-      
-      if (filters.sortBy) {
-        switch (filters.sortBy) {
-          case 'title':
-            filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-            break;
-          case 'price':
-            filtered.sort((a, b) => b.precio - a.precio);
-            break;
-          case 'students':
-            filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-            break;
-          case 'date':
-            filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-            break;
-        }
-      }
-      
-      console.log("Cursos filtrados después de eliminar:", filtered.length);
-      console.log("IDs de cursos filtrados:", filtered.map(c => c.id));
-      
-      // Actualizar el estado filtrado (crear nuevo array)
-      setFilteredProducts([...filtered]);
+      await fetchCursos();
       
       toast.success("Curso eliminado exitosamente");
       
@@ -225,47 +179,12 @@ export default function Products() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    applyFilters(query, filters);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleFilter = (newFilters: FilterOptions) => {
     setFilters(newFilters);
-    applyFilters(searchQuery, newFilters);
-  };
-
-  const applyFilters = (query: string, filterOptions: FilterOptions) => {
-    let filtered = [...cursos];
-
-    if (query) {
-      filtered = filtered.filter(f =>
-        f.titulo.toLowerCase().includes(query.toLowerCase()) ||
-        f.descripcion.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-
-    if (filterOptions.status && filterOptions.status !== 'all') {
-      const isActive = filterOptions.status === 'active';
-      filtered = filtered.filter(f => f.estado === (isActive ? 'activo' : 'inactivo'));
-    }
-
-    if (filterOptions.sortBy) {
-      switch (filterOptions.sortBy) {
-        case 'title':
-          filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-          break;
-        case 'price':
-          filtered.sort((a, b) => b.precio - a.precio);
-          break;
-        case 'students':
-          filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-          break;
-        case 'date':
-          filtered.sort((a, b) => a.titulo.localeCompare(b.titulo));
-          break;
-      }
-    }
-
-    setFilteredProducts(filtered);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const filterOptions = {
@@ -315,7 +234,7 @@ export default function Products() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {pagination.total} cursos
+          Mostrando {cursos.length} de {pagination.total} cursos
         </p>
         <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
           <span>Vista:</span>
@@ -340,11 +259,11 @@ export default function Products() {
             <Loader className="animate-spin" />
             <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
           </div>
-        ) : filteredProducts.length > 0 ? (
+        ) : cursos.length > 0 ? (
           <>
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="courses-list">
-              {filteredProducts.map((f, index) => (
+              {cursos.map((f, index) => (
                 <div
                   key={f.id}
                   className="animate-fade-in"
@@ -359,7 +278,7 @@ export default function Products() {
           ) : (
             <div data-tour="courses-list">
               <ProductList 
-                products={filteredProducts}
+                products={cursos}
                 onProductUpdated={(id, newEstado) => {
                   // Actualizar el estado local sin recargar todo
                   console.log('Actualizando estado local del curso:', { id, newEstado });
@@ -382,21 +301,6 @@ export default function Products() {
                     return updated;
                   });
                   
-                  setFilteredProducts(prev => {
-                    const updated = prev.map(c => {
-                      const cId = String(c.id);
-                      if (cId === normalizedId) {
-                        console.log('Actualizando curso en filteredProducts:', { idAnterior: c.id, estadoAnterior: c.estado, estadoNuevo: newEstado });
-                        // Crear un nuevo objeto para garantizar que React detecte el cambio
-                        return { ...c, estado: newEstado };
-                      }
-                      return c;
-                    });
-                    // Verificar que realmente se actualizó
-                    const found = updated.find(c => String(c.id) === normalizedId);
-                    console.log('Curso actualizado en filteredProducts:', found);
-                    return updated;
-                  });
                 }}
               />
             </div>
