@@ -38,8 +38,17 @@ export const useCreateUser = () => {
 
       console.log(registerData);
 
-      const response = await StudentsAPI.createStudent(registerData);
+      const response = (await StudentsAPI.createStudent(registerData)) as Record<
+        string,
+        unknown
+      >;
       console.log(response);
+
+      const newId = String(
+        (response?.id as string | undefined) ??
+          (response?.uid as string | undefined) ??
+          ""
+      );
 
       toast({
         title: "Usuario creado exitosamente",
@@ -49,7 +58,12 @@ export const useCreateUser = () => {
       return {
         success: true,
         message: "Usuario creado exitosamente",
-        // user: response,
+        user: {
+          id: newId,
+          nombre: (response?.nombre as string) ?? userData.nombre,
+          apellido: (response?.apellido as string) ?? userData.apellido,
+          email: (response?.email as string) ?? userData.email,
+        },
       };
     } catch (error) {
       const errorMessage =
@@ -86,8 +100,17 @@ export const useCreateUser = () => {
     setIsLoading(true);
 
     try {
-      const response = await StudentsAPI.updateStudent(id, userData);
+      const response = (await StudentsAPI.updateStudent(id, userData)) as Record<
+        string,
+        unknown
+      >;
       console.log(response);
+
+      const rid = String(
+        (response?.id as string | undefined) ??
+          (response?.uid as string | undefined) ??
+          id
+      );
 
       toast({
         title: "Usuario actualizado exitosamente",
@@ -97,7 +120,12 @@ export const useCreateUser = () => {
       return {
         success: true,
         message: "Usuario actualizado exitosamente",
-        // user: response,
+        user: {
+          id: rid,
+          nombre: (response?.nombre as string) ?? userData.nombre ?? "",
+          apellido: (response?.apellido as string) ?? userData.apellido ?? "",
+          email: (response?.email as string) ?? userData.email ?? "",
+        },
       };
     } catch (error) {
       const errorMessage =

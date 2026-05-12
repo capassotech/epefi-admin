@@ -7,8 +7,9 @@ import {
 } from "@/components/admin/SearchAndFilter";
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
+import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import { type StudentDB } from "@/types/types";
+import { type StudentDB, type FirestoreTimestamp } from "@/types/types";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -19,13 +20,72 @@ import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
 import { Loader } from "lucide-react";
 
+const DEFAULT_STUDENT_FILTERS: FilterOptions = {
+  sortBy: "date",
+  sortDirection: "asc",
+};
+
+function getFechaRegistroSeconds(student: StudentDB): number {
+  const r = student.fechaRegistro as FirestoreTimestamp | string | undefined;
+  if (r && typeof r === "object" && "_seconds" in r) {
+    const s = (r as FirestoreTimestamp)._seconds;
+    return typeof s === "number" && Number.isFinite(s) ? s : 0;
+  }
+  if (typeof r === "string" && r.trim()) {
+    const ms = Date.parse(r);
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
+  }
+  return 0;
+}
+
+/** Ordenación local: el listado respeta asc/desc aunque el backend ignore sortOrder. */
+function sortStudentsList(list: StudentDB[], filters: FilterOptions): StudentDB[] {
+  const key = filters.sortBy;
+  if (!key || key === "none") {
+    return [...list];
+  }
+  const asc = (filters.sortDirection ?? "asc") === "asc";
+  const dir = asc ? 1 : -1;
+  const out = [...list];
+  switch (key) {
+    case "name":
+      out.sort(
+        (a, b) =>
+          dir *
+          (a.nombre || "").localeCompare(b.nombre || "", undefined, {
+            sensitivity: "base",
+          })
+      );
+      break;
+    case "email":
+      out.sort(
+        (a, b) =>
+          dir *
+          (a.email || "").localeCompare(b.email || "", undefined, {
+            sensitivity: "base",
+          })
+      );
+      break;
+    case "date":
+      out.sort(
+        (a, b) =>
+          dir * (getFechaRegistroSeconds(a) - getFechaRegistroSeconds(b))
+      );
+      break;
+    default:
+      return [...list];
+  }
+  return out;
+}
+
 export default function Students() {
   const navigate = useNavigate();
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
+  const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({});
+  const [filters, setFilters] = useState<FilterOptions>(DEFAULT_STUDENT_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
@@ -36,6 +96,11 @@ export default function Students() {
     totalPages: 1,
   });
 
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const pageLimitRef = useRef(pagination.limit);
+  pageLimitRef.current = pagination.limit;
+
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -43,7 +108,10 @@ export default function Students() {
   const fetchStudents = useCallback(async () => {
     try {
       setPaginationLoading(true);
-      const sortByMap: Record<string, "nombre" | "email" | "fechaRegistro"> = {
+      const sortByMap: Record<
+        string,
+        "nombre" | "email" | "fechaRegistro"
+      > = {
         name: "nombre",
         email: "email",
         date: "fechaRegistro",
@@ -53,12 +121,15 @@ export default function Students() {
         inactive: "inactivo",
       };
 
-      const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
-      const sortOrder = filters.sortBy
-        ? filters.sortBy === "date"
-          ? "desc"
-          : "asc"
-        : undefined;
+      const sortByKey = filters.sortBy;
+      const sortBy = sortByKey ? sortByMap[sortByKey] : undefined;
+      const sortOrder =
+        sortBy && filters.sortDirection
+          ? filters.sortDirection
+          : sortBy
+            ? "asc"
+            : undefined;
+
       const status =
         filters.status && filters.status !== "all"
           ? statusMap[filters.status]
@@ -68,6 +139,14 @@ export default function Students() {
           ? (filters.role as "admin" | "student")
           : undefined;
 
+      let cursoId: string | undefined;
+      let sinCurso: boolean | undefined;
+      if (filters.courseId === "none") {
+        sinCurso = true;
+      } else if (filters.courseId && filters.courseId !== "all") {
+        cursoId = filters.courseId;
+      }
+
       const res = await StudentsAPI.getAll({
         page: pagination.page,
         limit: pagination.limit,
@@ -76,13 +155,15 @@ export default function Students() {
         role,
         sortBy,
         sortOrder,
+        cursoId,
+        sinCurso,
       });
       const paginated = normalizePaginatedResponse<StudentDB>(
         res,
         pagination.page,
         pagination.limit
       );
-      setStudents(paginated.data);
+      setStudents(sortStudentsList(paginated.data, filters));
       setPagination(paginated.pagination);
     } catch (err) {
       console.error("Error al cargar estudiantes:", err);
@@ -97,6 +178,21 @@ export default function Students() {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const list = await CoursesAPI.getAllList();
+        setCourses(
+          list.map((c) => ({ id: String(c.id), titulo: c.titulo }))
+        );
+      } catch (e) {
+        console.error("Error al cargar cursos para filtros:", e);
+        setCourses([]);
+      }
+    };
+    loadCourses();
+  }, []);
 
   const handleDeleteClick = (id: string) => {
     // Verificar si el usuario intenta eliminar su propia cuenta
@@ -130,10 +226,8 @@ export default function Students() {
 
     try {
       await StudentsAPI.delete(id);
-
-      setStudents((prev) => prev.filter((s) => s.id !== id));
-
       toast.success("Usuario eliminado exitosamente");
+      await fetchStudents();
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
       toast.error("Error al eliminar el usuario");
@@ -149,12 +243,34 @@ export default function Students() {
     setConfirmDeleteId(null);
   };
 
-  const handleUserUpdated = async () => {
+  const handleUserUpdated = async (
+    saved?: StudentDB,
+    meta?: { isCreate: boolean }
+  ) => {
+    if (meta?.isCreate) {
+      setPagination((p) => ({ ...p, page: 1 }));
+    }
     try {
       await fetchStudents();
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
+      return;
     }
+
+    if (!meta?.isCreate || !saved?.id) {
+      return;
+    }
+
+    setStudents((prev) => {
+      const fromApi = prev.find((s) => s.id === saved.id);
+      const row: StudentDB = fromApi ? { ...fromApi, ...saved } : { ...saved };
+      const rest = prev.filter((s) => s.id !== row.id);
+      const limit = pageLimitRef.current;
+      return sortStudentsList([row, ...rest], filtersRef.current).slice(
+        0,
+        limit
+      );
+    });
   };
 
   const handleSearch = (query: string) => {
@@ -174,6 +290,7 @@ export default function Students() {
       { value: "email", label: "Email" },
       { value: "date", label: "Fecha de registro" },
     ],
+    courses,
   };
 
   if (loading) {
@@ -205,6 +322,8 @@ export default function Students() {
           createButtonText="Crear usuario"
           filterOptions={filterOptions}
           currentFilters={filters}
+          resetFiltersTo={DEFAULT_STUDENT_FILTERS}
+          showClearFilters
         />
       </div>
 

@@ -75,8 +75,13 @@ export const StudentsAPI = {
     search?: string;
     status?: "activo" | "inactivo";
     role?: "admin" | "student";
+    /** Ordenación según contrato del backend (listado /usuarios) */
     sortBy?: "nombre" | "email" | "fechaRegistro";
     sortOrder?: "asc" | "desc";
+    /** Usuarios con este curso en cursos_asignados */
+    cursoId?: string;
+    /** Solo usuarios sin ningún curso asignado */
+    sinCurso?: boolean;
   }) => {
     try {
       const res = await api.get("/usuarios", { params });
