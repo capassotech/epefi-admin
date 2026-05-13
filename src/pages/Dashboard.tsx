@@ -43,11 +43,11 @@ export default function Dashboard() {
         ).length;
 
         // Obtener cursos
-        const courses = await CoursesAPI.getAll();
-        const coursesCount = courses?.length || 0;
+        const courses = await CoursesAPI.getAllList();
+        const coursesCount = courses.length;
 
         // Obtener los últimos 4 cursos
-        const latestCourses = courses?.slice(0, 4) || [];
+        const latestCourses = courses.slice(0, 4);
 
         // Actualizar stats
         setStats({

@@ -1,5 +1,5 @@
 // src/pages/admin/Students.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { StudentList } from "@/components/students/StudentsList";
 import {
   SearchAndFilter,
@@ -7,7 +7,6 @@ import {
 } from "@/components/admin/SearchAndFilter";
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
-import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { type StudentDB } from "@/types/types";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -15,127 +14,89 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { TourButton } from "@/components/tour/TourButton";
 import { studentsTourSteps } from "@/config/tourSteps";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { normalizePaginatedResponse } from "@/utils/pagination";
+import type { PaginationMeta } from "@/types/types";
+import { Loader } from "lucide-react";
 
 export default function Students() {
   const navigate = useNavigate();
+  const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
-  const [courses, setCourses] = useState<{ id: string; titulo: string }[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FilterOptions>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const applyFilters = useCallback((query: string, filterOptions: FilterOptions) => {
-    let filtered = [...students];
+  const fetchStudents = useCallback(async () => {
+    try {
+      setPaginationLoading(true);
+      const sortByMap: Record<string, "nombre" | "email" | "fechaRegistro"> = {
+        name: "nombre",
+        email: "email",
+        date: "fechaRegistro",
+      };
+      const statusMap: Record<string, "activo" | "inactivo"> = {
+        active: "activo",
+        inactive: "inactivo",
+      };
 
-    if (query) {
-      filtered = filtered.filter(
-        (s) =>
-          s.nombre?.toLowerCase().includes(query.toLowerCase()) ||
-          s.apellido?.toLowerCase().includes(query.toLowerCase()) ||
-          s.email?.toLowerCase().includes(query.toLowerCase()) ||
-          s.dni?.toLowerCase().includes(query.toLowerCase())
+      const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
+      const sortOrder = filters.sortBy
+        ? filters.sortBy === "date"
+          ? "desc"
+          : "asc"
+        : undefined;
+      const status =
+        filters.status && filters.status !== "all"
+          ? statusMap[filters.status]
+          : undefined;
+      const role =
+        filters.role && filters.role !== "all"
+          ? (filters.role as "admin" | "student")
+          : undefined;
+
+      const res = await StudentsAPI.getAll({
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchQuery.trim() || undefined,
+        status,
+        role,
+        sortBy,
+        sortOrder,
+      });
+      const paginated = normalizePaginatedResponse<StudentDB>(
+        res,
+        pagination.page,
+        pagination.limit
       );
+      setStudents(paginated.data);
+      setPagination(paginated.pagination);
+    } catch (err) {
+      console.error("Error al cargar estudiantes:", err);
+      setError("No se pudieron cargar los estudiantes");
+      setStudents([]);
+    } finally {
+      setPaginationLoading(false);
+      setLoading(false);
     }
-
-    if (filterOptions.status && filterOptions.status !== "all") {
-      const isActive = filterOptions.status === "active";
-      filtered = filtered.filter((s) => s.activo === isActive);
-    }
-
-    // Filtrar por rol
-    if (filterOptions.role && filterOptions.role !== "all") {
-      switch (filterOptions.role) {
-        case "student":
-          filtered = filtered.filter((s) => s.role?.student === true);
-          break;
-        case "admin":
-          filtered = filtered.filter((s) => s.role?.admin === true);
-          break;
-        case "both":
-          filtered = filtered.filter(
-            (s) => s.role?.student === true && s.role?.admin === true
-          );
-          break;
-      }
-    }
-
-    // Filtrar por curso asignado
-    if (filterOptions.courseId && filterOptions.courseId !== "all") {
-      if (filterOptions.courseId === "none") {
-        filtered = filtered.filter((s) => !(s.cursos_asignados || []).length);
-      } else {
-        filtered = filtered.filter((s) =>
-          (s.cursos_asignados || []).includes(filterOptions.courseId!)
-        );
-      }
-    }
-
-    if (filterOptions.sortBy) {
-      switch (filterOptions.sortBy) {
-        case "name":
-          filtered.sort((a, b) =>
-            (a.nombre || "").localeCompare(b.nombre || "")
-          );
-          break;
-        case "email":
-          filtered.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
-          break;
-        case "date":
-          filtered.sort((a, b) => {
-            const dateA = a.fechaRegistro?._seconds || 0;
-            const dateB = b.fechaRegistro?._seconds || 0;
-            return dateB - dateA;
-          });
-          break;
-      }
-    }
-
-    setFilteredStudents(filtered);
-  }, [students]);
+  }, [filters, pagination.limit, pagination.page, searchQuery]);
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const res = await StudentsAPI.getAll();
-        const data = Array.isArray(res) ? res : res?.data || [];
-        setStudents(data);
-      } catch (err) {
-        console.error("Error al cargar estudiantes:", err);
-        setError("No se pudieron cargar los estudiantes");
-        setStudents([]);
-        setFilteredStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStudents();
-  }, []);
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const res = await CoursesAPI.getAll();
-        const data = Array.isArray(res) ? res : [];
-        setCourses(data.map((c: { id: string; titulo: string }) => ({ id: c.id, titulo: c.titulo })));
-      } catch (err) {
-        console.error("Error al cargar cursos:", err);
-        setCourses([]);
-      }
-    };
-    fetchCourses();
-  }, []);
-
-  // Aplicar filtros cuando cambien los estudiantes, la búsqueda o los filtros
-  useEffect(() => {
-    applyFilters(searchQuery, filters);
-  }, [applyFilters, filters, searchQuery]);
+  }, [fetchStudents]);
 
   const handleDeleteClick = (id: string) => {
     // Verificar si el usuario intenta eliminar su propia cuenta
@@ -171,10 +132,7 @@ export default function Students() {
       await StudentsAPI.delete(id);
 
       setStudents((prev) => prev.filter((s) => s.id !== id));
-      setFilteredStudents((prev) =>
-        prev.filter((s) => s.id !== id)
-      );
-      
+
       toast.success("Usuario eliminado exitosamente");
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
@@ -193,10 +151,7 @@ export default function Students() {
 
   const handleUserUpdated = async () => {
     try {
-      const res = await StudentsAPI.getAll();
-      const data = Array.isArray(res) ? res : res?.data || [];
-      setStudents(data);
-      // Los filtros se aplicarán automáticamente mediante el useEffect
+      await fetchStudents();
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
     }
@@ -204,10 +159,12 @@ export default function Students() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handleFilter = (newFilters: FilterOptions) => {
     setFilters(newFilters);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const filterOptions = {
@@ -217,7 +174,6 @@ export default function Students() {
       { value: "email", label: "Email" },
       { value: "date", label: "Fecha de registro" },
     ],
-    courses,
   };
 
   if (loading) {
@@ -254,47 +210,64 @@ export default function Students() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Mostrando {filteredStudents.length} de {students.length} usuarios
+          Mostrando {students.length} de {pagination.total} usuarios
         </p>
       </div>
 
-      {filteredStudents.length > 0 ? (
-        <div data-tour="students-list">
-          <StudentList 
-            students={filteredStudents} 
-            onDelete={handleDeleteClick} 
-            onUserUpdated={handleUserUpdated}
-            onStatusChange={async () => {
-              // Recargar estudiantes después de cambiar estado
-              try {
-                const res = await StudentsAPI.getAll();
-                const data = Array.isArray(res) ? res : res?.data || [];
-                setStudents(data);
-                applyFilters(searchQuery, filters);
-              } catch (err) {
-                console.error("Error al recargar estudiantes:", err);
-              }
-            }}
-          />
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-4xl">👨‍🎓</span>
+      <div ref={listTopRef}>
+        {paginationLoading ? (
+          <div className="flex justify-center gap-3 h-full">
+            <Loader className="animate-spin"/> 
+            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No se encontraron usuarios
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Intenta ajustar los filtros o crear un nuevo estudiante.
-          </p>
-          <button
-            onClick={() => navigate("/students/create")}
-            className="admin-button"
-          >
-            Crear primer estudiante
-          </button>
-        </div>
+        ) : (
+          students.length > 0 ? (
+            <div data-tour="students-list">
+              <StudentList 
+              students={students} 
+              onDelete={handleDeleteClick} 
+              onUserUpdated={handleUserUpdated}
+              onStatusChange={async () => {
+                // Recargar estudiantes después de cambiar estado
+                try {
+                  await fetchStudents();
+                } catch (err) {
+                  console.error("Error al recargar estudiantes:", err);
+                }
+              }}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-4xl">👨‍🎓</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No se encontraron usuarios
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Intenta ajustar los filtros o crear un nuevo estudiante.
+            </p>
+            <button
+              onClick={() => navigate("/students/create")}
+              className="admin-button"
+            >
+              Crear primer estudiante
+            </button>
+            </div>
+          )
+        )}
+      </div>
+
+      {!paginationLoading && (
+        <PaginationControls
+          pagination={pagination}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onLimitChange={(limit) =>
+            setPagination((prev) => ({ ...prev, limit, page: 1 }))
+          }
+          scrollTargetRef={listTopRef}
+        />
       )}
 
       <ConfirmDeleteModal

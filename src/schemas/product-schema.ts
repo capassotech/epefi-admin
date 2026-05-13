@@ -20,8 +20,8 @@ export const productFormSchema = z.object({
   fechasDeExamenes: z.instanceof(File).optional(),
 }).refine(
   (data) => {
-    // La fecha de fin debe ser posterior o igual a la fecha de inicio
-    return new Date(data.fechaFinDictado) >= new Date(data.fechaInicioDictado);
+    // Comparar como YYYY-MM-DD evita desfases por zona horaria
+    return data.fechaFinDictado >= data.fechaInicioDictado;
   },
   {
     message: "La fecha de fin debe ser posterior o igual a la fecha de inicio",

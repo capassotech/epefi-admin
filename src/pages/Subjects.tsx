@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SubjectCard } from '../components/subject/SubjectCard';
 import { SubjectList } from '../components/subject/SubjectList';
 import SubjectModal from '../components/subject/SubjectModal';
@@ -11,45 +11,81 @@ import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { TourButton } from '@/components/tour/TourButton';
 import { subjectsTourSteps } from '@/config/tourSteps';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { normalizePaginatedResponse } from '@/utils/pagination';
+import type { PaginationMeta } from '@/types/types';
+import { Loader } from 'lucide-react';
 
 export default function Subjects() {
+    const listTopRef = useRef<HTMLDivElement | null>(null);
     const [materias, setMaterias] = useState<Subject[]>([]);
-    const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<FilterOptions>({});
     const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const navigate = useNavigate();
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const [pagination, setPagination] = useState<PaginationMeta>({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+    });
+
+    const fetchMaterias = useCallback(async () => {
+        try {
+            setPaginationLoading(true);
+            const sortByMap: Record<string, "titulo" | "estado"> = {
+                title: "titulo",
+                status: "estado",
+            };
+            const statusMap: Record<string, "activo" | "inactivo"> = {
+                active: "activo",
+                inactive: "inactivo",
+            };
+
+            const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
+            const status =
+                filters.status && filters.status !== "all"
+                    ? statusMap[filters.status]
+                    : undefined;
+
+            const res = await CoursesAPI.getMaterias({
+                page: pagination.page,
+                limit: pagination.limit,
+                search: searchQuery.trim() || undefined,
+                status,
+                sortBy,
+                sortOrder: sortBy ? "asc" : undefined,
+            });
+            const paginated = normalizePaginatedResponse<Subject>(res, pagination.page, pagination.limit);
+            const data = paginated.data;
+
+            const normalizedData = data.map((m) => ({
+                ...m,
+                activo: m.activo !== undefined ? m.activo : (m.estado === 'activo' || m.estado === undefined),
+            }));
+            setMaterias(normalizedData);
+            setPagination(paginated.pagination);
+        } catch (err) {
+            console.error("Error al cargar materias:", err);
+            setError('No se pudieron cargar las materias');
+            setMaterias([]);
+        } finally {
+            setPaginationLoading(false);
+            setLoading(false);
+        }
+    }, [filters, pagination.limit, pagination.page, searchQuery]);
 
     useEffect(() => {
-        const fetchMaterias = async () => {
-            try {
-                const res = await CoursesAPI.getMaterias();
-                const data = Array.isArray(res) ? res : res?.data || [];
-                // Asegurar que todas las materias tengan el campo activo mapeado correctamente
-                const normalizedData = data.map((m: any) => ({
-                    ...m,
-                    activo: m.activo !== undefined ? m.activo : (m.estado === 'activo' || m.estado === undefined),
-                }));
-                setMaterias(normalizedData);
-                setFilteredSubjects(normalizedData);
-            } catch (err) {
-                console.error("Error al cargar materias:", err);
-                setError('No se pudieron cargar las materias');
-                setMaterias([]);
-                setFilteredSubjects([]);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchMaterias();
-    }, []);
+    }, [fetchMaterias]);
 
     const handleDeleteClick = (id: string) => {
         setConfirmDeleteId(id);
@@ -65,7 +101,6 @@ export default function Subjects() {
             await CoursesAPI.deleteMateria(id);
 
             setMaterias(prev => prev.filter(m => m.id !== id));
-            setFilteredSubjects(prev => prev.filter(m => m.id !== id));
         } catch (err) {
             console.error("Error al eliminar materia:", err);
         } finally {
@@ -103,7 +138,6 @@ export default function Subjects() {
             };
 
             setMaterias(prev => [newSubject, ...prev]);
-            setFilteredSubjects(prev => [newSubject, ...prev]);
 
             // No mostrar toast aquí porque se mostrará en SubjectModal después de guardar
             return newSubject;
@@ -139,12 +173,6 @@ export default function Subjects() {
                     ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
                     : m
             ));
-            setFilteredSubjects(prev => prev.map(m => 
-                m.id === subjectData.id 
-                    ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
-                    : m
-            ));
-
             toast.success("Materia actualizada exitosamente");
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
@@ -155,38 +183,12 @@ export default function Subjects() {
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
-        applyFilters(query, filters);
+        setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const handleFilter = (newFilters: FilterOptions) => {
         setFilters(newFilters);
-        applyFilters(searchQuery, newFilters);
-    };
-
-    const applyFilters = (query: string, filterOptions: FilterOptions) => {
-        let filtered = [...materias];
-
-        if (query) {
-            filtered = filtered.filter(m =>
-                m.nombre.toLowerCase().includes(query.toLowerCase())
-            );
-        }
-
-        if (filterOptions.sortBy) {
-            switch (filterOptions.sortBy) {
-                case 'title':
-                    filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
-                    break;
-                case 'status':
-                    filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
-                    break;
-                case 'date':
-                    filtered.sort((a, b) => a.nombre.localeCompare(b.nombre));
-                    break;
-            }
-        }
-
-        setFilteredSubjects(filtered);
+        setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
     const filterOptions = {
@@ -233,7 +235,7 @@ export default function Subjects() {
 
             <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                    Mostrando {filteredSubjects.length} de {materias.length} materias
+                    Mostrando {materias.length} de {pagination.total} materias
                 </p>
                 <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
                     <span>Vista:</span>
@@ -252,11 +254,17 @@ export default function Subjects() {
                 </div>
             </div>
 
-            {filteredSubjects.length > 0 ? (
-                <>
+            <div ref={listTopRef}>
+                {paginationLoading ? (
+                    <div className="flex justify-center gap-3 h-full">
+                        <Loader className="animate-spin" />
+                        <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
+                    </div>
+                ) : materias.length > 0 ? (
+                    <>
                     {viewMode === 'cards' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="subjects-list">
-                            {filteredSubjects.map((m, index) => (
+                            {materias.map((m, index) => (
                                 <div
                                     key={m.id}
                                     className="animate-fade-in"
@@ -272,17 +280,13 @@ export default function Subjects() {
                     ) : (
                         <div data-tour="subjects-list">
                             <SubjectList 
-                                subjects={filteredSubjects} 
+                                subjects={materias} 
                                 onDelete={handleDeleteClick} 
                                 onEdit={handleEditClick} 
                                 showTitle={false}
                                 onStatusChange={async () => {
-                                    // Recargar materias después de cambiar estado
                                     try {
-                                        const res = await CoursesAPI.getMaterias();
-                                        const data = Array.isArray(res) ? res : res?.data || [];
-                                        setMaterias(data);
-                                        applyFilters(searchQuery, filters);
+                                        await fetchMaterias();
                                     } catch (err) {
                                         console.error("Error al recargar materias:", err);
                                     }
@@ -310,28 +314,13 @@ export default function Subjects() {
                                         return updated;
                                     });
                                     
-                                    setFilteredSubjects(prev => {
-                                        const updated = prev.map(m => {
-                                            const mId = String(m.id);
-                                            if (mId === normalizedId) {
-                                                console.log('Actualizando materia en filteredSubjects:', { idAnterior: m.id, activoAnterior: m.activo, estadoAnterior: m.estado, activoNuevo: newActivo, estadoNuevo: newEstado });
-                                                // Crear un nuevo objeto para garantizar que React detecte el cambio
-                                                return { ...m, activo: newActivo, estado: newEstado };
-                                            }
-                                            return m;
-                                        });
-                                        // Verificar que realmente se actualizó
-                                        const found = updated.find(m => String(m.id) === normalizedId);
-                                        console.log('Materia actualizada en filteredSubjects:', found);
-                                        return updated;
-                                    });
                                 }}
                             />
                         </div>
                     )}
-                </>
-            ) : (
-                <div className="text-center py-12">
+                    </>
+                ) : (
+                    <div className="text-center py-12">
                     <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-4xl">📖</span>
                     </div>
@@ -343,7 +332,19 @@ export default function Subjects() {
                     >
                         Crear primera materia
                     </button>
-                </div>
+                    </div>
+                )}
+            </div>
+
+            {!paginationLoading && (
+                <PaginationControls
+                    pagination={pagination}
+                    onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                    onLimitChange={(limit) =>
+                        setPagination((prev) => ({ ...prev, limit, page: 1 }))
+                    }
+                    scrollTargetRef={listTopRef}
+                />
             )}
 
             <ConfirmDeleteModal
@@ -368,7 +369,6 @@ export default function Subjects() {
                 onSubjectDeleted={async (subjectId: string) => {
                     // Actualizar el estado local removiendo la materia eliminada
                     setMaterias(prev => prev.filter(m => m.id !== subjectId));
-                    setFilteredSubjects(prev => prev.filter(m => m.id !== subjectId));
                     setEditingSubject(null);
                 }}
             />

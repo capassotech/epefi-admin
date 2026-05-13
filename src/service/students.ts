@@ -68,9 +68,17 @@ api.interceptors.response.use(
 );
 
 export const StudentsAPI = {
-  getAll: async () => {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "activo" | "inactivo";
+    role?: "admin" | "student";
+    sortBy?: "nombre" | "email" | "fechaRegistro";
+    sortOrder?: "asc" | "desc";
+  }) => {
     try {
-      const res = await api.get("/usuarios");
+      const res = await api.get("/usuarios", { params });
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {

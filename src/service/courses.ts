@@ -1,7 +1,8 @@
 // src/service/courses.ts
 import { auth } from "@/firebase";
 import axios from "axios";
-import { type Subject, type Module } from "@/types/types";
+import { type Course, type Subject, type Module } from "@/types/types";
+import { normalizePaginatedResponse } from "@/utils/pagination";
 import { storage } from "../../config/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -76,10 +77,32 @@ api.interceptors.response.use(
 );
 
 export const CoursesAPI = {
-  // Cursos CRUD
-  getAll: async () => {
-    const res = await api.get("/cursos");
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "activo" | "inactivo";
+    sortBy?: "titulo" | "precio" | "estudiantes" | "fechaCreacion";
+    sortOrder?: "asc" | "desc";
+  }) => {
+    const res = await api.get("/cursos", { params });
     return res.data;
+  },
+
+
+  getAllList: async (): Promise<Course[]> => {
+    const limit = 100;
+    const aggregated: Course[] = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const res = await api.get("/cursos", { params: { page, limit } });
+      const norm = normalizePaginatedResponse<Course>(res.data, page, limit);
+      aggregated.push(...norm.data);
+      totalPages = Math.max(1, norm.pagination.totalPages);
+      page += 1;
+    } while (page <= totalPages);
+    return aggregated;
   },
 
   getById: async (id: string) => {
@@ -257,8 +280,15 @@ export const CoursesAPI = {
     }
   },
 
-  getMaterias: async () => {
-    const res = await api.get("/materias");
+  getMaterias: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: "activo" | "inactivo";
+    sortBy?: "titulo" | "estado";
+    sortOrder?: "asc" | "desc";
+  }) => {
+    const res = await api.get("/materias", { params });
     return res.data;
   },
 
