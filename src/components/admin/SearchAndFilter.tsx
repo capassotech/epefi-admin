@@ -76,7 +76,7 @@ export const SearchAndFilter = ({
       if (value === "all") delete newFilters.role;
       else newFilters.role = value;
     } else if (key === "courseId") {
-      if (value === "all") delete newFilters.courseId;
+      if (value === "all" || value === "__unfiltered__") delete newFilters.courseId;
       else newFilters.courseId = value;
     } else if (key === "sortBy") {
       if (value === "none") {
@@ -85,7 +85,7 @@ export const SearchAndFilter = ({
       } else {
         newFilters.sortBy = value;
         if (!newFilters.sortDirection) {
-          newFilters.sortDirection = "asc";
+          newFilters.sortDirection = value === "date" ? "desc" : "asc";
         }
       }
     }
@@ -94,9 +94,14 @@ export const SearchAndFilter = ({
     onFilter(newFilters);
   };
 
+  const defaultSortDirection = (
+    sortKey: string | undefined
+  ): "asc" | "desc" => (sortKey === "date" ? "desc" : "asc");
+
   const handleSortDirectionToggle = () => {
     const sortBy = currentFilters.sortBy;
-    const effectiveDir = currentFilters.sortDirection ?? "asc";
+    const effectiveDir =
+      currentFilters.sortDirection ?? defaultSortDirection(sortBy || "date");
     const next: FilterOptions = {
       ...currentFilters,
       sortBy: sortBy || "date",
@@ -167,14 +172,14 @@ export const SearchAndFilter = ({
           {/* Curso asignado - Solo en la página de estudiantes */}
           {isStudentPage && filterOptions?.courses && filterOptions.courses.length > 0 && (
             <Select
-              value={currentFilters.courseId || "all"}
+              value={currentFilters.courseId ?? "__unfiltered__"}
               onValueChange={(value) => handleFilterChange("courseId", value)}
             >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Curso asignado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los cursos</SelectItem>
+                <SelectItem value="__unfiltered__">Sin filtrar por curso</SelectItem>
                 <SelectItem value="none">Sin curso asignado</SelectItem>
                 {filterOptions.courses.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -213,13 +218,15 @@ export const SearchAndFilter = ({
               className="shrink-0"
               onClick={handleSortDirectionToggle}
               title={
-                (currentFilters.sortDirection ?? "asc") === "asc"
+                (currentFilters.sortDirection ??
+                  defaultSortDirection(currentFilters.sortBy)) === "asc"
                   ? "Orden ascendente"
                   : "Orden descendente"
               }
             >
               <ArrowUpDown className="w-4 h-4 mr-1.5" />
-              {(currentFilters.sortDirection ?? "asc") === "asc"
+              {(currentFilters.sortDirection ??
+                defaultSortDirection(currentFilters.sortBy)) === "asc"
                 ? "Asc"
                 : "Desc"}
             </Button>

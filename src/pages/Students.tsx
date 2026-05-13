@@ -22,7 +22,7 @@ import { Loader } from "lucide-react";
 
 const DEFAULT_STUDENT_FILTERS: FilterOptions = {
   sortBy: "date",
-  sortDirection: "asc",
+  sortDirection: "desc",
 };
 
 function getFechaRegistroSeconds(student: StudentDB): number {
@@ -44,7 +44,8 @@ function sortStudentsList(list: StudentDB[], filters: FilterOptions): StudentDB[
   if (!key || key === "none") {
     return [...list];
   }
-  const asc = (filters.sortDirection ?? "asc") === "asc";
+  const defaultDir: "asc" | "desc" = key === "date" ? "desc" : "asc";
+  const asc = (filters.sortDirection ?? defaultDir) === "asc";
   const dir = asc ? 1 : -1;
   const out = [...list];
   switch (key) {
@@ -105,7 +106,8 @@ export default function Students() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (forcedPage?: number) => {
+    const page = forcedPage !== undefined ? forcedPage : pagination.page;
     try {
       setPaginationLoading(true);
       const sortByMap: Record<
@@ -126,9 +128,11 @@ export default function Students() {
       const sortOrder =
         sortBy && filters.sortDirection
           ? filters.sortDirection
-          : sortBy
-            ? "asc"
-            : undefined;
+          : sortBy === "fechaRegistro"
+            ? "desc"
+            : sortBy
+              ? "asc"
+              : undefined;
 
       const status =
         filters.status && filters.status !== "all"
@@ -148,7 +152,7 @@ export default function Students() {
       }
 
       const res = await StudentsAPI.getAll({
-        page: pagination.page,
+        page,
         limit: pagination.limit,
         search: searchQuery.trim() || undefined,
         status,
@@ -160,11 +164,14 @@ export default function Students() {
       });
       const paginated = normalizePaginatedResponse<StudentDB>(
         res,
-        pagination.page,
+        page,
         pagination.limit
       );
       setStudents(sortStudentsList(paginated.data, filters));
-      setPagination(paginated.pagination);
+      setPagination((prev) => ({
+        ...paginated.pagination,
+        ...(forcedPage !== undefined ? { page: forcedPage } : {}),
+      }));
     } catch (err) {
       console.error("Error al cargar estudiantes:", err);
       setError("No se pudieron cargar los estudiantes");
@@ -247,17 +254,18 @@ export default function Students() {
     saved?: StudentDB,
     meta?: { isCreate: boolean }
   ) => {
-    if (meta?.isCreate) {
+    const goFirstPage = Boolean(meta?.isCreate || saved?.id);
+    if (goFirstPage) {
       setPagination((p) => ({ ...p, page: 1 }));
     }
     try {
-      await fetchStudents();
+      await fetchStudents(goFirstPage ? 1 : undefined);
     } catch (err) {
       console.error("Error al actualizar lista de estudiantes:", err);
       return;
     }
 
-    if (!meta?.isCreate || !saved?.id) {
+    if (!saved?.id) {
       return;
     }
 
@@ -266,10 +274,7 @@ export default function Students() {
       const row: StudentDB = fromApi ? { ...fromApi, ...saved } : { ...saved };
       const rest = prev.filter((s) => s.id !== row.id);
       const limit = pageLimitRef.current;
-      return sortStudentsList([row, ...rest], filtersRef.current).slice(
-        0,
-        limit
-      );
+      return [row, ...sortStudentsList(rest, filtersRef.current)].slice(0, limit);
     });
   };
 
@@ -288,7 +293,7 @@ export default function Students() {
     sortOptions: [
       { value: "name", label: "Nombre" },
       { value: "email", label: "Email" },
-      { value: "date", label: "Fecha de registro" },
+      { value: "date", label: "Fecha de creación" },
     ],
     courses,
   };
