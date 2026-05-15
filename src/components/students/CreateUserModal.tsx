@@ -45,6 +45,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { type CreateUserFormData, type StudentDB, type FirestoreTimestamp } from "@/types/types";
 import { toast } from "sonner";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import {
+  getPasswordRequirementStatus,
+  isPasswordPolicySatisfied,
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePassword,
+} from "@/utils/passwordValidation";
 
 
 interface CreateUserModalProps {
@@ -155,9 +162,17 @@ export const CreateUserModal = ({
       newErrors.role = "El rol es requerido";
     }
 
-    // Solo validar contraseña si estamos creando un nuevo usuario
-    if (!isEditing && !formData.password.trim()) {
-      newErrors.password = "La contraseña es requerida";
+    if (!isEditing) {
+      if (!formData.password.trim()) {
+        newErrors.password = PASSWORD_REQUIRED_MESSAGE;
+      } else {
+        const { isValid, ruleViolationMessages } = validatePassword(
+          formData.password
+        );
+        if (!isValid) {
+          newErrors.password = ruleViolationMessages.join("\n");
+        }
+      }
     }
 
     // Solo validar confirmación de email si estamos creando un nuevo usuario
@@ -210,6 +225,13 @@ export const CreateUserModal = ({
     if (result.success) {
       setIsOpen(false);
       if (onUserCreated) onUserCreated();
+    } else if (!isEditing && result.emailAlreadyInUse) {
+      setErrors((prev) => ({
+        ...prev,
+        email:
+          result.message?.trim() ||
+          "Ya existe otro usuario con este email. Prueba con otro correo.",
+      }));
     }
   };
 
@@ -227,7 +249,20 @@ export const CreateUserModal = ({
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
 
-    // Limpiar error del campo cuando el usuario empiece a escribir
+    if (field === "password" && !isEditing) {
+      const pwd = String(value);
+      if (!pwd.trim()) {
+        setErrors((prev) => ({ ...prev, password: PASSWORD_REQUIRED_MESSAGE }));
+      } else {
+        const { isValid, ruleViolationMessages } = validatePassword(pwd);
+        setErrors((prev) => ({
+          ...prev,
+          password: isValid ? "" : ruleViolationMessages.join("\n"),
+        }));
+      }
+      return;
+    }
+
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -396,8 +431,17 @@ export const CreateUserModal = ({
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-sm text-red-500">{errors.password}</p>
+                    <ul className="text-sm text-red-500 list-disc pl-4 space-y-0.5">
+                      {errors.password.split("\n").map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
                   )}
+                  <PasswordRequirements
+                    passwordRequirements={getPasswordRequirementStatus(
+                      formData.password
+                    )}
+                  />
                 </div>
               )}
 
@@ -464,7 +508,14 @@ export const CreateUserModal = ({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1 cursor-pointer">
+                <Button
+                  type="submit"
+                  disabled={
+                    isLoading ||
+                    (!isEditing && !isPasswordPolicySatisfied(formData.password))
+                  }
+                  className="flex-1 cursor-pointer"
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

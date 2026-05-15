@@ -6,13 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, Mail, IdCard, Loader2, Save, Lock, Eye, EyeOff, Check, X } from "lucide-react";
+import { User, Mail, IdCard, Loader2, Save, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import authService from "@/service/authService";
 import { TourButton } from "@/components/tour/TourButton";
 import { profileTourSteps } from "@/config/tourSteps";
 import { extractErrorMessage } from "@/utils/errorMessages";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
+import {
+  getPasswordRequirementStatus,
+  isPasswordPolicySatisfied,
+  PASSWORD_REQUIRED_MESSAGE,
+  validatePassword,
+} from "@/utils/passwordValidation";
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -328,18 +335,14 @@ export default function Profile() {
                 newErrors.currentPassword = "La contraseña actual es requerida";
               }
 
-              if (!passwordData.newPassword) {
-                newErrors.newPassword = "La nueva contraseña es requerida";
+              if (!passwordData.newPassword.trim()) {
+                newErrors.newPassword = PASSWORD_REQUIRED_MESSAGE;
               } else {
-                const requirements = getPasswordRequirements(passwordData.newPassword);
-                const allRequirementsMet =
-                  requirements.minLength &&
-                  requirements.hasUppercase &&
-                  requirements.hasSpecialChar &&
-                  requirements.hasNumber;
-
-                if (!allRequirementsMet) {
-                  newErrors.newPassword = "La contraseña no cumple con todos los requisitos";
+                const { isValid, ruleViolationMessages } = validatePassword(
+                  passwordData.newPassword
+                );
+                if (!isValid) {
+                  newErrors.newPassword = ruleViolationMessages.join("\n");
                 }
               }
 
@@ -437,9 +440,16 @@ export default function Profile() {
                   placeholder="Tu nueva contraseña"
                   value={passwordData.newPassword}
                   onChange={(e) => {
-                    setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }));
-                    if (passwordErrors.newPassword) {
+                    const v = e.target.value;
+                    setPasswordData((prev) => ({ ...prev, newPassword: v }));
+                    if (!v.trim()) {
                       setPasswordErrors((prev) => ({ ...prev, newPassword: "" }));
+                    } else {
+                      const { isValid, ruleViolationMessages } = validatePassword(v);
+                      setPasswordErrors((prev) => ({
+                        ...prev,
+                        newPassword: isValid ? "" : ruleViolationMessages.join("\n"),
+                      }));
                     }
                   }}
                   className={passwordErrors.newPassword ? "border-red-500 pr-10" : "pr-10"}
@@ -458,45 +468,18 @@ export default function Profile() {
                 </button>
               </div>
               {passwordErrors.newPassword && (
-                <p className="text-sm text-red-500">{passwordErrors.newPassword}</p>
+                <ul className="text-sm text-red-500 list-disc pl-4 space-y-0.5">
+                  {passwordErrors.newPassword.split("\n").map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
               )}
 
-              {/* Requisitos de contraseña */}
-              {passwordData.newPassword.length > 0 && (
-                <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    Requisitos de la contraseña:
-                  </p>
-                  <div className="space-y-1">
-                    {Object.entries(getPasswordRequirements(passwordData.newPassword)).map(([key, met]) => {
-                      const labels: Record<string, string> = {
-                        minLength: "Al menos 8 caracteres",
-                        hasUppercase: "Una letra mayúscula",
-                        hasNumber: "Al menos un número",
-                        hasSpecialChar: "Un carácter especial (!@#$%^&*)",
-                      };
-                      return (
-                        <div key={key} className="flex items-center space-x-2">
-                          {met ? (
-                            <Check className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <X className="h-3 w-3 text-red-500" />
-                          )}
-                          <span
-                            className={`text-xs ${
-                              met
-                                ? "text-green-700 dark:text-green-400"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {labels[key]}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <PasswordRequirements
+                passwordRequirements={getPasswordRequirementStatus(
+                  passwordData.newPassword
+                )}
+              />
             </div>
 
             {/* Confirmar Contraseña */}
@@ -551,7 +534,17 @@ export default function Profile() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isChangingPassword}>
+              <Button
+                type="submit"
+                disabled={
+                  isChangingPassword ||
+                  !passwordData.currentPassword.trim() ||
+                  !isPasswordPolicySatisfied(passwordData.newPassword) ||
+                  !passwordData.confirmPassword.trim() ||
+                  passwordData.newPassword !== passwordData.confirmPassword ||
+                  passwordData.currentPassword === passwordData.newPassword
+                }
+              >
                 {isChangingPassword ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -571,14 +564,3 @@ export default function Profile() {
     </div>
   );
 }
-
-// Función auxiliar para validar requisitos de contraseña
-function getPasswordRequirements(password: string) {
-  return {
-    minLength: password.length >= 8,
-    hasUppercase: /[A-Z]/.test(password),
-    hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-  };
-}
-

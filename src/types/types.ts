@@ -192,6 +192,8 @@ export interface RegisterData {
 export interface CreateUserResponse {
   success: boolean;
   message: string;
+  /** true si el backend indica que el email ya está en uso (crear usuario). */
+  emailAlreadyInUse?: boolean;
   user?: {
     id: string;
     nombre: string;

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { type CreateUserFormData, type CreateUserResponse } from "@/types/types";
-import { StudentsAPI } from "@/service/students";  
+import { StudentsAPI } from "@/service/students";
+import { isDuplicateEmailRegistrationError } from "@/utils/errorMessages";
+import { isPasswordPolicySatisfied } from "@/utils/passwordValidation";
 
 
 export const useCreateUser = () => {
@@ -13,8 +15,10 @@ export const useCreateUser = () => {
     setIsLoading(true);
 
     try {
-      if (userData.password.length < 6) {
-        throw new Error("La contraseña debe tener al menos 6 caracteres");
+      if (!isPasswordPolicySatisfied(userData.password)) {
+        throw new Error(
+          "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial"
+        );
       }
 
       const registerData: CreateUserFormData = {
@@ -50,6 +54,14 @@ export const useCreateUser = () => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
+      const httpStatus =
+        error instanceof Error
+          ? (error as Error & { httpStatus?: number }).httpStatus
+          : undefined;
+      const emailAlreadyInUse = isDuplicateEmailRegistrationError(
+        errorMessage,
+        httpStatus
+      );
 
       toast({
         title: "Error al crear usuario",
@@ -60,6 +72,7 @@ export const useCreateUser = () => {
       return {
         success: false,
         message: errorMessage,
+        ...(emailAlreadyInUse ? { emailAlreadyInUse: true as const } : {}),
       };
     } finally {
       setIsLoading(false);
