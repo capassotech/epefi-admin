@@ -37,6 +37,7 @@ interface SearchAndFilterProps {
   resetFiltersTo?: FilterOptions;
   /** Mostrar acción de limpiar (listados con muchos filtros) */
   showClearFilters?: boolean;
+  hideUnsortedOption?: boolean;
 }
 
 export const SearchAndFilter = ({
@@ -50,6 +51,7 @@ export const SearchAndFilter = ({
   currentFilters: externalFilters,
   resetFiltersTo,
   showClearFilters = false,
+  hideUnsortedOption = false,
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>(externalFilters || {});
@@ -193,14 +195,19 @@ export const SearchAndFilter = ({
           {/* Ordenar por */}
           {filterOptions?.sortOptions && (
             <Select
-              value={currentFilters.sortBy || "none"}
+              value={
+                currentFilters.sortBy ||
+                (hideUnsortedOption ? "date" : "none")
+              }
               onValueChange={(value) => handleFilterChange("sortBy", value)}
             >
               <SelectTrigger className="w-40 min-w-[10rem]">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin ordenar</SelectItem>
+                {!hideUnsortedOption && (
+                  <SelectItem value="none">Sin ordenar</SelectItem>
+                )}
                 {filterOptions.sortOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -210,7 +217,9 @@ export const SearchAndFilter = ({
             </Select>
           )}
 
-          {filterOptions?.sortOptions && currentFilters.sortBy && (
+          {filterOptions?.sortOptions &&
+            (currentFilters.sortBy ||
+              (hideUnsortedOption && "date")) && (
             <Button
               type="button"
               variant="outline"
@@ -245,7 +254,7 @@ export const SearchAndFilter = ({
         isStudentPage ? (
           <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
         ) : (
-          <Button onClick={onCreateNew} className="cursor-pointer" data-tour="create-course">
+          <Button onClick={() => onCreateNew?.()} className="cursor-pointer" data-tour="create-course">
             <Plus className="w-4 h-4 mr-2 cursor-pointer" />
             {createButtonText}
           </Button>
