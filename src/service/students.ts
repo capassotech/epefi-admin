@@ -68,30 +68,69 @@ api.interceptors.response.use(
   }
 );
 
+export type StudentsListQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "activo" | "inactivo";
+  role?: "admin" | "student";
+  sortBy?: "nombre" | "email" | "fechaRegistro";
+  sortOrder?: "asc" | "desc";
+};
+
+function cleanQueryParams(
+  input?: Record<string, string | number | undefined>
+): Record<string, string | number> | undefined {
+  if (!input) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== "") out[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function getAxiosStatus(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } }).response?.status;
+}
+
 export const StudentsAPI = {
-  getAll: async (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    status?: "activo" | "inactivo";
-    role?: "admin" | "student";
-    sortBy?: "nombre" | "email" | "fechaRegistro";
-    sortOrder?: "asc" | "desc";
-  }) => {
-    try {
-      const res = await api.get("/usuarios", { params });
-      return res.data;
-    } catch (error: unknown) {
-      const axiosError = error as {
-        response?: { data?: { error?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        axiosError.response?.data?.error ||
-        axiosError.message ||
-        "Error al obtener estudiantes";
-      throw new Error(errorMessage);
+  getAll: async (params?: StudentsListQuery) => {
+    const withFilters = cleanQueryParams({
+      page: params?.page,
+      limit: params?.limit,
+      search: params?.search?.trim() || undefined,
+      status: params?.status,
+      role: params?.role,
+      sortBy: params?.sortBy,
+      sortOrder: params?.sortOrder,
+    });
+    const paginationOnly = cleanQueryParams({
+      page: params?.page,
+      limit: params?.limit,
+    });
+
+    let lastError: unknown;
+    for (const queryParams of [withFilters, paginationOnly, undefined]) {
+      try {
+        const res = await api.get("/usuarios", { params: queryParams });
+        return res.data;
+      } catch (error: unknown) {
+        lastError = error;
+        const status = getAxiosStatus(error);
+        if (status !== 400 && status !== 500) break;
+      }
     }
+
+    const axiosError = lastError as {
+      response?: { data?: { error?: string; message?: string } };
+      message?: string;
+    };
+    throw new Error(
+      axiosError?.response?.data?.error ||
+        axiosError?.response?.data?.message ||
+        axiosError?.message ||
+        "Error al obtener estudiantes"
+    );
   },
 
   getById: async (id: string) => {
