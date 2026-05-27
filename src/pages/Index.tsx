@@ -14,6 +14,7 @@ import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
 import Profile from "./Profile";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
+import Exams from "./Exams";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,6 +42,7 @@ const Index = () => {
           <Route path="/modules/create" element={<CreateModule />} />
           <Route path="/students" element={<Students />} />
           <Route path="/students/:id" element={<StudentDetail />} />
+          <Route path="/exams" element={<Exams />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
