@@ -55,7 +55,7 @@ import {
 
 
 interface CreateUserModalProps {
-  onUserCreated?: () => void;
+  onUserCreated?: (user?: StudentDB, meta?: { isCreate: boolean }) => void;
   triggerText?: string;
   isEditing?: boolean;
   editingUser?: StudentDB;
@@ -224,7 +224,40 @@ export const CreateUserModal = ({
 
     if (result.success) {
       setIsOpen(false);
-      if (onUserCreated) onUserCreated();
+      if (isEditing && editingUser) {
+        const saved: StudentDB = {
+          ...editingUser,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          email: formData.email,
+          dni: formData.dni,
+          role: formData.role,
+          cursos_asignados: formData.cursos_asignados,
+          emailVerificado: formData.emailVerificado,
+          id: result.user?.id || editingUser.id,
+        };
+        onUserCreated?.(saved, { isCreate: false });
+      } else {
+        const ts: FirestoreTimestamp = {
+          _seconds: Math.floor(Date.now() / 1000),
+          _nanoseconds: 0,
+        };
+        onUserCreated?.(
+          {
+            id: result.user?.id || "",
+            nombre: formData.nombre,
+            apellido: formData.apellido,
+            email: formData.email,
+            dni: formData.dni,
+            role: formData.role,
+            emailVerificado: true,
+            cursos_asignados: formData.cursos_asignados || [],
+            activo: true,
+            fechaRegistro: ts,
+          },
+          { isCreate: true }
+        );
+      }
     } else if (!isEditing && result.emailAlreadyInUse) {
       setErrors((prev) => ({
         ...prev,
@@ -577,7 +610,7 @@ export const CreateUserModal = ({
                                 setDeleteConfirmOpen(false);
                                 setIsOpen(false);
                                 if (onUserCreated) {
-                                  onUserCreated();
+                                  onUserCreated(undefined, { isCreate: false });
                                 }
                               } catch (error: any) {
                                 console.error("Error al eliminar usuario:", error);
