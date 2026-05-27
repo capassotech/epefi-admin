@@ -30,8 +30,8 @@ const DEFAULT_STUDENT_FILTERS: FilterOptions = {
   sortDirection: "desc",
 };
 
-/** Traemos hasta N usuarios y ordenamos en el cliente (así al recargar sigue el orden por fecha). */
-const CLIENT_FETCH_CAP = 500;
+/** Traemos todas las páginas y ordenamos localmente para asegurar orden global correcto. */
+const SERVER_PAGE_LIMIT = 200;
 
 export default function Students() {
   const navigate = useNavigate();
@@ -77,18 +77,31 @@ export default function Students() {
           ? (filters.role as "admin" | "student")
           : undefined;
 
-      const res = await StudentsAPI.getAll({
-        page: 1,
-        limit: CLIENT_FETCH_CAP,
-        search: searchQuery.trim() || undefined,
-        status,
-        role,
-        sortBy: "fechaRegistro",
-        sortOrder: "desc",
-      });
+      const allRows: StudentDB[] = [];
+      let aggregatedTotal = 0;
+      let pageCursor = 1;
+      let totalPages = 1;
 
-      const meta = normalizePaginatedResponse<StudentDB>(res, 1, CLIENT_FETCH_CAP);
-      const allRows = extractStudentsFromResponse(res);
+      do {
+        const res = await StudentsAPI.getAll({
+          page: pageCursor,
+          limit: SERVER_PAGE_LIMIT,
+          search: searchQuery.trim() || undefined,
+          status,
+          role,
+          sortBy: "fechaRegistro",
+          sortOrder: "desc",
+        });
+        const meta = normalizePaginatedResponse<StudentDB>(
+          res,
+          pageCursor,
+          SERVER_PAGE_LIMIT
+        );
+        totalPages = Math.max(1, meta.pagination.totalPages);
+        aggregatedTotal = Math.max(aggregatedTotal, meta.pagination.total);
+        allRows.push(...extractStudentsFromResponse(res));
+        pageCursor += 1;
+      } while (pageCursor <= totalPages);
 
       let paginated = paginateStudentsClientSide(allRows, {
         search: searchQuery,
@@ -98,15 +111,15 @@ export default function Students() {
         page,
         limit,
       });
-      if (meta.pagination.total > paginated.pagination.total) {
+      if (aggregatedTotal > paginated.pagination.total) {
         paginated = {
           ...paginated,
           pagination: {
             ...paginated.pagination,
-            total: meta.pagination.total,
+            total: aggregatedTotal,
             totalPages: Math.max(
               1,
-              Math.ceil(meta.pagination.total / limit)
+              Math.ceil(aggregatedTotal / limit)
             ),
           },
         };
