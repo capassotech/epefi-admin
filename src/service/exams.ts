@@ -42,10 +42,34 @@ function getAxiosErrorMessage(error: unknown, fallback: string): string {
   );
 }
 
+export type ExamsListQuery = {
+  search?: string;
+  sortBy?: "date" | "title" | "fechaCreacion" | "titulo";
+  sortOrder?: "asc" | "desc";
+  idFormacion?: string;
+};
+
+function cleanQueryParams(
+  input?: Record<string, string | number | undefined>
+): Record<string, string | number> | undefined {
+  if (!input) return undefined;
+  const out: Record<string, string | number> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== "") out[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export const ExamsAPI = {
-  getAll: async (): Promise<Examen[]> => {
+  getAll: async (params?: ExamsListQuery): Promise<Examen[]> => {
     try {
-      const res = await api.get<Examen[]>("/examenes");
+      const query = cleanQueryParams({
+        search: params?.search?.trim() || undefined,
+        sortBy: params?.sortBy,
+        sortOrder: params?.sortOrder,
+        idFormacion: params?.idFormacion,
+      });
+      const res = await api.get<Examen[]>("/examenes", { params: query });
       return res.data;
     } catch (error: unknown) {
       throw new Error(getAxiosErrorMessage(error, "Error al obtener exámenes"));

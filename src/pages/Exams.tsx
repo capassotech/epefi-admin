@@ -11,20 +11,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ExamsAPI } from "@/service/exams";
-import type { Examen } from "@/types/types";
+import { CoursesAPI } from "@/service/courses";
+import type { Course, Examen } from "@/types/types";
+import { toast } from "sonner";
 
 export default function Exams() {
   const navigate = useNavigate();
   const [exams, setExams] = useState<Examen[]>([]);
+  const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({});
+  const [filters, setFilters] = useState<FilterOptions>({
+    sortBy: "date",
+    sortDirection: "desc",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const fetchExams = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await ExamsAPI.getAll();
+      const backendSortBy =
+        filters.sortBy === "title"
+          ? "titulo"
+          : filters.sortBy === "date"
+            ? "fechaCreacion"
+            : undefined;
+      const data = await ExamsAPI.getAll({
+        search: searchQuery.trim() || undefined,
+        sortBy: backendSortBy,
+        sortOrder: filters.sortDirection,
+      });
       setExams(data);
       setError("");
     } catch (err) {
@@ -34,7 +50,25 @@ export default function Exams() {
     } finally {
       setLoading(false);
     }
+  }, [searchQuery, filters.sortBy, filters.sortDirection, filters.courseId]);
+
+  const fetchCourses = useCallback(async () => {
+    try {
+      const list = await CoursesAPI.getAllList();
+      const mapped = list.reduce<Record<string, Course>>((acc, c) => {
+        acc[c.id] = c;
+        return acc;
+      }, {});
+      setCoursesById(mapped);
+    } catch (err) {
+      console.error("Error al cargar formaciones:", err);
+      toast.error("No se pudieron cargar las formaciones para filtros");
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
 
   useEffect(() => {
     fetchExams();
@@ -80,13 +114,18 @@ export default function Exams() {
         onCreateNew={() => navigate("/exams/create")}
         createButtonText="Crear examen"
         filterOptions={filterOptions}
+        showClearFilters
+        resetFiltersTo={{
+          sortBy: "date",
+          sortDirection: "desc",
+        }}
+        hideUnsortedOption
         currentFilters={filters}
       />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Mostrando {exams.length} exámenes
-          {searchQuery.trim() ? " (sin aplicar filtro por ahora)" : ""}
         </p>
       </div>
 
@@ -103,10 +142,10 @@ export default function Exams() {
             <TableBody>
               {exams.map((exam, index) => (
                 <TableRow key={exam.id}>
-                  <TableCell className="font-medium">
-                    {`Examen ${index + 1} - ${exam.idFormacion}`}
+                  <TableCell className="font-medium">{exam.titulo || `Examen ${index + 1}`}</TableCell>
+                  <TableCell>
+                    {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
                   </TableCell>
-                  <TableCell>{exam.idFormacion}</TableCell>
                   <TableCell className="text-right">{exam.preguntas.length}</TableCell>
                 </TableRow>
               ))}
