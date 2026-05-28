@@ -38,6 +38,7 @@ interface SearchAndFilterProps {
   /** Mostrar acción de limpiar (listados con muchos filtros) */
   showClearFilters?: boolean;
   hideUnsortedOption?: boolean;
+  showStateFilter?: boolean;
 }
 
 export const SearchAndFilter = ({
@@ -52,6 +53,7 @@ export const SearchAndFilter = ({
   resetFiltersTo,
   showClearFilters = false,
   hideUnsortedOption = false,
+  showStateFilter = true
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>(externalFilters || {});
@@ -140,19 +142,21 @@ export const SearchAndFilter = ({
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           {/* Estado */}
-          <Select
-            value={currentFilters.status || "all"}
-            onValueChange={(value) => handleFilterChange("status", value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Activos</SelectItem>
-              <SelectItem value="inactive">Inactivos</SelectItem>
-            </SelectContent>
-          </Select>
+          {showStateFilter && (
+            <Select
+              value={currentFilters.status || "all"}
+              onValueChange={(value) => handleFilterChange("status", value)}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Rol - Solo mostrar en la página de estudiantes */}
           {isStudentPage && (
