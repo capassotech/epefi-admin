@@ -125,6 +125,6 @@ export function mergeCreatedUserAtTop(
       ({ _seconds: nowSec, _nanoseconds: 0 } as StudentDB["fechaRegistro"]),
   };
   const effectiveFilters = getEffectiveStudentFilters(filters);
-  const rest = rows.filter((s) => s.id !== row.id);
-  return [row, ...sortStudentsList(rest, effectiveFilters)].slice(0, limit);
+  const merged = [row, ...rows.filter((s) => s.id !== row.id)];
+  return sortStudentsList(merged, effectiveFilters).slice(0, limit);
 }
