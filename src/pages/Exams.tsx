@@ -110,6 +110,7 @@ export default function Exams() {
 
       <SearchAndFilter
         onSearch={handleSearch}
+        showStateFilter={false}
         onFilter={handleFilter}
         onCreateNew={() => navigate("/exams/create")}
         createButtonText="Crear examen"
