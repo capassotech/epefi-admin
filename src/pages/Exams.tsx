@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Edit2, Trash2 } from "lucide-react";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { ExamsAPI } from "@/service/exams";
 import { CoursesAPI } from "@/service/courses";
 import type { Course, Examen } from "@/types/types";
@@ -26,6 +29,9 @@ export default function Exams() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchExams = useCallback(async () => {
     try {
@@ -82,6 +88,35 @@ export default function Exams() {
     setFilters(newFilters);
   };
 
+  const handleDeleteClick = (id: string) => {
+    setConfirmDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setConfirmDeleteId(null);
+  };
+
+  const handleConfirmDelete = async (id: string) => {
+    if (!id) return;
+    setDeleteLoading(true);
+    try {
+      await ExamsAPI.delete(id);
+      toast.success("Examen eliminado exitosamente");
+      setIsDeleteModalOpen(false);
+      setConfirmDeleteId(null);
+      await fetchExams();
+    } catch (err) {
+      console.error("Error al eliminar examen:", err);
+      const message =
+        err instanceof Error ? err.message : "Error al eliminar el examen";
+      toast.error(message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const filterOptions = {
     sortOptions: [
       { value: "date", label: "Fecha de creación" },
@@ -136,18 +171,49 @@ export default function Exams() {
             <TableHeader>
               <TableRow>
                 <TableHead>Título</TableHead>
-                <TableHead>ID Formación</TableHead>
+                <TableHead>Formación</TableHead>
                 <TableHead className="text-right">Preguntas</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {exams.map((exam, index) => (
                 <TableRow key={exam.id}>
-                  <TableCell className="font-medium">{exam.titulo || `Examen ${index + 1}`}</TableCell>
+                  <TableCell className="font-medium">
+                    {exam.titulo || `Examen ${index + 1}`}
+                  </TableCell>
                   <TableCell>
                     {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
                   </TableCell>
-                  <TableCell className="text-right">{exam.preguntas.length}</TableCell>
+                  <TableCell className="text-right">
+                    {exam.preguntas?.length ?? 0}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer"
+                        onClick={() =>
+                          navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
+                        }
+                      >
+                        <Edit2 className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => handleDeleteClick(exam.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -172,6 +238,17 @@ export default function Exams() {
           </button>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        id={confirmDeleteId || ""}
+        isOpen={isDeleteModalOpen}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        itemName={
+          exams.find((e) => e.id === confirmDeleteId)?.titulo || "este examen"
+        }
+        deleteLoading={deleteLoading}
+      />
     </div>
   );
 }

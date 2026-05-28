@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
-import type { Course, ExamenCreatePayload } from "@/types/types";
+import type { Course, Examen, ExamenCreatePayload } from "@/types/types";
 import { toast } from "sonner";
 
 type OptionForm = {
@@ -54,13 +54,43 @@ const createEmptyQuestion = (): QuestionForm => ({
   respuestas: [createEmptyOption(), createEmptyOption()],
 });
 
+function examToFormState(exam: Examen): {
+  title: string;
+  idFormacion: string;
+  questions: QuestionForm[];
+} {
+  return {
+    title: exam.titulo || "",
+    idFormacion: exam.idFormacion || "",
+    questions:
+      exam.preguntas?.length > 0
+        ? exam.preguntas.map((q) => ({
+            id: q.id || makeId(),
+            texto: q.texto || "",
+            respuestas:
+              q.respuestas?.length > 0
+                ? q.respuestas.map((r) => ({
+                    id: r.id || makeId(),
+                    texto: r.texto || "",
+                    esCorrecta: Boolean(r.esCorrecta),
+                  }))
+                : [createEmptyOption(), createEmptyOption()],
+          }))
+        : [createEmptyQuestion()],
+  };
+}
+
 export default function CreateExam() {
   const navigate = useNavigate();
+  const { id: examId } = useParams<{ id: string }>();
+  const isEditing = Boolean(examId);
   const [title, setTitle] = useState("");
   const [idFormacion, setIdFormacion] = useState("");
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingExam, setLoadingExam] = useState(isEditing);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [titleError, setTitleError] = useState("");
   const [formationError, setFormationError] = useState("");
@@ -83,7 +113,36 @@ export default function CreateExam() {
     loadCourses();
   }, []);
 
-  const canSave = useMemo(() => !saving && !loadingCourses, [saving, loadingCourses]);
+  useEffect(() => {
+    if (!examId) return;
+
+    const loadExam = async () => {
+      try {
+        setLoadingExam(true);
+        setLoadError("");
+        const exam = await ExamsAPI.getById(examId);
+        const form = examToFormState(exam);
+        setTitle(form.title);
+        setIdFormacion(form.idFormacion);
+        setQuestions(form.questions);
+      } catch (error) {
+        console.error("Error al cargar examen:", error);
+        const message =
+          error instanceof Error ? error.message : "No se pudo cargar el examen";
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        setLoadingExam(false);
+      }
+    };
+
+    loadExam();
+  }, [examId]);
+
+  const canSave = useMemo(
+    () => !saving && !loadingCourses && !loadingExam,
+    [saving, loadingCourses, loadingExam]
+  );
 
   const updateQuestion = (questionId: string, updater: (q: QuestionForm) => QuestionForm) => {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
@@ -195,24 +254,48 @@ export default function CreateExam() {
 
     try {
       setSaving(true);
-      await ExamsAPI.create(payload);
-      toast.success("Examen creado exitosamente");
+      if (isEditing && examId) {
+        await ExamsAPI.update(examId, payload);
+        toast.success("Examen actualizado exitosamente");
+      } else {
+        await ExamsAPI.create(payload);
+        toast.success("Examen creado exitosamente");
+      }
       navigate("/exams");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "No se pudo crear el examen";
+        error instanceof Error
+          ? error.message
+          : isEditing
+            ? "No se pudo actualizar el examen"
+            : "No se pudo crear el examen";
       toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loadingCourses) {
+  if (loadingCourses || loadingExam) {
     return (
       <InteractiveLoader
-        initialMessage="Cargando formulario"
-        delayedMessage="Trayendo formaciones disponibles"
+        initialMessage={isEditing ? "Cargando examen" : "Cargando formulario"}
+        delayedMessage={
+          isEditing
+            ? "Obteniendo datos del examen"
+            : "Trayendo formaciones disponibles"
+        }
       />
+    );
+  }
+
+  if (isEditing && loadError) {
+    return (
+      <div className="space-y-4 text-center py-12">
+        <p className="text-red-600">{loadError}</p>
+        <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
+          Volver a Exámenes
+        </Button>
+      </div>
     );
   }
 
@@ -227,7 +310,7 @@ export default function CreateExam() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Crear examen</CardTitle>
+          <CardTitle>{isEditing ? "Editar examen" : "Crear examen"}</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSave}>
@@ -391,7 +474,11 @@ export default function CreateExam() {
               </Button>
               <Button type="submit" disabled={!canSave}>
                 <Save className="w-4 h-4 mr-2" />
-                {saving ? "Guardando..." : "Guardar examen"}
+                {saving
+                  ? "Guardando..."
+                  : isEditing
+                    ? "Guardar cambios"
+                    : "Guardar examen"}
               </Button>
             </div>
           </form>
