@@ -1,0 +1,402 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { CoursesAPI } from "@/service/courses";
+import { ExamsAPI } from "@/service/exams";
+import type { Course, ExamenCreatePayload } from "@/types/types";
+import { toast } from "sonner";
+
+type OptionForm = {
+  id: string;
+  texto: string;
+  esCorrecta: boolean;
+};
+
+type QuestionForm = {
+  id: string;
+  texto: string;
+  respuestas: OptionForm[];
+};
+
+type QuestionError = {
+  texto?: string;
+  respuestas?: string;
+};
+
+const makeId = () =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const createEmptyOption = (): OptionForm => ({
+  id: makeId(),
+  texto: "",
+  esCorrecta: false,
+});
+
+const createEmptyQuestion = (): QuestionForm => ({
+  id: makeId(),
+  texto: "",
+  respuestas: [createEmptyOption(), createEmptyOption()],
+});
+
+export default function CreateExam() {
+  const navigate = useNavigate();
+  const [title, setTitle] = useState("");
+  const [idFormacion, setIdFormacion] = useState("");
+  const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [titleError, setTitleError] = useState("");
+  const [formationError, setFormationError] = useState("");
+  const [questionsError, setQuestionsError] = useState("");
+  const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoadingCourses(true);
+        const data = await CoursesAPI.getAllList();
+        setCourses(data);
+      } catch (error) {
+        console.error("Error al cargar formaciones:", error);
+        toast.error("No se pudieron cargar las formaciones");
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+    loadCourses();
+  }, []);
+
+  const canSave = useMemo(() => !saving && !loadingCourses, [saving, loadingCourses]);
+
+  const updateQuestion = (questionId: string, updater: (q: QuestionForm) => QuestionForm) => {
+    setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
+  };
+
+  const addQuestion = () => {
+    setQuestions((prev) => [...prev, createEmptyQuestion()]);
+  };
+
+  const removeQuestion = (questionId: string) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+    setQuestionErrors((prev) => {
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  };
+
+  const addOption = (questionId: string) => {
+    updateQuestion(questionId, (q) => ({
+      ...q,
+      respuestas: [...q.respuestas, createEmptyOption()],
+    }));
+  };
+
+  const removeOption = (questionId: string, optionId: string) => {
+    updateQuestion(questionId, (q) => ({
+      ...q,
+      respuestas: q.respuestas.filter((r) => r.id !== optionId),
+    }));
+  };
+
+  const toggleCorrectOption = (questionId: string, optionId: string) => {
+    updateQuestion(questionId, (q) => ({
+      ...q,
+      respuestas: q.respuestas.map((r) =>
+        r.id === optionId ? { ...r, esCorrecta: !r.esCorrecta } : r
+      ),
+    }));
+  };
+
+  const validate = () => {
+    let isValid = true;
+    const nextQuestionErrors: Record<string, QuestionError> = {};
+    setTitleError("");
+    setFormationError("");
+    setQuestionsError("");
+
+    if (!title.trim()) {
+      setTitleError("El título del examen es obligatorio");
+      isValid = false;
+    }
+
+    if (!idFormacion) {
+      setFormationError("Debes seleccionar una formación");
+      isValid = false;
+    }
+
+    if (questions.length === 0) {
+      setQuestionsError("Debes agregar al menos una pregunta");
+      isValid = false;
+    }
+
+    questions.forEach((question) => {
+      const qError: QuestionError = {};
+      const validOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
+      const hasCorrect = question.respuestas.some((r) => r.esCorrecta && r.texto.trim().length > 0);
+
+      if (!question.texto.trim()) {
+        qError.texto = "La pregunta no puede estar vacía";
+        isValid = false;
+      }
+      if (validOptions.length < 2) {
+        qError.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
+        isValid = false;
+      } else if (!hasCorrect) {
+        qError.respuestas = "Debes marcar al menos una respuesta correcta";
+        isValid = false;
+      }
+
+      if (qError.texto || qError.respuestas) {
+        nextQuestionErrors[question.id] = qError;
+      }
+    });
+
+    setQuestionErrors(nextQuestionErrors);
+    return isValid;
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const payload: ExamenCreatePayload = {
+      titulo: title.trim(),
+      idFormacion,
+      preguntas: questions.map((q) => ({
+        id: q.id,
+        texto: q.texto.trim(),
+        respuestas: q.respuestas
+          .filter((r) => r.texto.trim().length > 0)
+          .map((r) => ({
+            id: r.id,
+            texto: r.texto.trim(),
+            esCorrecta: r.esCorrecta,
+          })),
+      })),
+    };
+
+    try {
+      setSaving(true);
+      await ExamsAPI.create(payload);
+      toast.success("Examen creado exitosamente");
+      navigate("/exams");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "No se pudo crear el examen";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loadingCourses) {
+    return (
+      <InteractiveLoader
+        initialMessage="Cargando formulario"
+        delayedMessage="Trayendo formaciones disponibles"
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver a Exámenes
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Crear examen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-6" onSubmit={handleSave}>
+            <div className="space-y-2">
+              <Label htmlFor="exam-title">Título del examen</Label>
+              <Input
+                id="exam-title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (titleError) setTitleError("");
+                }}
+                placeholder="Ej: Evaluación final de Anatomía"
+              />
+              {titleError && <p className="text-sm text-red-600">{titleError}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Formación asociada</Label>
+              <Select
+                value={idFormacion}
+                onValueChange={(value) => {
+                  setIdFormacion(value);
+                  if (formationError) setFormationError("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una formación" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.titulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formationError && <p className="text-sm text-red-600">{formationError}</p>}
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base">Preguntas</Label>
+                <Button type="button" variant="outline" onClick={addQuestion}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar pregunta
+                </Button>
+              </div>
+              {questionsError && <p className="text-sm text-red-600">{questionsError}</p>}
+
+              {questions.map((question, index) => (
+                <Card key={question.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeQuestion(question.id)}
+                        disabled={questions.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Texto de la pregunta</Label>
+                      <Textarea
+                        value={question.texto}
+                        onChange={(e) =>
+                          updateQuestion(question.id, (q) => ({
+                            ...q,
+                            texto: e.target.value,
+                          }))
+                        }
+                        placeholder="Escribe la pregunta"
+                      />
+                      {questionErrors[question.id]?.texto && (
+                        <p className="text-sm text-red-600">{questionErrors[question.id]?.texto}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label>Respuestas</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addOption(question.id)}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Agregar respuesta
+                        </Button>
+                      </div>
+
+                      {question.respuestas.map((option, optionIndex) => (
+                        <div key={option.id} className="flex items-center gap-2">
+                          <Input
+                            value={option.texto}
+                            onChange={(e) =>
+                              updateQuestion(question.id, (q) => ({
+                                ...q,
+                                respuestas: q.respuestas.map((r) =>
+                                  r.id === option.id ? { ...r, texto: e.target.value } : r
+                                ),
+                              }))
+                            }
+                            placeholder={`Respuesta ${optionIndex + 1}`}
+                          />
+                          <Button
+                            type="button"
+                            variant={option.esCorrecta ? "default" : "outline"}
+                            onClick={() => toggleCorrectOption(question.id, option.id)}
+                          >
+                            {option.esCorrecta ? "Correcta" : "Marcar correcta"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOption(question.id, option.id)}
+                            disabled={question.respuestas.length <= 2}
+                            title="Eliminar respuesta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+
+                      <div className="flex flex-wrap gap-2">
+                        {question.respuestas.map((option) => (
+                          <Badge
+                            key={option.id}
+                            variant={option.esCorrecta ? "default" : "secondary"}
+                            className="cursor-pointer"
+                            onClick={() => toggleCorrectOption(question.id, option.id)}
+                          >
+                            {option.texto.trim() || "Respuesta sin texto"}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {questionErrors[question.id]?.respuestas && (
+                        <p className="text-sm text-red-600">
+                          {questionErrors[question.id]?.respuestas}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={!canSave}>
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? "Guardando..." : "Guardar examen"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

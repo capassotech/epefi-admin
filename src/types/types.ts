@@ -249,3 +249,25 @@ export interface CreateUserFormData {
   cursos_asignados: string[];
   activo?: boolean;
 }
+
+export interface ExamenRespuesta {
+  id: string;
+  texto: string;
+  esCorrecta: boolean;
+}
+
+export interface ExamenPregunta {
+  id: string;
+  texto: string;
+  respuestas: ExamenRespuesta[];
+}
+
+export interface ExamenCreatePayload {
+  titulo: string;
+  idFormacion: string;
+  preguntas: ExamenPregunta[];
+}
+
+export interface Examen extends ExamenCreatePayload {
+  id: string;
+}
