@@ -76,12 +76,41 @@ export const ExamsAPI = {
     }
   },
 
+  getById: async (id: string): Promise<Examen> => {
+    try {
+      const res = await api.get<Examen>(`/examenes/${encodeURIComponent(id)}`);
+      return res.data;
+    } catch (error: unknown) {
+      throw new Error(getAxiosErrorMessage(error, "Error al obtener examen"));
+    }
+  },
+
   create: async (payload: ExamenCreatePayload): Promise<Examen> => {
     try {
       const res = await api.post<Examen>("/examenes", payload);
       return res.data;
     } catch (error: unknown) {
       throw new Error(getAxiosErrorMessage(error, "Error al crear examen"));
+    }
+  },
+
+  update: async (id: string, payload: ExamenCreatePayload): Promise<Examen> => {
+    try {
+      const res = await api.put<Examen>(
+        `/examenes/${encodeURIComponent(id)}`,
+        payload
+      );
+      return res.data;
+    } catch (error: unknown) {
+      throw new Error(getAxiosErrorMessage(error, "Error al actualizar examen"));
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/examenes/${encodeURIComponent(id)}`);
+    } catch (error: unknown) {
+      throw new Error(getAxiosErrorMessage(error, "Error al eliminar examen"));
     }
   },
 };
