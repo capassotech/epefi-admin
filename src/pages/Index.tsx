@@ -16,6 +16,8 @@ import Profile from "./Profile";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import Exams from "./Exams";
 import CreateExam from "./CreateExam";
+import CompletedExams from "./CompletedExams";
+import CompletedExamDetail from "./CompletedExamDetail";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -45,6 +47,8 @@ const Index = () => {
           <Route path="/students/:id" element={<StudentDetail />} />
           <Route path="/exams" element={<Exams />} />
           <Route path="/exams/create" element={<CreateExam />} />
+          <Route path="/exams/completed" element={<CompletedExams />} />
+          <Route path="/exams/completed/:id" element={<CompletedExamDetail />} />
           <Route path="/exams/:id/edit" element={<CreateExam />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>

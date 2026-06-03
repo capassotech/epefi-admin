@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Edit2, Trash2 } from "lucide-react";
+import { ClipboardList, Edit2, Trash2 } from "lucide-react";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
@@ -139,9 +139,7 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Exámenes</h1>
-      </div>
+      <h1 className="text-3xl font-bold text-gray-900">Exámenes</h1>
 
       <SearchAndFilter
         onSearch={handleSearch}
@@ -157,6 +155,17 @@ export default function Exams() {
         }}
         hideUnsortedOption
         currentFilters={filters}
+        extraActions={
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => navigate("/exams/completed")}
+          >
+            <ClipboardList className="w-4 h-4 mr-2" />
+            Ver realizados
+          </Button>
+        }
       />
 
       <div className="flex items-center justify-between">
