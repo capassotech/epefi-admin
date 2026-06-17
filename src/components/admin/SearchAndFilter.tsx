@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -39,6 +39,8 @@ interface SearchAndFilterProps {
   showClearFilters?: boolean;
   hideUnsortedOption?: boolean;
   showStateFilter?: boolean;
+  /** Botones extra junto a la acción principal (p. ej. «Ver realizados») */
+  extraActions?: ReactNode;
 }
 
 export const SearchAndFilter = ({
@@ -53,7 +55,8 @@ export const SearchAndFilter = ({
   resetFiltersTo,
   showClearFilters = false,
   hideUnsortedOption = false,
-  showStateFilter = true
+  showStateFilter = true,
+  extraActions,
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>(externalFilters || {});
@@ -138,7 +141,7 @@ export const SearchAndFilter = ({
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center min-h-10">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           {/* Estado */}
@@ -227,8 +230,7 @@ export const SearchAndFilter = ({
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="shrink-0"
+              className="shrink-0 h-10 px-3"
               onClick={handleSortDirectionToggle}
               title={
                 (currentFilters.sortDirection ??
@@ -246,7 +248,12 @@ export const SearchAndFilter = ({
           )}
 
           {showClearFilters && (
-            <Button type="button" variant="ghost" size="sm" onClick={handleClearFilters}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="shrink-0 h-10 px-3"
+              onClick={handleClearFilters}
+            >
               Limpiar filtros
             </Button>
           )}
@@ -254,15 +261,26 @@ export const SearchAndFilter = ({
       </div>
 
 
-      {!hideCreateButton && onCreateNew && (
-        isStudentPage ? (
-          <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
-        ) : (
-          <Button onClick={() => onCreateNew?.()} className="cursor-pointer" data-tour="create-course">
-            <Plus className="w-4 h-4 mr-2 cursor-pointer" />
-            {createButtonText}
-          </Button>
-        )
+      {(extraActions || (!hideCreateButton && onCreateNew)) && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {extraActions}
+          {!hideCreateButton && onCreateNew &&
+            (isStudentPage ? (
+              <CreateUserModal
+                onUserCreated={onCreateNew}
+                triggerText={createButtonText}
+              />
+            ) : (
+              <Button
+                onClick={() => onCreateNew?.()}
+                className="cursor-pointer"
+                data-tour="create-course"
+              >
+                <Plus className="w-4 h-4 mr-2 cursor-pointer" />
+                {createButtonText}
+              </Button>
+            ))}
+        </div>
       )}
     </div>
   );

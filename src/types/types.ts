@@ -271,3 +271,33 @@ export interface ExamenCreatePayload {
 export interface Examen extends ExamenCreatePayload {
   id: string;
 }
+
+/** Registro en colección examenes_realizados (listado admin). */
+export interface ExamenRealizado {
+  id: string;
+  idUsuario?: string;
+  idAlumno?: string;
+  idExamen: string;
+  idFormacion: string;
+  nota: number;
+  aprobado: boolean;
+  fechaRealizacion?: FirestoreTimestamp | string | number;
+  nombreAlumno?: string;
+  nombre?: string;
+  apellido?: string;
+  tituloExamen?: string;
+  tituloFormacion?: string;
+}
+
+/** Pregunta en detalle de examen realizado (incluye selección del alumno). */
+export interface ExamenRealizadoPreguntaDetalle {
+  id: string;
+  texto: string;
+  respuestas: ExamenRespuesta[];
+  respuestasSeleccionadas?: string[];
+  idsRespuestasSeleccionadas?: string[];
+}
+
+export interface ExamenRealizadoDetalle extends ExamenRealizado {
+  preguntas?: ExamenRealizadoPreguntaDetalle[];
+}

@@ -47,6 +47,8 @@ export type ExamsListQuery = {
   sortBy?: "date" | "title" | "fechaCreacion" | "titulo";
   sortOrder?: "asc" | "desc";
   idFormacion?: string;
+  page?: number;
+  limit?: number;
 };
 
 function cleanQueryParams(
@@ -61,15 +63,17 @@ function cleanQueryParams(
 }
 
 export const ExamsAPI = {
-  getAll: async (params?: ExamsListQuery): Promise<Examen[]> => {
+  getAll: async (params?: ExamsListQuery) => {
     try {
       const query = cleanQueryParams({
         search: params?.search?.trim() || undefined,
         sortBy: params?.sortBy,
         sortOrder: params?.sortOrder,
         idFormacion: params?.idFormacion,
+        page: params?.page,
+        limit: params?.limit,
       });
-      const res = await api.get<Examen[]>("/examenes", { params: query });
+      const res = await api.get("/examenes", { params: query });
       return res.data;
     } catch (error: unknown) {
       throw new Error(getAxiosErrorMessage(error, "Error al obtener exámenes"));
