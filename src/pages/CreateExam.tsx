@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,11 @@ type QuestionForm = {
 type QuestionError = {
   texto?: string;
   respuestas?: string;
+};
+
+type ValidationResult = {
+  isValid: boolean;
+  firstErrorField?: string;
 };
 
 const makeId = () =>
@@ -96,6 +101,28 @@ export default function CreateExam() {
   const [formationError, setFormationError] = useState("");
   const [questionsError, setQuestionsError] = useState("");
   const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const setFieldRef = useCallback(
+    (fieldId: string) => (element: HTMLElement | null) => {
+      fieldRefs.current[fieldId] = element;
+    },
+    []
+  );
+
+  const scrollToFirstError = useCallback((fieldId: string) => {
+    requestAnimationFrame(() => {
+      const element = fieldRefs.current[fieldId];
+      if (!element) return;
+
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      const focusable = element.querySelector<HTMLElement>(
+        "input, textarea, [role='combobox']"
+      );
+      focusable?.focus({ preventScroll: true });
+    });
+  }, []);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -184,26 +211,32 @@ export default function CreateExam() {
     }));
   };
 
-  const validate = () => {
+  const validate = (): ValidationResult => {
     let isValid = true;
+    let firstErrorField: string | undefined;
     const nextQuestionErrors: Record<string, QuestionError> = {};
     setTitleError("");
     setFormationError("");
     setQuestionsError("");
 
+    const markInvalid = (fieldId: string) => {
+      isValid = false;
+      if (!firstErrorField) firstErrorField = fieldId;
+    };
+
     if (!title.trim()) {
       setTitleError("El título del examen es obligatorio");
-      isValid = false;
+      markInvalid("title");
     }
 
     if (!idFormacion) {
       setFormationError("Debes seleccionar una formación");
-      isValid = false;
+      markInvalid("formation");
     }
 
     if (questions.length === 0) {
       setQuestionsError("Debes agregar al menos una pregunta");
-      isValid = false;
+      markInvalid("questions");
     }
 
     questions.forEach((question) => {
@@ -213,14 +246,14 @@ export default function CreateExam() {
 
       if (!question.texto.trim()) {
         qError.texto = "La pregunta no puede estar vacía";
-        isValid = false;
+        markInvalid(`question-${question.id}`);
       }
       if (validOptions.length < 2) {
         qError.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
-        isValid = false;
+        markInvalid(`question-${question.id}`);
       } else if (!hasCorrect) {
         qError.respuestas = "Debes marcar al menos una respuesta correcta";
-        isValid = false;
+        markInvalid(`question-${question.id}`);
       }
 
       if (qError.texto || qError.respuestas) {
@@ -229,12 +262,19 @@ export default function CreateExam() {
     });
 
     setQuestionErrors(nextQuestionErrors);
-    return isValid;
+    return { isValid, firstErrorField };
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    const validation = validate();
+    if (!validation.isValid) {
+      toast.error("No se pudo guardar. Por favor, revisa los campos incompletos");
+      if (validation.firstErrorField) {
+        scrollToFirstError(validation.firstErrorField);
+      }
+      return;
+    }
 
     const payload: ExamenCreatePayload = {
       titulo: title.trim(),
@@ -314,7 +354,7 @@ export default function CreateExam() {
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSave}>
-            <div className="space-y-2">
+            <div className="space-y-2" ref={setFieldRef("title")}>
               <Label htmlFor="exam-title">Título del examen</Label>
               <Input
                 id="exam-title"
@@ -328,7 +368,7 @@ export default function CreateExam() {
               {titleError && <p className="text-sm text-red-600">{titleError}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" ref={setFieldRef("formation")}>
               <Label>Formación asociada</Label>
               <Select
                 value={idFormacion}
@@ -351,7 +391,7 @@ export default function CreateExam() {
               {formationError && <p className="text-sm text-red-600">{formationError}</p>}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4" ref={setFieldRef("questions")}>
               <div className="flex items-center justify-between">
                 <Label className="text-base">Preguntas</Label>
                 <Button type="button" variant="outline" onClick={addQuestion}>
@@ -362,7 +402,7 @@ export default function CreateExam() {
               {questionsError && <p className="text-sm text-red-600">{questionsError}</p>}
 
               {questions.map((question, index) => (
-                <Card key={question.id}>
+                <Card key={question.id} ref={setFieldRef(`question-${question.id}`)}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
