@@ -14,6 +14,7 @@ import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
 import Profile from "./Profile";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
+import { SidebarLayoutProvider } from "@/context/SidebarLayoutContext";
 import Exams from "./Exams";
 import CreateExam from "./CreateExam";
 import CompletedExams from "./CompletedExams";
@@ -25,6 +26,7 @@ const Index = () => {
   return (
     <>
       <EnvironmentBanner />
+      <SidebarLayoutProvider>
       <div className="min-h-screen bg-gray-50 flex">
         <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
       <main className="flex-1 p-4 lg:p-8 overflow-auto">
@@ -54,6 +56,7 @@ const Index = () => {
         </Routes>
       </main>
     </div>
+      </SidebarLayoutProvider>
     </>
   );
 };

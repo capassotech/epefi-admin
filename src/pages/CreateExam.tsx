@@ -19,6 +19,7 @@ import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
 import type { Course, Examen, ExamenCreatePayload } from "@/types/types";
 import { toast } from "sonner";
+import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 
 type OptionForm = {
   id: string;
@@ -89,6 +90,7 @@ export default function CreateExam() {
   const navigate = useNavigate();
   const { id: examId } = useParams<{ id: string }>();
   const isEditing = Boolean(examId);
+  const { sidebarWidth } = useSidebarLayout();
   const [title, setTitle] = useState("");
   const [idFormacion, setIdFormacion] = useState("");
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
@@ -101,6 +103,8 @@ export default function CreateExam() {
   const [formationError, setFormationError] = useState("");
   const [questionsError, setQuestionsError] = useState("");
   const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
+  const lastQuestionRef = useRef<HTMLDivElement | null>(null);
+  const scrollToNewQuestion = useRef(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const setFieldRef = useCallback(
@@ -176,8 +180,15 @@ export default function CreateExam() {
   };
 
   const addQuestion = () => {
+    scrollToNewQuestion.current = true;
     setQuestions((prev) => [...prev, createEmptyQuestion()]);
   };
+
+  useEffect(() => {
+    if (!scrollToNewQuestion.current || !lastQuestionRef.current) return;
+    scrollToNewQuestion.current = false;
+    lastQuestionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [questions.length]);
 
   const removeQuestion = (questionId: string) => {
     setQuestions((prev) => prev.filter((q) => q.id !== questionId));
@@ -394,15 +405,16 @@ export default function CreateExam() {
             <div className="space-y-4" ref={setFieldRef("questions")}>
               <div className="flex items-center justify-between">
                 <Label className="text-base">Preguntas</Label>
-                <Button type="button" variant="outline" onClick={addQuestion}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar pregunta
-                </Button>
+                {questionsError && (
+                  <p className="text-sm text-red-600 mt-1">{questionsError}</p>
+                )}
               </div>
-              {questionsError && <p className="text-sm text-red-600">{questionsError}</p>}
 
               {questions.map((question, index) => (
-                <Card key={question.id} ref={setFieldRef(`question-${question.id}`)}>
+                <Card
+                  key={question.id} ref={setFieldRef(`question-${question.id}`)}
+                  ref={index === questions.length - 1 ? lastQuestionRef : undefined}
+                >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
@@ -508,7 +520,21 @@ export default function CreateExam() {
               ))}
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div
+              role="toolbar"
+              aria-label="Acciones de preguntas"
+              className="fixed z-40 bottom-6 -translate-x-1/2 transition-[left] duration-300"
+              style={{ left: `calc(50vw + ${sidebarWidth / 2}px)` }}
+            >
+              <div className="rounded-xl border border-border bg-background/95 backdrop-blur-sm shadow-lg p-2">
+                <Button type="button" onClick={addQuestion} className="shadow-sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar pregunta
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pb-20">
               <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
                 Cancelar
               </Button>
