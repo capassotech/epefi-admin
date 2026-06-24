@@ -114,6 +114,16 @@ export default function CreateExam() {
     []
   );
 
+  const setQuestionCardRef = useCallback(
+    (questionId: string, isLast: boolean) => (element: HTMLDivElement | null) => {
+      fieldRefs.current[`question-${questionId}`] = element;
+      if (isLast) {
+        lastQuestionRef.current = element;
+      }
+    },
+    []
+  );
+
   const scrollToFirstError = useCallback((fieldId: string) => {
     requestAnimationFrame(() => {
       const element = fieldRefs.current[fieldId];
@@ -220,6 +230,32 @@ export default function CreateExam() {
         r.id === optionId ? { ...r, esCorrecta: !r.esCorrecta } : r
       ),
     }));
+    clearQuestionError(questionId, "respuestas");
+  };
+
+  const clearQuestionError = (questionId: string, field?: keyof QuestionError) => {
+    setQuestionErrors((prev) => {
+      const current = prev[questionId];
+      if (!current) return prev;
+
+      if (!field) {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      }
+
+      if (!current[field]) return prev;
+
+      const updated = { ...current };
+      delete updated[field];
+      if (!updated.texto && !updated.respuestas) {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      }
+
+      return { ...prev, [questionId]: updated };
+    });
   };
 
   const validate = (): ValidationResult => {
@@ -252,14 +288,18 @@ export default function CreateExam() {
 
     questions.forEach((question) => {
       const qError: QuestionError = {};
-      const validOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
+      const filledOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
+      const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
       const hasCorrect = question.respuestas.some((r) => r.esCorrecta && r.texto.trim().length > 0);
 
       if (!question.texto.trim()) {
         qError.texto = "La pregunta no puede estar vacía";
         markInvalid(`question-${question.id}`);
       }
-      if (validOptions.length < 2) {
+      if (hasEmptyOption) {
+        qError.respuestas = "Todas las respuestas deben tener texto";
+        markInvalid(`question-${question.id}`);
+      } else if (filledOptions.length < 2) {
         qError.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
         markInvalid(`question-${question.id}`);
       } else if (!hasCorrect) {
@@ -293,9 +333,7 @@ export default function CreateExam() {
       preguntas: questions.map((q) => ({
         id: q.id,
         texto: q.texto.trim(),
-        respuestas: q.respuestas
-          .filter((r) => r.texto.trim().length > 0)
-          .map((r) => ({
+        respuestas: q.respuestas.map((r) => ({
             id: r.id,
             texto: r.texto.trim(),
             esCorrecta: r.esCorrecta,
@@ -412,8 +450,8 @@ export default function CreateExam() {
 
               {questions.map((question, index) => (
                 <Card
-                  key={question.id} ref={setFieldRef(`question-${question.id}`)}
-                  ref={index === questions.length - 1 ? lastQuestionRef : undefined}
+                  key={question.id}
+                  ref={setQuestionCardRef(question.id, index === questions.length - 1)}
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
@@ -435,12 +473,13 @@ export default function CreateExam() {
                       <Label>Texto de la pregunta</Label>
                       <Textarea
                         value={question.texto}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           updateQuestion(question.id, (q) => ({
                             ...q,
                             texto: e.target.value,
-                          }))
-                        }
+                          }));
+                          clearQuestionError(question.id, "texto");
+                        }}
                         placeholder="Escribe la pregunta"
                       />
                       {questionErrors[question.id]?.texto && (
@@ -466,14 +505,15 @@ export default function CreateExam() {
                         <div key={option.id} className="flex items-center gap-2">
                           <Input
                             value={option.texto}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               updateQuestion(question.id, (q) => ({
                                 ...q,
                                 respuestas: q.respuestas.map((r) =>
                                   r.id === option.id ? { ...r, texto: e.target.value } : r
                                 ),
-                              }))
-                            }
+                              }));
+                              clearQuestionError(question.id, "respuestas");
+                            }}
                             placeholder={`Respuesta ${optionIndex + 1}`}
                           />
                           <Button
