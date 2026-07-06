@@ -335,7 +335,7 @@ const GeneralInfoForm = ({
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+                      <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[90vh] overflow-x-hidden flex flex-col">
                         <DialogHeader className="flex-shrink-0">
                           <DialogTitle>Vista previa</DialogTitle>
                           <DialogDescription>

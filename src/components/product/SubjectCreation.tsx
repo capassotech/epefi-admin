@@ -494,7 +494,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                         </div>
                     </div>
 
-                                    <div className="pl-10 space-y-3">
+                                    <div className="pl-0 sm:pl-10 space-y-3">
                         <Select onValueChange={handleSelectSubject}>
                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Buscar y seleccionar materia..." />
@@ -579,7 +579,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                                 </div>
                             </div>
                             
-                            <div className="pl-10">
+                            <div className="pl-0 sm:pl-10">
                                 <Button 
                                     type="button" 
                                     className="cursor-pointer w-full sm:w-auto"
@@ -738,13 +738,13 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                     }
                 }
             }}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogTitle className="sr-only">Gestionar Módulos</DialogTitle>
                     <DialogDescription className="sr-only">
                         Gestión de módulos para la materia {currentSubjectForModules?.nombre}
                     </DialogDescription>
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between border-b pb-4">
+                        <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-900">
                                     Módulos de {currentSubjectForModules?.nombre}

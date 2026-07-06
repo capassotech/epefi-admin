@@ -255,7 +255,7 @@ export const SubjectDetail = () => {
                 <CardContent>
                     {materia.modulos && materia.modulos.length > 0 && (
                         <div className="mt-6 pt-4 border-t">
-                            <CardTitle className="flex items-center mb-3 justify-between">
+                            <CardTitle className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className='flex items-center'>
                                     <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
                                     Modulos ({materia.modulos.length})

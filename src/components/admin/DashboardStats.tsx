@@ -41,24 +41,23 @@ export function DashboardStatsComponent({ stats }: DashboardStatsProps) {
         <Link
           key={card.title}
           to={card.href}
-          className={`group relative overflow-hidden rounded-xl border ${card.borderColor} bg-white hover:shadow-xl ${card.hoverShadow} hover:border-opacity-100 transition-all duration-500 cursor-pointer active:scale-[0.98]`}
+          className={`group relative rounded-xl border ${card.borderColor} bg-white hover:shadow-xl ${card.hoverShadow} hover:border-opacity-100 transition-all duration-500 cursor-pointer active:scale-[0.98]`}
           style={{ 
             animationDelay: `${index * 100}ms`,
             animation: 'fadeInUp 0.5s ease-out forwards',
-            opacity: 0
           }}
         >
           {/* Subtle gradient background */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+          <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden rounded-xl`}></div>
           
           <div className="relative p-6">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 space-y-2">
+              <div className="flex-1 min-w-0 space-y-2">
                 <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                   {card.title}
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-4xl font-bold text-gray-900 tracking-tight">
+                  <p className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
                     {card.value}
                   </p>
                 </div>

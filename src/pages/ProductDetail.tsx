@@ -149,16 +149,16 @@ const ProductDetail = () => {
     <div className="space-y-6 max-w-6xl mx-auto p-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className='cursor-pointer'>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0 flex-1">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">{curso.titulo}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words min-w-0">{curso.titulo}</h1>
         </div>
         <Button
           variant="outline"
-          className='cursor-pointer'
+          className="cursor-pointer w-full sm:w-auto shrink-0"
           onClick={() => navigate(`/products/${encodeURIComponent(curso.id)}/edit`)}
         >
           <PencilIcon className="w-4 h-4 mr-2" />
@@ -301,11 +301,11 @@ const ProductDetail = () => {
                     const isExpanded = expandedMaterias.has(materia.id);
                     
                     return (
-                      <Card key={materia.id} className="overflow-hidden">
-                        <div className="px-6 py-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-lg text-gray-900 mb-1">{materia.nombre}</h4>
+                      <Card key={materia.id}>
+                        <div className="px-4 sm:px-6 py-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-lg text-gray-900 mb-1 break-words">{materia.nombre}</h4>
                               <p className="text-sm text-gray-500">
                                 {numModulos > 0 
                                   ? `${numModulos} ${numModulos === 1 ? 'módulo' : 'módulos'}`
@@ -318,7 +318,7 @@ const ProductDetail = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => toggleMateria(materia.id, materia.modulos)}
-                                className="ml-4"
+                                className="w-full sm:w-auto sm:ml-4 shrink-0"
                               >
                                 {isExpanded ? (
                                   <>
@@ -474,7 +474,7 @@ const ProductDetail = () => {
 
       {/* Modal de vista previa de portada */}
       <Dialog open={previewImageOpen} onOpenChange={setPreviewImageOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-x-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Vista previa de la portada</DialogTitle>
           </DialogHeader>

@@ -182,18 +182,26 @@ export default function CompletedExams() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver a Exámenes
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Exámenes realizados</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0">
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto shrink-0"
+            onClick={() => navigate("/exams")}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver a Exámenes
+          </Button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+            Exámenes realizados
+          </h1>
+        </div>
+        <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
             disabled={exporting || items.length === 0}
             onClick={() => handleExport("csv")}
           >
@@ -203,6 +211,7 @@ export default function CompletedExams() {
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={exporting || items.length === 0}
             onClick={() => handleExport("excel")}
           >
@@ -285,39 +294,28 @@ export default function CompletedExams() {
       {error ? (
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : items.length > 0 ? (
-        <div className="rounded-md border bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Alumno</TableHead>
-                <TableHead>Formación</TableHead>
-                <TableHead>Examen</TableHead>
-                <TableHead className="text-right">Nota</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">
+        <>
+          <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
+            {items.map((row) => (
+              <div key={row.id} className="p-4 space-y-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-semibold text-gray-900 break-words">
                     {row.nombreAlumno || "—"}
-                  </TableCell>
-                  <TableCell>
+                  </p>
+                  <p className="text-sm text-gray-600 break-words">
                     {row.tituloFormacion ||
                       coursesById[row.idFormacion]?.titulo ||
                       row.idFormacion}
-                  </TableCell>
-                  <TableCell>
+                  </p>
+                  <p className="text-sm text-gray-500 break-words">
                     {row.tituloExamen ||
                       examsById[row.idExamen]?.titulo ||
                       row.idExamen}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {typeof row.nota === "number" ? row.nota : "—"}
-                  </TableCell>
-                  <TableCell>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="text-sm font-medium text-gray-900">
+                      Nota: {typeof row.nota === "number" ? row.nota : "—"}
+                    </span>
                     <span
                       className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                         row.aprobado
@@ -327,28 +325,91 @@ export default function CompletedExams() {
                     >
                       {row.aprobado ? "Aprobado" : "No aprobado"}
                     </span>
-                  </TableCell>
-                  <TableCell>{formatTimestamp(row.fechaRealizacion)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        navigate(
-                          `/exams/completed/${encodeURIComponent(row.id)}`
-                        )
-                      }
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Ver detalle
-                    </Button>
-                  </TableCell>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {formatTimestamp(row.fechaRealizacion)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() =>
+                    navigate(`/exams/completed/${encodeURIComponent(row.id)}`)
+                  }
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  Ver detalle
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Alumno</TableHead>
+                  <TableHead>Formación</TableHead>
+                  <TableHead>Examen</TableHead>
+                  <TableHead className="text-right">Nota</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {items.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">
+                      {row.nombreAlumno || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {row.tituloFormacion ||
+                        coursesById[row.idFormacion]?.titulo ||
+                        row.idFormacion}
+                    </TableCell>
+                    <TableCell>
+                      {row.tituloExamen ||
+                        examsById[row.idExamen]?.titulo ||
+                        row.idExamen}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {typeof row.nota === "number" ? row.nota : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          row.aprobado
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {row.aprobado ? "Aprobado" : "No aprobado"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatTimestamp(row.fechaRealizacion)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigate(
+                            `/exams/completed/${encodeURIComponent(row.id)}`
+                          )
+                        }
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Ver detalle
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       ) : (
         <div className="text-center py-12 text-gray-600">
           No hay exámenes realizados con los filtros seleccionados.
