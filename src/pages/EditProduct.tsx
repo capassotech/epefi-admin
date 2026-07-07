@@ -438,23 +438,23 @@ export default function EditProduct() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4">
-      <div className="flex items-center space-x-4">
-        <Link to="/products">
-          <Button variant="outline" size="sm" className="flex items-center space-x-2 cursor-pointer">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <Link to="/products" className="shrink-0">
+          <Button variant="outline" size="sm" className="flex items-center space-x-2 cursor-pointer w-full sm:w-auto">
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Editar curso</h1>
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Editar curso</h1>
         </div>
       </div>
 
       {showSaveMessage && lastSaveTime && (
         <Card className="border-l-4 border-l-green-500 bg-green-50">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start space-x-3 min-w-0">
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-green-800">Cambios guardados</p>
@@ -484,7 +484,7 @@ export default function EditProduct() {
 
       <Form {...form}>
         <div className="border-b border-gray-200">
-          <div className="flex items-center justify-between pb-2">
+          <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
               {tabs.map((tab, index) => (
                 <button

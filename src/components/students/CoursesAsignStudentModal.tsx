@@ -391,7 +391,7 @@ export const CoursesAsignStudentModal = ({
                     <Button className="text-zinc-200" variant="outline" onClick={() => setAssignDialogOpen(true)}>Asignar Cursos</Button>
                 </DialogTrigger>
             )}
-            <DialogContent className='w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col'>
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] overflow-x-hidden flex flex-col">
                 <DialogHeader>
                     <div className="space-y-1">
                         <DialogTitle className="text-2xl font-semibold text-gray-900">Asignar cursos</DialogTitle>

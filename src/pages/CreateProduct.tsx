@@ -314,19 +314,19 @@ export default function CreateProduct() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4">
-      <div className="flex items-center space-x-4">
-        <Link to="/products">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <Link to="/products" className="shrink-0">
           <Button
             variant="outline"
             size="sm"
-            className="flex items-center space-x-2 cursor-pointer"
+            className="flex items-center space-x-2 cursor-pointer w-full sm:w-auto"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver</span>
           </Button>
         </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Crear nuevo curso
           </h1>
           <p className="text-gray-600 mt-1">
@@ -352,8 +352,8 @@ export default function CreateProduct() {
 
       <Form {...form}>
         <div className="border-b border-gray-200">
-          <div className="flex items-center justify-between pb-2">
-            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
+          <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
+            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide min-w-0">
               {tabs.map((tab, index) => (
                 <button
                   key={tab.id}

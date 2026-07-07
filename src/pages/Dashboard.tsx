@@ -3,8 +3,11 @@ import { useEffect, useState } from 'react';
 import { DashboardStatsComponent } from '@/components/admin/DashboardStats';
 import { ProductCard } from '@/components/product/ProductCard';
 import { CoursesAPI } from '@/service/courses';
-import { StudentsAPI } from '@/service/students';
 import type { DashboardStats } from '@/types/types';
+import {
+  countStudents,
+  fetchAllStudentsFromApi,
+} from '@/utils/studentsListClient';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { TourButton } from '@/components/tour/TourButton';
 import { dashboardTourSteps } from '@/config/tourSteps';
@@ -26,21 +29,10 @@ export default function Dashboard() {
       try {
         setLoading(true);
 
-        // Obtener todos los usuarios y filtrar solo los que tienen rol de estudiante
-        const allUsers = await StudentsAPI.getAll();
-        const studentsData = Array.isArray(allUsers) ? allUsers : [];
-        
-        // Filtrar solo usuarios con rol de estudiante
-        const studentsWithStudentRole = studentsData.filter((user: any) => 
-          user.role?.student === true
-        );
-        
-        const studentsCount = studentsWithStudentRole.length;
-        
-        // Contar estudiantes activos (que tienen rol de estudiante y están activos)
-        const activeStudentsCount = studentsWithStudentRole.filter((user: any) => 
-          user.activo !== false // Considerar activos si activo es true o undefined
-        ).length;
+        // Obtener todos los usuarios (respuesta paginada) y contar solo estudiantes
+        const allUsers = await fetchAllStudentsFromApi();
+        const { total: studentsCount, active: activeStudentsCount } =
+          countStudents(allUsers);
 
         // Obtener cursos
         const courses = await CoursesAPI.getAllList();
@@ -84,7 +76,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-gray-100">
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
           <p className="text-gray-500 text-base">
             Resumen general de tu plataforma
           </p>
@@ -110,14 +102,14 @@ export default function Dashboard() {
 
       {/* Recent Products */}
       <div className="space-y-6" data-tour="recent-courses">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Últimos Cursos</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Últimos Cursos</h2>
             <p className="text-sm text-gray-500 mt-1">Cursos agregados recientemente</p>
           </div>
           <a 
             href="/products" 
-            className="hidden sm:flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 group"
+            className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 group w-full sm:w-auto py-2 sm:py-0 border border-blue-100 rounded-lg sm:border-0"
           >
             Ver todos
             <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>

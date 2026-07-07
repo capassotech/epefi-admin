@@ -217,8 +217,8 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Cursos</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cursos</h1>
         <TourButton steps={productsTourSteps} />
       </div>
 
@@ -232,7 +232,7 @@ export default function Products() {
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-gray-600">
           Mostrando {cursos.length} de {pagination.total} cursos
         </p>
