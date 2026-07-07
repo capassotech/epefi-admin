@@ -127,10 +127,10 @@ export const SearchAndFilter = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-      <div className="flex flex-1 gap-4 items-center">
+    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
+      <div className="flex flex-col w-full gap-3 sm:flex-row sm:flex-1 sm:gap-4 sm:items-center">
         {/* Búsqueda */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative w-full sm:flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Buscar..."
@@ -141,7 +141,7 @@ export const SearchAndFilter = ({
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap gap-2 items-center min-h-10">
+        <div className="flex flex-wrap gap-2 items-center w-full min-h-10">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           {/* Estado */}
@@ -150,7 +150,7 @@ export const SearchAndFilter = ({
               value={currentFilters.status || "all"}
               onValueChange={(value) => handleFilterChange("status", value)}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full sm:w-32">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -167,7 +167,7 @@ export const SearchAndFilter = ({
               value={currentFilters.role || "all"}
               onValueChange={(value) => handleFilterChange("role", value)}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Rol" />
               </SelectTrigger>
               <SelectContent>
@@ -184,7 +184,7 @@ export const SearchAndFilter = ({
               value={currentFilters.courseId ?? "__unfiltered__"}
               onValueChange={(value) => handleFilterChange("courseId", value)}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Curso asignado" />
               </SelectTrigger>
               <SelectContent>
@@ -208,7 +208,7 @@ export const SearchAndFilter = ({
               }
               onValueChange={(value) => handleFilterChange("sortBy", value)}
             >
-              <SelectTrigger className="w-40 min-w-[10rem]">
+              <SelectTrigger className="w-full sm:w-40 sm:min-w-[10rem]">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +262,7 @@ export const SearchAndFilter = ({
 
 
       {(extraActions || (!hideCreateButton && onCreateNew)) && (
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
           {extraActions}
           {!hideCreateButton && onCreateNew &&
             (isStudentPage ? (

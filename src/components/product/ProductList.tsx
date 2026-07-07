@@ -175,7 +175,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
   return (
     <div className="space-y-4">
       {/* Lista */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white shadow sm:rounded-lg">
         <ul role="list" className="divide-y divide-gray-200">
           {products.length === 0 ? (
             <li className="px-4 py-6 text-center text-gray-500">
@@ -223,11 +223,11 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                       </div>
 
                       {/* Botones de acción */}
-                      <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                      <div className="flex flex-wrap gap-2 w-full sm:flex-col sm:gap-2 sm:ml-4 sm:w-auto flex-shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                          className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             const id = f.id;

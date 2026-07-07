@@ -160,7 +160,7 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Exámenes</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Exámenes</h1>
 
       <SearchAndFilter
         onSearch={handleSearch}
@@ -202,59 +202,103 @@ export default function Exams() {
             <h1 className="text-zinc-700">Cargando siguiente página</h1>
           </div>
         ) : exams.length > 0 ? (
-          <div className="rounded-md border bg-white">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Formación</TableHead>
-                  <TableHead className="text-right">Preguntas</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {exams.map((exam, index) => (
-                  <TableRow key={exam.id}>
-                    <TableCell className="font-medium">
+          <>
+            <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
+              {exams.map((exam, index) => (
+                <div key={exam.id} className="p-4 space-y-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 break-words">
                       {exam.titulo || `Examen ${index + 1}`}
-                    </TableCell>
-                    <TableCell>
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1 break-words">
                       {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {exam.preguntas?.length ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
-                          }
-                        >
-                          <Edit2 className="w-4 h-4 mr-1" />
-                          Editar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="cursor-pointer text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => handleDeleteClick(exam.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Eliminar
-                        </Button>
-                      </div>
-                    </TableCell>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {exam.preguntas?.length ?? 0} pregunta
+                      {(exam.preguntas?.length ?? 0) !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer flex-1 min-w-[7rem]"
+                      onClick={() =>
+                        navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
+                      }
+                    >
+                      <Edit2 className="w-4 h-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer flex-1 min-w-[7rem] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleDeleteClick(exam.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Formación</TableHead>
+                    <TableHead className="text-right">Preguntas</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {exams.map((exam, index) => (
+                    <TableRow key={exam.id}>
+                      <TableCell className="font-medium">
+                        {exam.titulo || `Examen ${index + 1}`}
+                      </TableCell>
+                      <TableCell>
+                        {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {exam.preguntas?.length ?? 0}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() =>
+                              navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
+                            }
+                          >
+                            <Edit2 className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => handleDeleteClick(exam.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Eliminar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         ) : (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

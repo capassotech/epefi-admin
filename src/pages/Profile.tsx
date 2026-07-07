@@ -177,8 +177,8 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Mi perfil</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mi perfil</h1>
         <TourButton steps={profileTourSteps} />
       </div>
 
@@ -278,12 +278,12 @@ export default function Profile() {
             </div>
 
             {/* Botones */}
-            <div className="flex justify-between pt-4 border-t">
+            <div className="flex flex-col-reverse gap-3 pt-4 border-t sm:flex-row sm:justify-between">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsPasswordModalOpen(true)}
-                className="flex items-center gap-2"
+                className="flex items-center justify-center gap-2 w-full sm:w-auto"
                 data-tour="change-password"
               >
                 <Lock className="w-4 h-4" />
@@ -292,7 +292,7 @@ export default function Profile() {
               <Button
                 type="submit"
                 disabled={isSaving || isLoading}
-                className="min-w-[120px]"
+                className="w-full sm:w-auto sm:min-w-[120px]"
                 data-tour="save-button"
               >
                 {isSaving || isLoading ? (
@@ -314,7 +314,7 @@ export default function Profile() {
 
       {/* Modal de Cambio de Contraseña */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5" />

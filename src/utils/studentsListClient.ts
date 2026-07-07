@@ -1,6 +1,8 @@
 import type { FilterOptions } from "@/components/admin/SearchAndFilter";
 import type { PaginatedResponse, StudentDB } from "@/types/types";
-import { getFechaRegistroSeconds } from "@/utils/studentDates";
+import { extractStudentsFromResponse, getFechaRegistroSeconds } from "@/utils/studentDates";
+import { normalizePaginatedResponse } from "@/utils/pagination";
+import { StudentsAPI } from "@/service/students";
 
 export function getEffectiveStudentFilters(
   filters: FilterOptions
@@ -127,4 +129,41 @@ export function mergeCreatedUserAtTop(
   const effectiveFilters = getEffectiveStudentFilters(filters);
   const merged = [row, ...rows.filter((s) => s.id !== row.id)];
   return sortStudentsList(merged, effectiveFilters).slice(0, limit);
+}
+
+const DASHBOARD_FETCH_LIMIT = 200;
+
+/** Obtiene todos los usuarios del backend (todas las páginas). */
+export async function fetchAllStudentsFromApi(): Promise<StudentDB[]> {
+  const allRows: StudentDB[] = [];
+  let pageCursor = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await StudentsAPI.getAll({
+      page: pageCursor,
+      limit: DASHBOARD_FETCH_LIMIT,
+    });
+    const meta = normalizePaginatedResponse<StudentDB>(
+      res,
+      pageCursor,
+      DASHBOARD_FETCH_LIMIT
+    );
+    totalPages = Math.max(1, meta.pagination.totalPages);
+    allRows.push(...extractStudentsFromResponse(res));
+    pageCursor += 1;
+  } while (pageCursor <= totalPages);
+
+  return allRows;
+}
+
+export function countStudents(users: StudentDB[]): {
+  total: number;
+  active: number;
+} {
+  const students = users.filter((user) => Boolean(user.role?.student));
+  return {
+    total: students.length,
+    active: students.filter((user) => user.activo !== false).length,
+  };
 }

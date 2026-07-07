@@ -98,7 +98,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
 
   return (
     <div className="space-y-4">
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white shadow sm:rounded-lg">
         <ul role="list" className="divide-y divide-gray-200">
           {modules.length === 0 ? (
             <li className="px-4 py-6 text-center text-gray-500">
@@ -108,9 +108,9 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
             modules.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors duration-150"
+                className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 hover:bg-gray-50 transition-colors duration-150"
               >
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                       <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,11 +130,11 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                <div className="flex flex-wrap gap-2 w-full sm:flex-col sm:gap-2 sm:ml-4 sm:w-auto sm:flex-shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit?.(m);
@@ -146,7 +146,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 px-3 border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
+                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(m.id);
@@ -165,16 +165,16 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                       </>
                     )}
                   </Button>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 w-full sm:w-auto">
                     {loadingExcepciones ? (
-                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 min-w-[180px]">
+                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:min-w-[180px]">
                         <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                         <span className="text-xs text-gray-600 whitespace-nowrap">Cargando...</span>
                       </div>
                     ) : (
                       <>
                         <div 
-                          className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                          className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:min-w-[180px]"
                           onClick={(e) => e.stopPropagation()}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
@@ -204,7 +204,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400"
+                            className="h-auto min-h-8 w-full text-left text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 whitespace-normal"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <UserMinus className="w-4 h-4 mr-1.5" />
