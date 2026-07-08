@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, Eye, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,11 @@ import { CoursesAPI } from "@/service/courses";
 import type { Course, Examen, ExamenRealizado } from "@/types/types";
 import { formatTimestamp } from "@/utils/formatTimestamp";
 import { downloadCsvExport, downloadExcelExport } from "@/utils/exportData";
+import {
+  buildCompletedExamsListPath,
+  buildCompletedExamsSearchParams,
+  readCompletedExamsFilters,
+} from "@/utils/completedExamsFilters";
 import { toast } from "sonner";
 
 const EXPORT_HEADERS = [
@@ -67,6 +72,8 @@ function toExportRows(
 
 export default function CompletedExams() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialFilters = readCompletedExamsFilters(searchParams);
   const [items, setItems] = useState<ExamenRealizado[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [exams, setExams] = useState<Examen[]>([]);
@@ -74,9 +81,9 @@ export default function CompletedExams() {
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
 
-  const [filterFormacion, setFilterFormacion] = useState("");
-  const [filterExamen, setFilterExamen] = useState("");
-  const [filterAlumno, setFilterAlumno] = useState("");
+  const [filterFormacion, setFilterFormacion] = useState(initialFilters.formacion);
+  const [filterExamen, setFilterExamen] = useState(initialFilters.examen);
+  const [filterAlumno, setFilterAlumno] = useState(initialFilters.alumno);
 
   const coursesById = useMemo(
     () =>
@@ -120,6 +127,18 @@ export default function CompletedExams() {
     } finally {
       setLoading(false);
     }
+  }, [filterFormacion, filterExamen, filterAlumno]);
+
+  useEffect(() => {
+    const params = buildCompletedExamsSearchParams({
+      formacion: filterFormacion,
+      examen: filterExamen,
+      alumno: filterAlumno,
+    });
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterFormacion, filterExamen, filterAlumno]);
 
   useEffect(() => {
@@ -336,7 +355,11 @@ export default function CompletedExams() {
                   size="sm"
                   className="w-full"
                   onClick={() =>
-                    navigate(`/exams/completed/${encodeURIComponent(row.id)}`)
+                    navigate(`/exams/completed/${encodeURIComponent(row.id)}`, {
+                      state: {
+                        returnTo: buildCompletedExamsListPath(searchParams),
+                      },
+                    })
                   }
                 >
                   <Eye className="w-4 h-4 mr-1" />
@@ -396,7 +419,12 @@ export default function CompletedExams() {
                         size="sm"
                         onClick={() =>
                           navigate(
-                            `/exams/completed/${encodeURIComponent(row.id)}`
+                            `/exams/completed/${encodeURIComponent(row.id)}`,
+                            {
+                              state: {
+                                returnTo: buildCompletedExamsListPath(searchParams),
+                              },
+                            }
                           )
                         }
                       >

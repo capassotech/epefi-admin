@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,10 @@ import {
   normalizeAnswerIds,
 } from "@/utils/completedExamDetail";
 import { formatTimestamp } from "@/utils/formatTimestamp";
+import {
+  COMPLETED_EXAMS_LIST_PATH,
+  type CompletedExamDetailLocationState,
+} from "@/utils/completedExamsFilters";
 import { toast } from "sonner";
 
 type DetailState = {
@@ -32,6 +36,10 @@ type DetailState = {
 export default function CompletedExamDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo =
+    (location.state as CompletedExamDetailLocationState | null)?.returnTo ??
+    COMPLETED_EXAMS_LIST_PATH;
   const [meta, setMeta] = useState<DetailState | null>(null);
   const [preguntas, setPreguntas] = useState<ExamenRealizadoPreguntaDetalle[]>([]);
   const [formationTitle, setFormationTitle] = useState("");
@@ -102,7 +110,7 @@ export default function CompletedExamDetail() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => navigate("/exams/completed")}
+          onClick={() => navigate(returnTo)}
         >
           Volver al listado
         </Button>
@@ -115,7 +123,7 @@ export default function CompletedExamDetail() {
       <Button
         type="button"
         variant="outline"
-        onClick={() => navigate("/exams/completed")}
+        onClick={() => navigate(returnTo)}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Volver a realizados
