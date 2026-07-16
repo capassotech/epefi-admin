@@ -3,7 +3,7 @@
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import SubjectModal from "../subject/SubjectModal";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type Subject, type Module } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
@@ -67,6 +67,55 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
     
     // Rastrear si el modal de módulos se abrió desde el modal de materia
     const [shouldCloseSubjectModalOnModuleClose, setShouldCloseSubjectModalOnModuleClose] = useState(false);
+    /**
+     * En mobile, al cerrar el modal de editar módulo el toque "atraviesa" al padre
+     * y lo cierra en el mismo gesto. Este ref bloquea ese cierre en cascada.
+     */
+    const suppressModulesManagementCloseRef = useRef(false);
+    const suppressCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const armSuppressModulesManagementClose = () => {
+        suppressModulesManagementCloseRef.current = true;
+        if (suppressCloseTimerRef.current) {
+            clearTimeout(suppressCloseTimerRef.current);
+        }
+        suppressCloseTimerRef.current = setTimeout(() => {
+            suppressModulesManagementCloseRef.current = false;
+            suppressCloseTimerRef.current = null;
+        }, 500);
+    };
+
+    const closeModuleEditor = () => {
+        armSuppressModulesManagementClose();
+        setIsCreateModuleModalOpen(false);
+        setEditingModule(null);
+    };
+
+    const closeModulesManagement = () => {
+        setIsCreateModuleModalOpen(false);
+        setIsModulesModalOpen(false);
+        setCurrentSubjectForModules(null);
+        setSubjectModules([]);
+        setSubjectModulosHabilitadosEstado({});
+        setEditingModule(null);
+
+        if (shouldCloseSubjectModalOnModuleClose) {
+            if (isCreateModalOpen) {
+                handleCancelCreate();
+            } else if (isEditModalOpen) {
+                handleCancelEditSubject();
+            }
+            setShouldCloseSubjectModalOnModuleClose(false);
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (suppressCloseTimerRef.current) {
+                clearTimeout(suppressCloseTimerRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const load = async () => {
@@ -619,6 +668,24 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                             onUnassign={handleUnassignSubject}
                             showUnassign={true}
                             showTitle={true}
+                            onSubjectStatusUpdated={(id, newEstado) => {
+                                const newActivo = newEstado === "activo";
+                                const normalizedId = String(id);
+                                setCourseSubjects((prev) =>
+                                    prev.map((m) =>
+                                        String(m.id) === normalizedId
+                                            ? { ...m, activo: newActivo, estado: newEstado }
+                                            : m
+                                    )
+                                );
+                                setAllSubjects((prev) =>
+                                    prev.map((m) =>
+                                        String(m.id) === normalizedId
+                                            ? { ...m, activo: newActivo, estado: newEstado }
+                                            : m
+                                    )
+                                );
+                            }}
                         />
                     </CardContent>
                 </Card>
@@ -641,6 +708,14 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             <SubjectModal
                 isOpen={isCreateModalOpen || isEditModalOpen}
                 onCancel={() => {
+                    // No cerrar la materia si hay modales de módulos encima (dismiss anidado en mobile)
+                    if (
+                        isModulesModalOpen ||
+                        isCreateModuleModalOpen ||
+                        suppressModulesManagementCloseRef.current
+                    ) {
+                        return;
+                    }
                     if (isCreateModalOpen) {
                         handleCancelCreate();
                     } else {
@@ -721,24 +796,31 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             {/* Modal de gestión de módulos */}
             <Dialog open={isModulesModalOpen} onOpenChange={(open) => {
                 if (!open) {
-                    setIsModulesModalOpen(false);
-                    setCurrentSubjectForModules(null);
-                    setSubjectModules([]);
-                    setSubjectModulosHabilitadosEstado({});
-                    setEditingModule(null);
-                    
-                    // Si el modal de materia está abierto y debe cerrarse, cerrarlo también
-                    if (shouldCloseSubjectModalOnModuleClose) {
-                        if (isCreateModalOpen) {
-                            handleCancelCreate();
-                        } else if (isEditModalOpen) {
-                            handleCancelEditSubject();
-                        }
-                        setShouldCloseSubjectModalOnModuleClose(false);
+                    // Evitar cierre en cascada al cerrar editar/crear módulo (sobre todo en mobile)
+                    if (
+                        isCreateModuleModalOpen ||
+                        suppressModulesManagementCloseRef.current
+                    ) {
+                        return;
                     }
+                    closeModulesManagement();
                 }
             }}>
-                <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent
+                    className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto"
+                    // Solo cerrar con "Cerrar" / X: evita ghost-clicks del modal hijo en mobile
+                    onInteractOutside={(e) => e.preventDefault()}
+                    onPointerDownOutside={(e) => e.preventDefault()}
+                    onFocusOutside={(e) => e.preventDefault()}
+                    onEscapeKeyDown={(e) => {
+                        e.preventDefault();
+                        if (isCreateModuleModalOpen) {
+                            closeModuleEditor();
+                            return;
+                        }
+                        closeModulesManagement();
+                    }}
+                >
                     <DialogTitle className="sr-only">Gestionar Módulos</DialogTitle>
                     <DialogDescription className="sr-only">
                         Gestión de módulos para la materia {currentSubjectForModules?.nombre}
@@ -815,23 +897,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => {
-                                    setIsModulesModalOpen(false);
-                                    setCurrentSubjectForModules(null);
-                                    setSubjectModules([]);
-                                    setSubjectModulosHabilitadosEstado({});
-                                    setEditingModule(null);
-                                    
-                                    // Si el modal de materia está abierto y debe cerrarse, cerrarlo también
-                                    if (shouldCloseSubjectModalOnModuleClose) {
-                                        if (isCreateModalOpen) {
-                                            handleCancelCreate();
-                                        } else if (isEditModalOpen) {
-                                            handleCancelEditSubject();
-                                        }
-                                        setShouldCloseSubjectModalOnModuleClose(false);
-                                    }
-                                }}
+                                onClick={closeModulesManagement}
                             >
                                 Cerrar
                             </Button>
@@ -844,10 +910,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             {currentSubjectForModules && (
                 <ModulesModal
                     isOpen={isCreateModuleModalOpen}
-                    onCancel={() => {
-                        setIsCreateModuleModalOpen(false);
-                        setEditingModule(null);
-                    }}
+                    onCancel={closeModuleEditor}
                     onModuleCreated={async (moduleData: Module) => {
                         try {
                             if (!currentSubjectForModules?.id) {
@@ -911,7 +974,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                             }
 
                             toast.success("Módulo creado exitosamente");
-                            setIsCreateModuleModalOpen(false);
+                            closeModuleEditor();
                             return { id: createdModule.id };
                         } catch (error) {
                             console.error("Error al crear módulo:", error);
@@ -951,8 +1014,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                             }
 
                             toast.success("Módulo actualizado exitosamente");
-                            setIsCreateModuleModalOpen(false);
-                            setEditingModule(null);
+                            closeModuleEditor();
                         } catch (error) {
                             console.error("Error al actualizar módulo:", error);
                             toast.error("Error al actualizar el módulo");

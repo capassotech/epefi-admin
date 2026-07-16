@@ -2,7 +2,6 @@ import { useState, useEffect, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCreateUser } from "@/hooks/useCreateUser";
 
 import {
@@ -327,17 +326,20 @@ export const CreateUserModal = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <User className="w-5 h-5" />
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90dvh] p-0 gap-0 flex flex-col overflow-hidden overflow-x-hidden top-[4dvh] translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b text-left">
+          <DialogTitle className="flex items-center space-x-2 pr-8">
+            <User className="w-5 h-5 shrink-0" />
             <span>{isEditing ? "Editar usuario" : "Crear nuevo usuario"}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+          <form
+            id="create-user-form"
+            onSubmit={handleSubmit}
+            className="px-4 sm:px-6 py-4 space-y-4"
+          >
               {/* Nombre y Apellido en una fila */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nombre */}
@@ -529,109 +531,109 @@ export const CreateUserModal = ({
                   <p className="text-sm text-red-500">{errors.role}</p>
                 )}
               </div>
+          </form>
+        </div>
 
-              {/* Botones */}
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsOpen(false)}
-                  disabled={isLoading}
-                  className="flex-1 cursor-pointer"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    isLoading ||
-                    (!isEditing && !isPasswordPolicySatisfied(formData.password))
-                  }
-                  className="flex-1 cursor-pointer"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {isEditing ? "Actualizando..." : "Creando..."}
-                    </>
-                  ) : (
-                    <>
-                      <User className="w-4 h-4 mr-2" />
-                      {isEditing ? "Actualizar Usuario" : "Crear Usuario"}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Sección de eliminación - Solo en modo edición */}
-              {isEditing && editingUser && (
-                <div className="mt-8 pt-8 border-t border-gray-200">
-                  <div className="flex justify-center">
-                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="lg"
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          disabled={isDeleting || isLoading}
-                        >
-                          {isDeleting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Eliminando...
-                            </>
-                          ) : (
-                            <>
-                              <Trash className="w-4 h-4 mr-2" />
-                              Eliminar Usuario Permanentemente
-                            </>
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción eliminará el usuario "{editingUser.nombre} {editingUser.apellido}" y todos sus datos asociados de forma permanente. 
-                            Esta acción no se puede deshacer.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={async () => {
-                              if (!editingUser.id) return;
-                              setIsDeleting(true);
-                              try {
-                                const { StudentsAPI } = await import('@/service/students');
-                                await StudentsAPI.delete(editingUser.id);
-                                toast.success(`Usuario ${editingUser.nombre} ${editingUser.apellido} eliminado correctamente`);
-                                setDeleteConfirmOpen(false);
-                                setIsOpen(false);
-                                if (onUserCreated) {
-                                  onUserCreated(undefined, { isCreate: false });
-                                }
-                              } catch (error: any) {
-                                console.error("Error al eliminar usuario:", error);
-                                toast.error("Error al eliminar el usuario");
-                              } finally {
-                                setIsDeleting(false);
-                              }
-                            }}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            Eliminar Permanentemente
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
+        <div className="shrink-0 border-t bg-background px-4 sm:px-6 py-4 space-y-4">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={isLoading}
+              className="w-full sm:flex-1 cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="create-user-form"
+              disabled={
+                isLoading ||
+                (!isEditing && !isPasswordPolicySatisfied(formData.password))
+              }
+              className="w-full sm:flex-1 cursor-pointer"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isEditing ? "Actualizando..." : "Creando..."}
+                </>
+              ) : (
+                <>
+                  <User className="w-4 h-4 mr-2" />
+                  {isEditing ? "Actualizar Usuario" : "Crear Usuario"}
+                </>
               )}
-            </form>
-          </CardContent>
-        </Card>
+            </Button>
+          </div>
+
+          {isEditing && editingUser && (
+            <div className="pt-2 border-t border-gray-200">
+              <div className="flex justify-center">
+                <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="lg"
+                      className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+                      disabled={isDeleting || isLoading}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Eliminando...
+                        </>
+                      ) : (
+                        <>
+                          <Trash className="w-4 h-4 mr-2" />
+                          Eliminar Usuario Permanentemente
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción eliminará el usuario "{editingUser.nombre} {editingUser.apellido}" y todos sus datos asociados de forma permanente. 
+                        Esta acción no se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+                      <AlertDialogCancel className="w-full sm:w-auto mt-0">Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          if (!editingUser.id) return;
+                          setIsDeleting(true);
+                          try {
+                            const { StudentsAPI } = await import('@/service/students');
+                            await StudentsAPI.delete(editingUser.id);
+                            toast.success(`Usuario ${editingUser.nombre} ${editingUser.apellido} eliminado correctamente`);
+                            setDeleteConfirmOpen(false);
+                            setIsOpen(false);
+                            if (onUserCreated) {
+                              onUserCreated(undefined, { isCreate: false });
+                            }
+                          } catch (error: any) {
+                            console.error("Error al eliminar usuario:", error);
+                            toast.error("Error al eliminar el usuario");
+                          } finally {
+                            setIsDeleting(false);
+                          }
+                        }}
+                        className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
+                      >
+                        Eliminar Permanentemente
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
