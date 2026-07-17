@@ -309,7 +309,10 @@ const SubjectModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0">
+            <DialogContent
+                className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogTitle className="sr-only">
                     {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
                 </DialogTitle>

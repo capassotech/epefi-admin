@@ -10,7 +10,6 @@ import { useAuth } from '@/context/AuthContext';
 import {
     Dialog,
     DialogContent,
-    DialogTrigger,
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog"
@@ -540,12 +539,34 @@ const ModulesModal = ({
         }
     };
 
-    if (!isOpen) return null;
-
+    // Mantener el Dialog montado aunque esté cerrado evita "ghost clicks" en mobile:
+    // el unmount instantáneo deja pasar el toque al modal de debajo.
     return (
-        <Dialog open={isOpen} onOpenChange={onCancel}>
-            <DialogTrigger></DialogTrigger>
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0">
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) onCancel();
+        }}>
+            <DialogContent
+                className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => {
+                    // Evita que el foco vuelva al padre y dispare dismiss en cascada
+                    e.preventDefault();
+                }}
+                onInteractOutside={(e) => {
+                    // Evitar cerrar al interactuar con overlays/diálogos anidados (p. ej. vista previa de video)
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onPointerDownOutside={(e) => {
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onEscapeKeyDown={(e) => {
+                    if (isVideoModalOpen) {
+                        e.preventDefault();
+                        setIsVideoModalOpen(false);
+                        setSelectedVideoUrl(null);
+                    }
+                }}
+            >
                 <DialogTitle className="sr-only">
                     {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
                 </DialogTitle>

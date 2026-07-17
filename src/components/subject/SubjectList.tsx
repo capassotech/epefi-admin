@@ -24,8 +24,16 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
   const [isUnassigning, setIsUnassigning] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  /** Override local para que el Switch refleje el toggle aunque el padre no actualice aún */
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, boolean>>({});
 
   const closeToast = () => setToastState(null);
+
+  const isSubjectActive = (m: Subject) => {
+    const override = statusOverrides[String(m.id)];
+    if (override !== undefined) return override;
+    return m.activo !== undefined ? m.activo : m.estado === 'activo';
+  };
 
   const handleStatusChange = async (id: string, _newCheckedState: boolean) => {
     setUpdatingStatusId(id);
@@ -36,20 +44,14 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
       const updatedSubject = response.materia || response;
       const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : (updatedSubject.estado === 'activo');
       const newEstado = newActivo ? 'activo' : 'inactivo';
-      
-      console.log('Estado actualizado de la materia:', {
-        id,
-        activoAnterior: subjects.find(m => String(m.id) === String(id))?.activo,
-        activoNuevo: newActivo,
-        estadoNuevo: newEstado,
-        updatedSubject
-      });
+      const normalizedId = String(id);
+
+      setStatusOverrides((prev) => ({ ...prev, [normalizedId]: newActivo }));
       
       toast.success(`Materia ${newActivo ? 'activada' : 'desactivada'} exitosamente`);
       
       // Actualizar el estado local inmediatamente
       if (onSubjectStatusUpdated) {
-        console.log('Llamando a onSubjectStatusUpdated con:', { id, newEstado });
         onSubjectStatusUpdated(id, newEstado);
       } else if (onStatusChange) {
         // Solo recargar todo si no hay callback de actualización local
@@ -156,13 +158,13 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <span className="text-xs text-gray-600 whitespace-nowrap">
-                      {updatingStatusId === m.id ? 'Actualizando...' : ((m.activo !== undefined ? m.activo : (m.estado === 'activo')) ? 'Activo' : 'Inactivo')}
+                      {updatingStatusId === m.id ? 'Actualizando...' : (isSubjectActive(m) ? 'Activo' : 'Inactivo')}
                     </span>
                     {updatingStatusId === m.id ? (
                       <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
                       <Switch
-                        checked={m.activo !== undefined ? m.activo : (m.estado === 'activo')}
+                        checked={isSubjectActive(m)}
                         onCheckedChange={(checked) => {
                           handleStatusChange(m.id, checked);
                         }}
