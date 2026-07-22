@@ -10,7 +10,6 @@ import { useAuth } from '@/context/AuthContext';
 import {
     Dialog,
     DialogContent,
-    DialogTrigger,
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog"
@@ -540,12 +539,34 @@ const ModulesModal = ({
         }
     };
 
-    if (!isOpen) return null;
-
+    // Mantener el Dialog montado aunque esté cerrado evita "ghost clicks" en mobile:
+    // el unmount instantáneo deja pasar el toque al modal de debajo.
     return (
-        <Dialog open={isOpen} onOpenChange={onCancel}>
-            <DialogTrigger></DialogTrigger>
-            <DialogContent className='max-w-5xl'>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) onCancel();
+        }}>
+            <DialogContent
+                className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => {
+                    // Evita que el foco vuelva al padre y dispare dismiss en cascada
+                    e.preventDefault();
+                }}
+                onInteractOutside={(e) => {
+                    // Evitar cerrar al interactuar con overlays/diálogos anidados (p. ej. vista previa de video)
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onPointerDownOutside={(e) => {
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onEscapeKeyDown={(e) => {
+                    if (isVideoModalOpen) {
+                        e.preventDefault();
+                        setIsVideoModalOpen(false);
+                        setSelectedVideoUrl(null);
+                    }
+                }}
+            >
                 <DialogTitle className="sr-only">
                     {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
                 </DialogTitle>
@@ -555,16 +576,16 @@ const ModulesModal = ({
                         : 'Formulario para crear un nuevo módulo'}
                 </DialogDescription>
                 <div
-                    className="max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+                    className="w-full min-w-0 overflow-x-hidden"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-center justify-between p-6 border-b">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 break-words pr-8">
                             {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
                         </h2>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
                         <div className='flex gap-4 w-full'>
                             <div className='w-full'>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -604,8 +625,8 @@ const ModulesModal = ({
                             />
                         </div>
 
-                        <div className='flex gap-4 w-full'>
-                            <div className='w-1/2'>
+                        <div className="flex flex-col gap-4 w-full sm:flex-row">
+                            <div className="w-full sm:w-1/2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Tipo de Contenido *
                                 </label>
@@ -622,7 +643,7 @@ const ModulesModal = ({
                                 </Select>
                             </div>
 
-                            <div className='w-1/2'>
+                            <div className="w-full sm:w-1/2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Material de lectura
                                 </label>
@@ -675,7 +696,7 @@ const ModulesModal = ({
                                                         setDraggedIndex(null);
                                                         setDragOverIndex(null);
                                                     }}
-                                                    className={`flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
+                                                    className={`flex flex-col gap-2 sm:flex-row sm:items-center px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
                                                         draggedIndex === index ? 'opacity-50' : ''
                                                     } ${
                                                         dragOverIndex === index && draggedIndex !== index ? 'border-2 border-blue-500 bg-blue-100' : ''
@@ -702,7 +723,7 @@ const ModulesModal = ({
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        className="text-xs text-red-600 hover:text-red-800 font-medium flex-shrink-0"
+                                                        className="text-xs text-red-600 hover:text-red-800 font-medium flex-shrink-0 self-end sm:self-auto"
                                                         onClick={() => {
                                                             setArchivosFiles((prev) => prev.filter((_, i) => i !== index));
                                                             setArchivosNombres((prev) => prev.filter((_, i) => i !== index));
@@ -837,7 +858,7 @@ const ModulesModal = ({
                                                             setDraggedIndex(null);
                                                             setDragOverIndex(null);
                                                         }}
-                                                        className={`flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
+                                                        className={`flex flex-col gap-2 sm:flex-row sm:items-center px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
                                                             draggedIndex === index ? 'opacity-50' : ''
                                                         } ${
                                                             dragOverIndex === index && draggedIndex !== index ? 'border-2 border-blue-500 bg-blue-100' : ''
@@ -862,7 +883,7 @@ const ModulesModal = ({
                                                                 className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             />
                                                         </div>
-                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
                                                             <button
                                                                 type="button"
                                                                 className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
@@ -906,7 +927,7 @@ const ModulesModal = ({
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 URLs de videos
                             </label>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row">
                                 <input
                                     type="text"
                                     value={videoUrlInput}
@@ -931,7 +952,7 @@ const ModulesModal = ({
                                 />
                                 <Button
                                     type="button"
-                                    className="cursor-pointer"
+                                    className="cursor-pointer w-full sm:w-auto shrink-0"
                                     onClick={() => handleAddVideoUrl(videoUrlInput.trim())}
                                     disabled={validatingVideo}
                                 >
@@ -998,7 +1019,7 @@ const ModulesModal = ({
                                                     setDraggedVideoIndex(null);
                                                     setDragOverVideoIndex(null);
                                                 }}
-                                                className={`flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
+                                                className={`flex flex-col gap-2 sm:flex-row sm:items-center px-3 py-2 bg-blue-50 border border-blue-200 rounded-md cursor-move transition-all ${
                                                     draggedVideoIndex === index ? 'opacity-50' : ''
                                                 } ${
                                                     dragOverVideoIndex === index && draggedVideoIndex !== index ? 'border-2 border-blue-500 bg-blue-100' : ''
@@ -1023,7 +1044,7 @@ const ModulesModal = ({
                                                         className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                     />
                                                 </div>
-                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
                                                     {(isVideoUrl || isYouTubeUrl || isGoogleDriveUrl) && (
                                                         <button
                                                             type="button"
@@ -1062,17 +1083,17 @@ const ModulesModal = ({
                             )}
                         </div>
 
-                        <div className="flex justify-end space-x-3 pt-4 border-t">
+                        <div className="flex flex-col-reverse gap-2 pt-4 border-t sm:flex-row sm:justify-end sm:space-x-3">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className='cursor-pointer'
+                                className="cursor-pointer w-full sm:w-auto"
                                 onClick={onCancel}
                             >
                                 Cancelar
                             </Button>
                             <Button
-                                className='cursor-pointer w-fit'
+                                className="cursor-pointer w-full sm:w-auto"
                                 type="submit"
                                 disabled={loading}
                             >
@@ -1091,7 +1112,7 @@ const ModulesModal = ({
             
             {/* Modal para ver video */}
             <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
-                <DialogContent className="max-w-4xl [&>button]:hidden">
+                <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl overflow-x-hidden p-4 sm:p-6 [&>button]:hidden">
                     <DialogTitle className="sr-only">
                         Vista previa del video
                     </DialogTitle>
@@ -1184,9 +1205,9 @@ const ModulesModal = ({
                             
                             return (
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-gray-900">{videoTitle}</h3>
-                                    <div className="flex items-center gap-2">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 break-words">{videoTitle}</h3>
+                                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
                                         {!isYouTube && !isGoogleDrive && (
                                             <Button
                                                 type="button"

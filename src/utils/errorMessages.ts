@@ -1,4 +1,118 @@
 /**
+ * Extrae un mensaje de error legible desde `response.data` (Express, FastAPI, etc.).
+ */
+export function extractAxiosResponseDataMessage(data: unknown): string | null {
+  if (data == null || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+
+  const asTrimmedString = (v: unknown): string | null =>
+    typeof v === "string" && v.trim() ? v.trim() : null;
+
+  const fromDetail = (): string | null => {
+    const detail = d.detail;
+    const s = asTrimmedString(detail);
+    if (s) return s;
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0] as Record<string, unknown>;
+      if (first && typeof first.msg === "string" && first.msg.trim()) {
+        return first.msg.trim();
+      }
+    }
+    return null;
+  };
+
+  const fromNestedError = (): string | null => {
+    const err = d.error;
+    if (err !== null && typeof err === "object" && !Array.isArray(err)) {
+      const o = err as Record<string, unknown>;
+      return (
+        asTrimmedString(o.message) ??
+        asTrimmedString(o.error) ??
+        asTrimmedString(o.msg) ??
+        null
+      );
+    }
+    return null;
+  };
+
+  return (
+    asTrimmedString(d.error) ??
+    fromNestedError() ??
+    asTrimmedString(d.message) ??
+    asTrimmedString(d.msg) ??
+    fromDetail() ??
+    null
+  );
+}
+
+/**
+ * Heurística: el backend respondió que el email ya está registrado / en uso.
+ */
+export function isDuplicateEmailRegistrationError(
+  message: string,
+  httpStatus?: number
+): boolean {
+  const m = message.toLowerCase();
+
+  if (
+    httpStatus === 409 &&
+    (m.includes("email") ||
+      m.includes("e-mail") ||
+      m.includes("correo") ||
+      m.includes("mail") ||
+      m.includes("usuario") ||
+      m.includes("unique") ||
+      m.includes("duplicate") ||
+      m.includes("duplicado"))
+  ) {
+    return true;
+  }
+
+  const patterns = [
+    "email ya",
+    "correo ya",
+    "ya está registrado",
+    "ya existe un",
+    "ya existe el",
+    "usuario con este email",
+    "usuario con este correo",
+    "mail ya",
+    "already in use",
+    "already exists",
+    "email-already",
+    "email already",
+    "duplicate key",
+    "duplicado",
+    "unique constraint",
+    "email exists",
+    "el email",
+    "este email",
+    "este correo",
+    "email_taken",
+    "email taken",
+    "e11000",
+    "duplicate entry",
+  ];
+
+  if (patterns.some((p) => m.includes(p))) return true;
+
+  if (
+    (m.includes("email") || m.includes("correo") || m.includes("e-mail")) &&
+    (m.includes("existe") ||
+      m.includes("registrado") ||
+      m.includes(" en uso") ||
+      m.includes("uso.") ||
+      m.includes("duplicate") ||
+      m.includes("unique") ||
+      m.includes("not unique"))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Traduce códigos de error de Firebase a mensajes amigables en español
  */
 export function getFirebaseErrorMessage(error: any): string {

@@ -309,7 +309,10 @@ const SubjectModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
-            <DialogContent>
+            <DialogContent
+                className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogTitle className="sr-only">
                     {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
                 </DialogTitle>
@@ -319,16 +322,16 @@ const SubjectModal = ({
                         : 'Formulario para crear una nueva materia'}
                 </DialogDescription>
                 <div
-                    className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                    className="w-full min-w-0 overflow-x-hidden"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-center justify-between p-6 border-b">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 break-words pr-8">
                             {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
                         </h2>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Nombre de la Materia *
@@ -361,13 +364,13 @@ const SubjectModal = ({
                         {(editingSubject || (fromCourseCreation && subjectForm.nombre.trim())) && (
                             <div className="pt-6 border-t border-gray-200">
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                                         <div className="flex-shrink-0">
                                             <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
                                                 <BookOpen className="w-6 h-6 text-blue-600" />
                                             </div>
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <h3 className="text-base font-semibold text-gray-900 mb-1">
                                                 Gestión de Módulos
                                             </h3>
@@ -379,7 +382,7 @@ const SubjectModal = ({
                                             </p>
                                             <Button
                                                 type="button"
-                                                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white"
+                                                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
                                                 onClick={() => {
                                                     const error = validateForm();
                                                     if (error) {
@@ -399,14 +402,14 @@ const SubjectModal = ({
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center pt-4 border-t">
+                        <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-between">
                             {editingSubject && (
                                 <Button
                                     type="button"
                                     variant="destructive"
                                     onClick={() => setShowConfirmDeleteDialog(true)}
                                     disabled={loading || deleteLoading}
-                                    className="cursor-pointer text-white"
+                                    className="cursor-pointer text-white w-full sm:w-auto"
                                 >
                                     {deleteLoading ? (
                                         <>
@@ -421,17 +424,18 @@ const SubjectModal = ({
                                     )}
                                 </Button>
                             )}
-                            <div className="flex justify-end space-x-3 ml-auto">
+                            <div className="flex flex-col-reverse gap-2 w-full sm:flex-row sm:justify-end sm:space-x-3 sm:ml-auto sm:w-auto">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={onCancel}
                                     disabled={loading || deleteLoading}
+                                    className="w-full sm:w-auto"
                                 >
                                     Cancelar
                                 </Button>
                                 <Button
-                                    className='cursor-pointer'
+                                    className="cursor-pointer w-full sm:w-auto"
                                     type="submit"
                                     disabled={loading || deleteLoading}
                                 >

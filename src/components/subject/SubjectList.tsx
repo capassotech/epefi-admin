@@ -24,8 +24,16 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
   const [isUnassigning, setIsUnassigning] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  /** Override local para que el Switch refleje el toggle aunque el padre no actualice aún */
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, boolean>>({});
 
   const closeToast = () => setToastState(null);
+
+  const isSubjectActive = (m: Subject) => {
+    const override = statusOverrides[String(m.id)];
+    if (override !== undefined) return override;
+    return m.activo !== undefined ? m.activo : m.estado === 'activo';
+  };
 
   const handleStatusChange = async (id: string, _newCheckedState: boolean) => {
     setUpdatingStatusId(id);
@@ -36,20 +44,14 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
       const updatedSubject = response.materia || response;
       const newActivo = updatedSubject.activo !== undefined ? updatedSubject.activo : (updatedSubject.estado === 'activo');
       const newEstado = newActivo ? 'activo' : 'inactivo';
-      
-      console.log('Estado actualizado de la materia:', {
-        id,
-        activoAnterior: subjects.find(m => String(m.id) === String(id))?.activo,
-        activoNuevo: newActivo,
-        estadoNuevo: newEstado,
-        updatedSubject
-      });
+      const normalizedId = String(id);
+
+      setStatusOverrides((prev) => ({ ...prev, [normalizedId]: newActivo }));
       
       toast.success(`Materia ${newActivo ? 'activada' : 'desactivada'} exitosamente`);
       
       // Actualizar el estado local inmediatamente
       if (onSubjectStatusUpdated) {
-        console.log('Llamando a onSubjectStatusUpdated con:', { id, newEstado });
         onSubjectStatusUpdated(id, newEstado);
       } else if (onStatusChange) {
         // Solo recargar todo si no hay callback de actualización local
@@ -71,7 +73,7 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
         </div>
       )}
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white shadow sm:rounded-lg">
         <ul role="list" className="divide-y divide-gray-200">
           {subjects.length === 0 ? (
             <li className="px-4 py-6 text-center text-gray-500">
@@ -81,9 +83,9 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
             subjects.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors duration-150"
+                className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 hover:bg-gray-50 transition-colors duration-150"
               >
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                       <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,11 +106,11 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
+                <div className="flex flex-wrap gap-2 w-full sm:flex-col sm:gap-2 sm:ml-4 sm:w-auto sm:flex-shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit?.(m);
@@ -121,7 +123,7 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-9 px-3 border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
+                      className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
                       onClick={async (e) => {
                         e.stopPropagation();
                         setUnassigningId(m.id);
@@ -151,18 +153,18 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                     </Button>
                   )}
                   <div 
-                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:w-auto"
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <span className="text-xs text-gray-600 whitespace-nowrap">
-                      {updatingStatusId === m.id ? 'Actualizando...' : ((m.activo !== undefined ? m.activo : (m.estado === 'activo')) ? 'Activo' : 'Inactivo')}
+                      {updatingStatusId === m.id ? 'Actualizando...' : (isSubjectActive(m) ? 'Activo' : 'Inactivo')}
                     </span>
                     {updatingStatusId === m.id ? (
                       <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                     ) : (
                       <Switch
-                        checked={m.activo !== undefined ? m.activo : (m.estado === 'activo')}
+                        checked={isSubjectActive(m)}
                         onCheckedChange={(checked) => {
                           handleStatusChange(m.id, checked);
                         }}

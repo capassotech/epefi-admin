@@ -159,7 +159,7 @@ export function BulkAssignCoursesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[92vh] overflow-x-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-gray-900">
             Asignar cursos a varios usuarios

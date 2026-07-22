@@ -34,7 +34,10 @@ export const normalizePaginatedResponse = <T>(response: unknown, fallbackPage: n
     fallbackPage
   );
   const limit = toNumberOr(
-    paginationCandidate.limit ?? payload.limit,
+    paginationCandidate.limit ??
+      paginationCandidate.perPage ??
+      payload.limit ??
+      payload.perPage,
     fallbackLimit
   );
   const total = toNumberOr(

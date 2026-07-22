@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookOpen, Users, Calendar, User, LogOut, X, UserCircle } from "lucide-react";
+import { BookOpen, Users, Calendar, User, LogOut, X, UserCircle, ClipboardCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,6 +29,11 @@ const navigation = [
     icon: BookOpen,
   },
   {
+    name: "Examenes",
+    href: "/exams",
+    icon: ClipboardCheck,
+  },
+  {
     name: "Mi Perfil",
     href: "/profile",
     icon: UserCircle,
@@ -46,6 +52,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { setSidebarWidth } = useSidebarLayout();
 
   // Usar el estado externo si está disponible, sino usar el interno
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
@@ -64,6 +71,14 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
       setIsOpen(false);
     }
   }, [location.pathname, isMobile]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarWidth(0);
+    } else {
+      setSidebarWidth(isCollapsed ? 64 : 256);
+    }
+  }, [isMobile, isCollapsed, setSidebarWidth]);
 
   const handleLogout = async () => {
     try {

@@ -218,8 +218,8 @@ export default function Subjects() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-gray-900">Materias</h1>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Materias</h1>
                 <TourButton steps={subjectsTourSteps} />
             </div>
 
@@ -233,7 +233,7 @@ export default function Subjects() {
                 />
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-gray-600">
                     Mostrando {materias.length} de {pagination.total} materias
                 </p>

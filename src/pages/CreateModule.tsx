@@ -279,7 +279,7 @@ export default function CreateModule() {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
+                    <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <span>
                             {subjectFromQuery ? (
                                 <>Gestionando módulos de: {subjectFromQuery.nombre}</>
@@ -301,7 +301,7 @@ export default function CreateModule() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm text-gray-600">
                             Módulos creados: <span className="font-semibold">{modules.length}</span>
                         </div>
@@ -329,7 +329,7 @@ export default function CreateModule() {
             </Card>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle>Módulos existentes</CardTitle>
                         <CardDescription>

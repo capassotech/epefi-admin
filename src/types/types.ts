@@ -192,6 +192,8 @@ export interface RegisterData {
 export interface CreateUserResponse {
   success: boolean;
   message: string;
+  /** true si el backend indica que el email ya está en uso (crear usuario). */
+  emailAlreadyInUse?: boolean;
   user?: {
     id: string;
     nombre: string;
@@ -246,4 +248,56 @@ export interface CreateUserFormData {
   emailVerificado: boolean;
   cursos_asignados: string[];
   activo?: boolean;
+}
+
+export interface ExamenRespuesta {
+  id: string;
+  texto: string;
+  esCorrecta: boolean;
+}
+
+export interface ExamenPregunta {
+  id: string;
+  texto: string;
+  respuestas: ExamenRespuesta[];
+}
+
+export interface ExamenCreatePayload {
+  titulo: string;
+  idFormacion: string;
+  preguntas: ExamenPregunta[];
+}
+
+export interface Examen extends ExamenCreatePayload {
+  id: string;
+}
+
+/** Registro en colección examenes_realizados (listado admin). */
+export interface ExamenRealizado {
+  id: string;
+  idUsuario?: string;
+  idAlumno?: string;
+  idExamen: string;
+  idFormacion: string;
+  nota: number;
+  aprobado: boolean;
+  fechaRealizacion?: FirestoreTimestamp | string | number;
+  nombreAlumno?: string;
+  nombre?: string;
+  apellido?: string;
+  tituloExamen?: string;
+  tituloFormacion?: string;
+}
+
+/** Pregunta en detalle de examen realizado (incluye selección del alumno). */
+export interface ExamenRealizadoPreguntaDetalle {
+  id: string;
+  texto: string;
+  respuestas: ExamenRespuesta[];
+  respuestasSeleccionadas?: string[];
+  idsRespuestasSeleccionadas?: string[];
+}
+
+export interface ExamenRealizadoDetalle extends ExamenRealizado {
+  preguntas?: ExamenRealizadoPreguntaDetalle[];
 }

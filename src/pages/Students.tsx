@@ -18,6 +18,20 @@ import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
 import { Loader } from "lucide-react";
+import { extractStudentsFromResponse } from "@/utils/studentDates";
+import {
+  getEffectiveStudentFilters,
+  mergeCreatedUserAtTop,
+  paginateStudentsClientSide,
+} from "@/utils/studentsListClient";
+
+const DEFAULT_STUDENT_FILTERS: FilterOptions = {
+  sortBy: "date",
+  sortDirection: "desc",
+};
+
+/** Traemos todas las páginas y ordenamos localmente para asegurar orden global correcto. */
+const SERVER_PAGE_LIMIT = 200;
 
 export default function Students() {
   const navigate = useNavigate();
@@ -25,7 +39,7 @@ export default function Students() {
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({});
+  const [filters, setFilters] = useState<FilterOptions>(DEFAULT_STUDENT_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
@@ -36,29 +50,24 @@ export default function Students() {
     totalPages: 1,
   });
 
+  const pendingNewUserRef = useRef<StudentDB | null>(null);
+  const skipNextAutoFetchRef = useRef(false);
+
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchStudents = useCallback(async () => {
+  const fetchStudents = useCallback(async (forcedPage?: number) => {
+    const page = forcedPage !== undefined ? forcedPage : pagination.page;
+    const limit = pagination.limit;
+    const effectiveFilters = getEffectiveStudentFilters(filters);
+
     try {
       setPaginationLoading(true);
-      const sortByMap: Record<string, "nombre" | "email" | "fechaRegistro"> = {
-        name: "nombre",
-        email: "email",
-        date: "fechaRegistro",
-      };
       const statusMap: Record<string, "activo" | "inactivo"> = {
         active: "activo",
         inactive: "inactivo",
       };
-
-      const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
-      const sortOrder = filters.sortBy
-        ? filters.sortBy === "date"
-          ? "desc"
-          : "asc"
-        : undefined;
       const status =
         filters.status && filters.status !== "all"
           ? statusMap[filters.status]
@@ -68,22 +77,74 @@ export default function Students() {
           ? (filters.role as "admin" | "student")
           : undefined;
 
-      const res = await StudentsAPI.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
-        search: searchQuery.trim() || undefined,
-        status,
-        role,
-        sortBy,
-        sortOrder,
+      const allRows: StudentDB[] = [];
+      let aggregatedTotal = 0;
+      let pageCursor = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await StudentsAPI.getAll({
+          page: pageCursor,
+          limit: SERVER_PAGE_LIMIT,
+          search: searchQuery.trim() || undefined,
+          status,
+          role,
+          sortBy: "fechaRegistro",
+          sortOrder: "desc",
+        });
+        const meta = normalizePaginatedResponse<StudentDB>(
+          res,
+          pageCursor,
+          SERVER_PAGE_LIMIT
+        );
+        totalPages = Math.max(1, meta.pagination.totalPages);
+        aggregatedTotal = Math.max(aggregatedTotal, meta.pagination.total);
+        allRows.push(...extractStudentsFromResponse(res));
+        pageCursor += 1;
+      } while (pageCursor <= totalPages);
+
+      let paginated = paginateStudentsClientSide(allRows, {
+        search: searchQuery,
+        status: filters.status,
+        role: filters.role,
+        filters: effectiveFilters,
+        page,
+        limit,
       });
-      const paginated = normalizePaginatedResponse<StudentDB>(
-        res,
-        pagination.page,
-        pagination.limit
-      );
+      if (aggregatedTotal > paginated.pagination.total) {
+        paginated = {
+          ...paginated,
+          pagination: {
+            ...paginated.pagination,
+            total: aggregatedTotal,
+            totalPages: Math.max(
+              1,
+              Math.ceil(aggregatedTotal / limit)
+            ),
+          },
+        };
+      }
+
+      const pending = pendingNewUserRef.current;
+      if (pending?.id) {
+        pendingNewUserRef.current = null;
+        paginated = {
+          ...paginated,
+          data: mergeCreatedUserAtTop(
+            paginated.data,
+            pending,
+            effectiveFilters,
+            limit
+          ),
+        };
+      }
+
       setStudents(paginated.data);
-      setPagination(paginated.pagination);
+      setPagination({
+        ...paginated.pagination,
+        limit,
+        ...(forcedPage !== undefined ? { page: forcedPage } : { page }),
+      });
     } catch (err) {
       console.error("Error al cargar estudiantes:", err);
       setError("No se pudieron cargar los estudiantes");
@@ -95,45 +156,43 @@ export default function Students() {
   }, [filters, pagination.limit, pagination.page, searchQuery]);
 
   useEffect(() => {
+    if (skipNextAutoFetchRef.current) {
+      skipNextAutoFetchRef.current = false;
+      return;
+    }
     fetchStudents();
   }, [fetchStudents]);
 
   const handleDeleteClick = (id: string) => {
-    // Verificar si el usuario intenta eliminar su propia cuenta
     if (user?.uid === id) {
       toast.error("No puedes eliminar tu propia cuenta", {
-        description: "No está permitido eliminar tu propio usuario por razones de seguridad",
+        description:
+          "No está permitido eliminar tu propio usuario por razones de seguridad",
         duration: 4000,
       });
       return;
     }
-    
     setConfirmDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
   const handleConfirmDelete = async (id: string) => {
     if (!id) return;
-    
-    // Verificar nuevamente antes de eliminar (por seguridad)
     if (user?.uid === id) {
       toast.error("No puedes eliminar tu propia cuenta", {
-        description: "No está permitido eliminar tu propio usuario por razones de seguridad",
+        description:
+          "No está permitido eliminar tu propio usuario por razones de seguridad",
         duration: 4000,
       });
       setIsDeleteModalOpen(false);
       setConfirmDeleteId(null);
       return;
     }
-    
     setDeleteLoading(true);
-
     try {
       await StudentsAPI.delete(id);
-
-      setStudents((prev) => prev.filter((s) => s.id !== id));
-
       toast.success("Usuario eliminado exitosamente");
+      await fetchStudents();
     } catch (err) {
       console.error("Error al eliminar estudiante:", err);
       toast.error("Error al eliminar el usuario");
@@ -149,7 +208,22 @@ export default function Students() {
     setConfirmDeleteId(null);
   };
 
-  const handleUserUpdated = async () => {
+  const handleUserUpdated = async (
+    saved?: StudentDB,
+    meta?: { isCreate: boolean }
+  ) => {
+    if (meta?.isCreate && saved?.id) {
+      pendingNewUserRef.current = saved;
+      skipNextAutoFetchRef.current = true;
+      setPagination((p) => ({ ...p, page: 1 }));
+      try {
+        await fetchStudents(1);
+      } catch (err) {
+        console.error("Error al actualizar lista de estudiantes:", err);
+        pendingNewUserRef.current = null;
+      }
+      return;
+    }
     try {
       await fetchStudents();
     } catch (err) {
@@ -170,9 +244,9 @@ export default function Students() {
   const filterOptions = {
     types: [],
     sortOptions: [
+      { value: "date", label: "Fecha de creación" },
       { value: "name", label: "Nombre" },
       { value: "email", label: "Email" },
-      { value: "date", label: "Fecha de registro" },
     ],
   };
 
@@ -191,8 +265,8 @@ export default function Students() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Usuarios</h1>
         <TourButton steps={studentsTourSteps} />
       </div>
 
@@ -205,6 +279,9 @@ export default function Students() {
           createButtonText="Crear usuario"
           filterOptions={filterOptions}
           currentFilters={filters}
+          resetFiltersTo={DEFAULT_STUDENT_FILTERS}
+          showClearFilters
+          hideUnsortedOption
         />
       </div>
 
@@ -217,28 +294,26 @@ export default function Students() {
       <div ref={listTopRef}>
         {paginationLoading ? (
           <div className="flex justify-center gap-3 h-full">
-            <Loader className="animate-spin"/> 
+            <Loader className="animate-spin" />
             <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
           </div>
-        ) : (
-          students.length > 0 ? (
-            <div data-tour="students-list">
-              <StudentList 
-              students={students} 
-              onDelete={handleDeleteClick} 
+        ) : students.length > 0 ? (
+          <div data-tour="students-list">
+            <StudentList
+              students={students}
+              onDelete={handleDeleteClick}
               onUserUpdated={handleUserUpdated}
               onStatusChange={async () => {
-                // Recargar estudiantes después de cambiar estado
                 try {
                   await fetchStudents();
                 } catch (err) {
                   console.error("Error al recargar estudiantes:", err);
                 }
               }}
-              />
-            </div>
-          ) : (
-            <div className="text-center py-12">
+            />
+          </div>
+        ) : (
+          <div className="text-center py-12">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-4xl">👨‍🎓</span>
             </div>
@@ -254,8 +329,7 @@ export default function Students() {
             >
               Crear primer estudiante
             </button>
-            </div>
-          )
+          </div>
         )}
       </div>
 

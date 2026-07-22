@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -7,14 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Plus } from "lucide-react";
 import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import type { StudentDB } from "@/types/types";
 
 export interface FilterOptions {
   status?: string;
   sortBy?: string;
+  /** Dirección de orden enviada al backend como sortOrder */
+  sortDirection?: "asc" | "desc";
   role?: string;
   courseId?: string;
 }
@@ -22,7 +24,7 @@ export interface FilterOptions {
 interface SearchAndFilterProps {
   onSearch: (query: string) => void;
   onFilter: (filters: FilterOptions) => void;
-  onCreateNew?: () => void;
+  onCreateNew?: (user?: StudentDB, meta?: { isCreate: boolean }) => void;
   createButtonText?: string;
   filterOptions?: {
     sortOptions?: { value: string; label: string }[];
@@ -31,6 +33,14 @@ interface SearchAndFilterProps {
   hideCreateButton?: boolean;
   isStudentPage?: boolean;
   currentFilters?: FilterOptions;
+  /** Tras «Limpiar filtros» se aplican estos valores (misma forma que el estado inicial del listado) */
+  resetFiltersTo?: FilterOptions;
+  /** Mostrar acción de limpiar (listados con muchos filtros) */
+  showClearFilters?: boolean;
+  hideUnsortedOption?: boolean;
+  showStateFilter?: boolean;
+  /** Botones extra junto a la acción principal (p. ej. «Ver realizados») */
+  extraActions?: ReactNode;
 }
 
 export const SearchAndFilter = ({
@@ -42,6 +52,11 @@ export const SearchAndFilter = ({
   filterOptions,
   hideCreateButton = false,
   currentFilters: externalFilters,
+  resetFiltersTo,
+  showClearFilters = false,
+  hideUnsortedOption = false,
+  showStateFilter = true,
+  extraActions,
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentFilters, setCurrentFilters] = useState<FilterOptions>(externalFilters || {});
@@ -59,17 +74,64 @@ export const SearchAndFilter = ({
   };
 
   const handleFilterChange = (key: keyof FilterOptions, value: string) => {
-    const newFilters = { ...currentFilters, [key]: value };
+    const newFilters: FilterOptions = { ...currentFilters };
+
+    if (key === "status") {
+      if (value === "all") delete newFilters.status;
+      else newFilters.status = value;
+    } else if (key === "role") {
+      if (value === "all") delete newFilters.role;
+      else newFilters.role = value;
+    } else if (key === "courseId") {
+      if (value === "all" || value === "__unfiltered__") delete newFilters.courseId;
+      else newFilters.courseId = value;
+    } else if (key === "sortBy") {
+      if (value === "none") {
+        delete newFilters.sortBy;
+        delete newFilters.sortDirection;
+      } else {
+        newFilters.sortBy = value;
+        if (!newFilters.sortDirection) {
+          newFilters.sortDirection = value === "date" ? "desc" : "asc";
+        }
+      }
+    }
+
     setCurrentFilters(newFilters);
     onFilter(newFilters);
   };
 
+  const defaultSortDirection = (
+    sortKey: string | undefined
+  ): "asc" | "desc" => (sortKey === "date" ? "desc" : "asc");
+
+  const handleSortDirectionToggle = () => {
+    const sortBy = currentFilters.sortBy;
+    const effectiveDir =
+      currentFilters.sortDirection ?? defaultSortDirection(sortBy || "date");
+    const next: FilterOptions = {
+      ...currentFilters,
+      sortBy: sortBy || "date",
+      sortDirection: effectiveDir === "asc" ? "desc" : "asc",
+    };
+    setCurrentFilters(next);
+    onFilter(next);
+  };
+
+  const handleClearFilters = () => {
+    const next = resetFiltersTo ? { ...resetFiltersTo } : {};
+    setSearchQuery("");
+    setCurrentFilters(next);
+    onSearch("");
+    onFilter(next);
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-      <div className="flex flex-1 gap-4 items-center">
+    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
+      <div className="flex flex-col w-full gap-3 sm:flex-row sm:flex-1 sm:gap-4 sm:items-center">
         {/* Búsqueda */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="relative w-full sm:w-72 sm:shrink-0 sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
           <Input
             placeholder="Buscar..."
             value={searchQuery}
@@ -79,22 +141,25 @@ export const SearchAndFilter = ({
         </div>
 
         {/* Filtros */}
-        <div className="flex gap-2 items-center">
-          <Filter className="w-4 h-4 text-gray-400" />
+        <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto sm:flex-1 min-h-10">
+          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           {/* Estado */}
-          <Select
-            onValueChange={(value) => handleFilterChange("status", value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Activos</SelectItem>
-              <SelectItem value="inactive">Inactivos</SelectItem>
-            </SelectContent>
-          </Select>
+          {showStateFilter && (
+            <Select
+              value={currentFilters.status || "all"}
+              onValueChange={(value) => handleFilterChange("status", value)}
+            >
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Rol - Solo mostrar en la página de estudiantes */}
           {isStudentPage && (
@@ -102,7 +167,7 @@ export const SearchAndFilter = ({
               value={currentFilters.role || "all"}
               onValueChange={(value) => handleFilterChange("role", value)}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Rol" />
               </SelectTrigger>
               <SelectContent>
@@ -116,14 +181,14 @@ export const SearchAndFilter = ({
           {/* Curso asignado - Solo en la página de estudiantes */}
           {isStudentPage && filterOptions?.courses && filterOptions.courses.length > 0 && (
             <Select
-              value={currentFilters.courseId || "all"}
+              value={currentFilters.courseId ?? "__unfiltered__"}
               onValueChange={(value) => handleFilterChange("courseId", value)}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Curso asignado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los cursos</SelectItem>
+                <SelectItem value="__unfiltered__">Sin filtrar por curso</SelectItem>
                 <SelectItem value="none">Sin curso asignado</SelectItem>
                 {filterOptions.courses.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -137,12 +202,19 @@ export const SearchAndFilter = ({
           {/* Ordenar por */}
           {filterOptions?.sortOptions && (
             <Select
+              value={
+                currentFilters.sortBy ||
+                (hideUnsortedOption ? "date" : "none")
+              }
               onValueChange={(value) => handleFilterChange("sortBy", value)}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40 sm:min-w-[10rem]">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
+                {!hideUnsortedOption && (
+                  <SelectItem value="none">Sin ordenar</SelectItem>
+                )}
                 {filterOptions.sortOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -151,19 +223,64 @@ export const SearchAndFilter = ({
               </SelectContent>
             </Select>
           )}
+
+          {filterOptions?.sortOptions &&
+            (currentFilters.sortBy ||
+              (hideUnsortedOption && "date")) && (
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 h-10 px-3"
+              onClick={handleSortDirectionToggle}
+              title={
+                (currentFilters.sortDirection ??
+                  defaultSortDirection(currentFilters.sortBy)) === "asc"
+                  ? "Orden ascendente"
+                  : "Orden descendente"
+              }
+            >
+              <ArrowUpDown className="w-4 h-4 mr-1.5" />
+              {(currentFilters.sortDirection ??
+                defaultSortDirection(currentFilters.sortBy)) === "asc"
+                ? "Asc"
+                : "Desc"}
+            </Button>
+          )}
+
+          {showClearFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="shrink-0 h-10 px-3"
+              onClick={handleClearFilters}
+            >
+              Limpiar filtros
+            </Button>
+          )}
         </div>
       </div>
 
 
-      {!hideCreateButton && onCreateNew && (
-        isStudentPage ? (
-          <CreateUserModal onUserCreated={onCreateNew} triggerText={createButtonText} />
-        ) : (
-          <Button onClick={onCreateNew} className="cursor-pointer" data-tour="create-course">
-            <Plus className="w-4 h-4 mr-2 cursor-pointer" />
-            {createButtonText}
-          </Button>
-        )
+      {(extraActions || (!hideCreateButton && onCreateNew)) && (
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+          {extraActions}
+          {!hideCreateButton && onCreateNew &&
+            (isStudentPage ? (
+              <CreateUserModal
+                onUserCreated={onCreateNew}
+                triggerText={createButtonText}
+              />
+            ) : (
+              <Button
+                onClick={() => onCreateNew?.()}
+                className="cursor-pointer"
+                data-tour="create-course"
+              >
+                <Plus className="w-4 h-4 mr-2 cursor-pointer" />
+                {createButtonText}
+              </Button>
+            ))}
+        </div>
       )}
     </div>
   );
