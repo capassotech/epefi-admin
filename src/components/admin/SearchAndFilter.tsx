@@ -130,8 +130,8 @@ export const SearchAndFilter = ({
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
       <div className="flex flex-col w-full gap-3 sm:flex-row sm:flex-1 sm:gap-4 sm:items-center">
         {/* Búsqueda */}
-        <div className="relative w-full sm:flex-1 sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="relative w-full sm:w-72 sm:shrink-0 sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
           <Input
             placeholder="Buscar..."
             value={searchQuery}
@@ -141,7 +141,7 @@ export const SearchAndFilter = ({
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap gap-2 items-center w-full min-h-10">
+        <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto sm:flex-1 min-h-10">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           {/* Estado */}
