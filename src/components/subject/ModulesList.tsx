@@ -118,11 +118,11 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-semibold text-gray-900 transition-colors duration-200">
+                      <p className="text-base sm:text-lg font-semibold text-gray-900 transition-colors duration-200 break-words">
                         {m.titulo}
                       </p>
                       {m.descripcion && (
-                        <p className='text-sm text-gray-500 mt-1 line-clamp-2'>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                           {m.descripcion}
                         </p>
                       )}
@@ -168,22 +168,24 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                   <div className="flex flex-col gap-1 w-full sm:w-auto">
                     {loadingExcepciones ? (
                       <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:min-w-[180px]">
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                        <span className="text-xs text-gray-600 whitespace-nowrap">Cargando...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
+                        <span className="text-sm text-gray-600">Cargando...</span>
                       </div>
                     ) : (
                       <>
                         <div 
-                          className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:min-w-[180px]"
+                          className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full min-w-0 sm:min-w-[180px]"
                           onClick={(e) => e.stopPropagation()}
                           onMouseDown={(e) => e.stopPropagation()}
                         >
-                          <Users className="w-4 h-4 text-gray-500" />
-                          <span className="text-xs text-gray-600 whitespace-nowrap">
-                            {togglingModuleId === m.id ? 'Actualizando...' : 'Habilitado por defecto'}
-                          </span>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Users className="w-4 h-4 text-gray-500 shrink-0" />
+                            <span className="text-sm text-gray-700 leading-tight">
+                              {togglingModuleId === m.id ? 'Actualizando...' : 'Habilitado por defecto'}
+                            </span>
+                          </div>
                           {togglingModuleId === m.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
                           ) : (
                             <Switch
                               checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
@@ -194,7 +196,7 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                                 e.stopPropagation();
                               }}
                               disabled={togglingModuleId !== null}
-                              className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                              className="shrink-0 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
                             />
                           )}
                         </div>
@@ -204,14 +206,14 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-auto min-h-8 w-full text-left text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 whitespace-normal"
+                            className="h-auto min-h-8 w-full justify-center sm:justify-start text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 whitespace-normal"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <UserMinus className="w-4 h-4 mr-1.5" />
+                            <UserMinus className="w-4 h-4 mr-1.5 shrink-0" />
                             {moduloExcepciones[m.id].length} estudiante{moduloExcepciones[m.id].length !== 1 ? 's' : ''} no habilitado{moduloExcepciones[m.id].length !== 1 ? 's' : ''}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80" align="end" onClick={(e) => e.stopPropagation()}>
+                        <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 sm:w-80" align="end" onClick={(e) => e.stopPropagation()}>
                           <p className="font-medium text-amber-800 mb-2">Estudiantes sin este módulo habilitado</p>
                           <p className="text-sm text-gray-600 mb-2">
                             Los siguientes tienen este módulo deshabilitado individualmente:

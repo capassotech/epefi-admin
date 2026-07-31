@@ -23,23 +23,23 @@ interface Props {
 const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName, deleteLoading, id }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            ¿Eliminar {itemName}?
+            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+            <span className="break-words">¿Eliminar {itemName}?</span>
           </DialogTitle>
           <DialogDescription>
             Esta acción no se puede deshacer. El elemento será eliminado permanentemente.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex gap-2 sm:gap-0">
+        <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-0">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
             disabled={deleteLoading}
-            className="flex-1 sm:flex-none cursor-pointer"
+            className="w-full sm:w-auto cursor-pointer"
           >
             Cancelar
           </Button>
@@ -48,7 +48,7 @@ const ConfirmDeleteModal = ({ isOpen, onCancel, onConfirm, itemName, deleteLoadi
             variant="destructive"
             onClick={() => onConfirm(id)}
             disabled={deleteLoading}
-            className="flex-1 sm:flex-none cursor-pointer"
+            className="w-full sm:w-auto cursor-pointer"
           >
             {deleteLoading ? (
               <>

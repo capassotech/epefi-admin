@@ -29,7 +29,7 @@ const Index = () => {
       <SidebarLayoutProvider>
       <div className="min-h-screen bg-gray-50 flex">
         <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
-      <main className="flex-1 p-4 lg:p-8 overflow-auto">
+      <main className="flex-1 min-w-0 p-4 lg:p-8 overflow-x-hidden overflow-y-auto">
         {/* Header móvil */}
         <div className="lg:hidden mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">EPEFI Admin</h1>

@@ -391,7 +391,7 @@ export default function CreateExam() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/exams")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver a Exámenes
         </Button>
@@ -577,22 +577,22 @@ export default function CreateExam() {
             <div
               role="toolbar"
               aria-label="Acciones de preguntas"
-              className="fixed z-40 bottom-6 -translate-x-1/2 transition-[left] duration-300"
+              className="fixed z-40 bottom-4 -translate-x-1/2 sm:bottom-6 max-w-[calc(100vw-2rem)] transition-[left] duration-300"
               style={{ left: `calc(50vw + ${sidebarWidth / 2}px)` }}
             >
               <div className="rounded-xl border border-border bg-background/95 backdrop-blur-sm shadow-lg p-2">
-                <Button type="button" onClick={addQuestion} className="shadow-sm">
+                <Button type="button" onClick={addQuestion} className="shadow-sm w-full sm:w-auto justify-center">
                   <Plus className="w-4 h-4 mr-2" />
                   Agregar pregunta
                 </Button>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pb-20">
-              <Button type="button" variant="outline" onClick={() => navigate("/exams")}>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-24 sm:pb-20">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/exams")}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!canSave}>
+              <Button type="submit" disabled={!canSave} className="w-full sm:w-auto">
                 <Save className="w-4 h-4 mr-2" />
                 {saving
                   ? "Guardando..."

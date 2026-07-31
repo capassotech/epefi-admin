@@ -8,6 +8,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PaginationMeta } from "@/types/types";
 import type { RefObject } from "react";
 
@@ -44,25 +45,33 @@ export const PaginationControls = ({
   const visiblePages = getVisiblePages(currentPage, totalPages);
   const firstItem = pagination.total === 0 ? 0 : (currentPage - 1) * pagination.limit + 1;
   const lastItem = Math.min(currentPage * pagination.limit, pagination.total);
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
+
   const scrollToTarget = () => {
     if (scrollTargetRef?.current) {
       scrollTargetRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <p className="text-sm text-gray-600">
-        Mostrando {firstItem}-{lastItem} de {pagination.total}
-      </p>
+  const goToPage = (page: number) => {
+    onPageChange(page);
+    scrollToTarget();
+  };
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="pagination-limit" className="text-sm text-gray-600">
+  return (
+    <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Desktop meta + limit */}
+      <div className="hidden sm:flex items-center gap-4">
+        <p className="text-sm text-gray-600 shrink-0">
+          Mostrando {firstItem}-{lastItem} de {pagination.total}
+        </p>
+        <div className="flex items-center gap-2 shrink-0">
+          <label htmlFor="pagination-limit-desktop" className="text-sm text-gray-600">
             Por página
           </label>
           <select
-            id="pagination-limit"
+            id="pagination-limit-desktop"
             className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
             value={pagination.limit}
             onChange={(e) => {
@@ -77,67 +86,123 @@ export const PaginationControls = ({
             ))}
           </select>
         </div>
-
-        <Pagination className="mx-0 w-auto">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (currentPage > 1) {
-                    onPageChange(currentPage - 1);
-                    scrollToTarget();
-                  }
-                }}
-                className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-
-            {visiblePages.map((page, index) => {
-              const prev = visiblePages[index - 1];
-              const shouldShowEllipsis = prev && page - prev > 1;
-
-              return (
-                <Fragment key={`page-group-${page}`}>
-                  {shouldShowEllipsis && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
-                  <PaginationItem>
-                    <PaginationLink
-                      href="#"
-                      isActive={page === currentPage}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onPageChange(page);
-                        scrollToTarget();
-                      }}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                </Fragment>
-              );
-            })}
-
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (currentPage < totalPages) {
-                    onPageChange(currentPage + 1);
-                    scrollToTarget();
-                  }
-                }}
-                className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
       </div>
+
+      {/* Mobile: bloque único compacto */}
+      <div className="sm:hidden w-full rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50/80">
+          <p className="text-xs text-gray-500 tabular-nums">
+            {firstItem}–{lastItem} de {pagination.total}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="pagination-limit-mobile" className="text-xs text-gray-500">
+              Por pág.
+            </label>
+            <select
+              id="pagination-limit-mobile"
+              className="h-7 rounded border border-gray-200 bg-white px-1.5 text-xs text-gray-700"
+              value={pagination.limit}
+              onChange={(e) => {
+                onLimitChange(Number(e.target.value));
+                scrollToTarget();
+              }}
+            >
+              {limitOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-stretch">
+          <button
+            type="button"
+            disabled={!canGoPrev}
+            aria-label="Página anterior"
+            onClick={() => goToPage(currentPage - 1)}
+            className="flex h-11 items-center justify-center text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-30 transition-colors border-r border-gray-100"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <div className="flex flex-col items-center justify-center px-2 py-2">
+            <span className="text-sm font-semibold text-gray-900 tabular-nums leading-none">
+              {currentPage}
+              <span className="mx-1 font-normal text-gray-400">/</span>
+              {totalPages}
+            </span>
+            <span className="mt-0.5 text-[0.65rem] text-gray-400 leading-none">
+              página
+            </span>
+          </div>
+
+          <button
+            type="button"
+            disabled={!canGoNext}
+            aria-label="Página siguiente"
+            onClick={() => goToPage(currentPage + 1)}
+            className="flex h-11 items-center justify-center text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-30 transition-colors border-l border-gray-100"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop: paginación numerada */}
+      <Pagination className="mx-0 hidden w-auto sm:flex">
+        <PaginationContent className="gap-1">
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                if (canGoPrev) goToPage(currentPage - 1);
+              }}
+              className={!canGoPrev ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+
+          {visiblePages.map((page, index) => {
+            const prev = visiblePages[index - 1];
+            const shouldShowEllipsis = prev && page - prev > 1;
+
+            return (
+              <Fragment key={`page-group-${page}`}>
+                {shouldShowEllipsis && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationLink
+                    href="#"
+                    isActive={page === currentPage}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(page);
+                    }}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              </Fragment>
+            );
+          })}
+
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                if (canGoNext) goToPage(currentPage + 1);
+              }}
+              className={!canGoNext ? "pointer-events-none opacity-50" : ""}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
 };

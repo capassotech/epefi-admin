@@ -335,14 +335,14 @@ export const StudentDetail = () => {
     if (!student) return <div className="p-6">No se encontró el estudiante</div>;
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto p-4">
+        <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className='cursor-pointer'>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center min-w-0">
+                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Volver
                     </Button>
-                    <h1 className="text-lg sm:text-3xl font-bold text-gray-900 leading-tight">{student.nombre} {student.apellido}</h1>
+                    <h1 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight break-words min-w-0">{student.nombre} {student.apellido}</h1>
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                     <CreateUserModal
@@ -363,7 +363,7 @@ export const StudentDetail = () => {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
+                            className="h-9 px-3 w-full sm:w-auto justify-center border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
                             title="Editar usuario"
                         >
                             <Edit2 className="w-4 h-4 mr-1.5" />

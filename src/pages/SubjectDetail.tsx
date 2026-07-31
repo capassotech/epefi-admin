@@ -216,14 +216,14 @@ export const SubjectDetail = () => {
     if (!materia) return <div className="p-6">No se encontró el curso</div>;
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className='cursor-pointer'>
+        <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center min-w-0">
+                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Volver
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">{materia.nombre}</h1>
+                    <h1 className="text-xl sm:text-3xl font-bold text-gray-900 break-words min-w-0">{materia.nombre}</h1>
                 </div>
             </div>
 
