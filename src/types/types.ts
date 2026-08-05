@@ -265,6 +265,8 @@ export interface ExamenPregunta {
 export interface ExamenCreatePayload {
   titulo: string;
   idFormacion: string;
+  /** Duración del examen en minutos. Por defecto 90. */
+  duracionMinutos: number;
   preguntas: ExamenPregunta[];
 }
 

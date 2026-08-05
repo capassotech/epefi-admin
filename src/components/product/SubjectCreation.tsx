@@ -281,8 +281,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             
             return response;
         } catch (err: unknown) {
-            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-            toast.error("Error al crear materia: " + errorMessage);
+            // SubjectModal muestra el mensaje del backend (p. ej. nombre duplicado)
             throw err;
         }
     };
@@ -459,7 +458,7 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             handleCancelEditSubject();
         } catch (err) {
             console.error(err);
-            toast.error("Error al actualizar la materia");
+            // SubjectModal muestra el mensaje del backend
             throw err;
         }
     };

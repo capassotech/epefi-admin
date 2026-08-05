@@ -63,11 +63,18 @@ const createEmptyQuestion = (): QuestionForm => ({
 function examToFormState(exam: Examen): {
   title: string;
   idFormacion: string;
+  duracionMinutos: number;
   questions: QuestionForm[];
 } {
+  const duracion =
+    typeof exam.duracionMinutos === "number" && exam.duracionMinutos > 0
+      ? exam.duracionMinutos
+      : 90;
+
   return {
     title: exam.titulo || "",
     idFormacion: exam.idFormacion || "",
+    duracionMinutos: duracion,
     questions:
       exam.preguntas?.length > 0
         ? exam.preguntas.map((q) => ({
@@ -93,6 +100,8 @@ export default function CreateExam() {
   const { sidebarWidth } = useSidebarLayout();
   const [title, setTitle] = useState("");
   const [idFormacion, setIdFormacion] = useState("");
+  const [duracionMinutos, setDuracionMinutos] = useState(90);
+  const [duracionError, setDuracionError] = useState("");
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -165,6 +174,7 @@ export default function CreateExam() {
         const form = examToFormState(exam);
         setTitle(form.title);
         setIdFormacion(form.idFormacion);
+        setDuracionMinutos(form.duracionMinutos);
         setQuestions(form.questions);
       } catch (error) {
         console.error("Error al cargar examen:", error);
@@ -264,6 +274,7 @@ export default function CreateExam() {
     const nextQuestionErrors: Record<string, QuestionError> = {};
     setTitleError("");
     setFormationError("");
+    setDuracionError("");
     setQuestionsError("");
 
     const markInvalid = (fieldId: string) => {
@@ -279,6 +290,16 @@ export default function CreateExam() {
     if (!idFormacion) {
       setFormationError("Debes seleccionar una formación");
       markInvalid("formation");
+    }
+
+    if (
+      !Number.isFinite(duracionMinutos) ||
+      !Number.isInteger(duracionMinutos) ||
+      duracionMinutos < 1 ||
+      duracionMinutos > 480
+    ) {
+      setDuracionError("La duración debe ser un número entero entre 1 y 480 minutos");
+      markInvalid("duration");
     }
 
     if (questions.length === 0) {
@@ -330,6 +351,7 @@ export default function CreateExam() {
     const payload: ExamenCreatePayload = {
       titulo: title.trim(),
       idFormacion,
+      duracionMinutos,
       preguntas: questions.map((q) => ({
         id: q.id,
         texto: q.texto.trim(),
@@ -438,6 +460,27 @@ export default function CreateExam() {
                 </SelectContent>
               </Select>
               {formationError && <p className="text-sm text-red-600">{formationError}</p>}
+            </div>
+
+            <div className="space-y-2" ref={setFieldRef("duration")}>
+              <Label htmlFor="exam-duration">Duración del examen (minutos)</Label>
+              <Input
+                id="exam-duration"
+                type="number"
+                min={1}
+                max={480}
+                step={1}
+                value={duracionMinutos}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setDuracionMinutos(Number.isNaN(value) ? 0 : value);
+                  if (duracionError) setDuracionError("");
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor base: 90 minutos. Podés modificarlo según la evaluación.
+              </p>
+              {duracionError && <p className="text-sm text-red-600">{duracionError}</p>}
             </div>
 
             <div className="space-y-4" ref={setFieldRef("questions")}>

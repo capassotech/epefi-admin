@@ -3,6 +3,7 @@ import { auth } from "@/firebase";
 import axios from "axios";
 import { type Course, type Subject, type Module } from "@/types/types";
 import { normalizePaginatedResponse } from "@/utils/pagination";
+import { extractAxiosResponseDataMessage } from "@/utils/errorMessages";
 import { storage } from "../../config/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -298,11 +299,11 @@ export const CoursesAPI = {
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
-        response?: { data?: { error?: string } };
+        response?: { data?: unknown };
         message?: string;
       };
       const errorMessage =
-        axiosError.response?.data?.error ||
+        extractAxiosResponseDataMessage(axiosError.response?.data) ||
         axiosError.message ||
         "Error al crear materia";
       throw new Error(errorMessage);
@@ -315,11 +316,11 @@ export const CoursesAPI = {
       return res.data;
     } catch (error: unknown) {
       const axiosError = error as {
-        response?: { data?: { message?: string } };
+        response?: { data?: unknown };
         message?: string;
       };
       const errorMessage =
-        axiosError.response?.data?.message ||
+        extractAxiosResponseDataMessage(axiosError.response?.data) ||
         axiosError.message ||
         "Error al actualizar materia";
       throw new Error(errorMessage);
