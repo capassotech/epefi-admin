@@ -259,6 +259,7 @@ export interface ExamenRespuesta {
 export interface ExamenPregunta {
   id: string;
   texto: string;
+  puntos?: number;
   respuestas: ExamenRespuesta[];
 }
 
@@ -295,6 +296,9 @@ export interface ExamenRealizado {
 export interface ExamenRealizadoPreguntaDetalle {
   id: string;
   texto: string;
+  puntos?: number;
+  puntosObtenidos?: number;
+  acertada?: boolean;
   respuestas: ExamenRespuesta[];
   respuestasSeleccionadas?: string[];
   idsRespuestasSeleccionadas?: string[];
@@ -302,4 +306,8 @@ export interface ExamenRealizadoPreguntaDetalle {
 
 export interface ExamenRealizadoDetalle extends ExamenRealizado {
   preguntas?: ExamenRealizadoPreguntaDetalle[];
+  intentoNumero?: number;
+  totalIntentos?: number;
+  porcentajeAciertos?: number;
+  puntosObtenidos?: number;
 }

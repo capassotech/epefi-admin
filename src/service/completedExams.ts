@@ -133,6 +133,17 @@ export const CompletedExamsAPI = {
             return {
               id: String(pr.id ?? pr.idPregunta ?? ""),
               texto: String(pr.texto ?? pr.pregunta ?? ""),
+              puntos: typeof pr.puntos === "number" ? pr.puntos : undefined,
+              puntosObtenidos:
+                typeof pr.puntosObtenidos === "number"
+                  ? pr.puntosObtenidos
+                  : undefined,
+              acertada:
+                typeof pr.acertada === "boolean"
+                  ? pr.acertada
+                  : typeof pr.esCorrecta === "boolean"
+                    ? pr.esCorrecta
+                    : undefined,
               respuestas: Array.isArray(respuestasRaw)
                 ? respuestasRaw.map((r) => {
                     const rr = r as Record<string, unknown>;
@@ -149,7 +160,21 @@ export const CompletedExamsAPI = {
             };
           })
         : undefined;
-      return { ...base, preguntas, _raw: raw };
+      return {
+        ...base,
+        preguntas,
+        intentoNumero:
+          raw.intentoNumero != null ? Number(raw.intentoNumero) : undefined,
+        totalIntentos:
+          raw.totalIntentos != null ? Number(raw.totalIntentos) : undefined,
+        porcentajeAciertos:
+          raw.porcentajeAciertos != null
+            ? Number(raw.porcentajeAciertos)
+            : undefined,
+        puntosObtenidos:
+          raw.puntosObtenidos != null ? Number(raw.puntosObtenidos) : undefined,
+        _raw: raw,
+      };
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al obtener detalle del examen realizado")

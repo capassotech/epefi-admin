@@ -3,6 +3,38 @@ import type {
   ExamenRealizadoDetalle,
   ExamenRealizadoPreguntaDetalle,
 } from "@/types/types";
+import { distributePuntosEqually } from "@/utils/examPoints";
+
+function isQuestionCorrectLocally(
+  respuestas: Array<{ id: string; esCorrecta: boolean }>,
+  selectedIds: string[]
+): boolean {
+  const correctIds = respuestas
+    .filter((r) => r.esCorrecta)
+    .map((r) => r.id)
+    .sort();
+  const selected = [...selectedIds].sort();
+  if (correctIds.length !== selected.length) return false;
+  return correctIds.every((id, index) => id === selected[index]);
+}
+
+function resolveQuestionScore(
+  pregunta: ExamenRealizadoPreguntaDetalle,
+  selectedIds: string[]
+): Pick<ExamenRealizadoPreguntaDetalle, "acertada" | "puntosObtenidos"> {
+  const acertada =
+    typeof pregunta.acertada === "boolean"
+      ? pregunta.acertada
+      : isQuestionCorrectLocally(pregunta.respuestas, selectedIds);
+  const puntosObtenidos =
+    typeof pregunta.puntosObtenidos === "number"
+      ? pregunta.puntosObtenidos
+      : acertada && typeof pregunta.puntos === "number"
+        ? pregunta.puntos
+        : 0;
+
+  return { acertada, puntosObtenidos };
+}
 
 function toAnswerId(value: unknown): string {
   if (value == null) return "";
@@ -145,6 +177,15 @@ function normalizeQuestionFromRaw(
   return {
     id: qId,
     texto: String(pr.texto ?? pr.pregunta ?? ""),
+    puntos: typeof pr.puntos === "number" ? pr.puntos : undefined,
+    puntosObtenidos:
+      typeof pr.puntosObtenidos === "number" ? pr.puntosObtenidos : undefined,
+    acertada:
+      typeof pr.acertada === "boolean"
+        ? pr.acertada
+        : typeof pr.esCorrecta === "boolean"
+          ? pr.esCorrecta
+          : undefined,
     respuestas,
     respuestasSeleccionadas,
   };
@@ -161,17 +202,28 @@ export function buildCompletedExamQuestions(
   const selections = extractStudentSelections(raw);
 
   if (examTemplate?.preguntas?.length) {
-    return examTemplate.preguntas.map((q) => {
+    const puntosDistribution = distributePuntosEqually(examTemplate.preguntas.length);
+
+    return examTemplate.preguntas.map((q, index) => {
       const selected = Array.from(selections.get(q.id) ?? []);
       const fromQuestion = record.preguntas?.find((p) => p.id === q.id);
       const mergedSelected =
         fromQuestion?.respuestasSeleccionadas?.length
           ? fromQuestion.respuestasSeleccionadas
           : selected;
+      const puntos =
+        typeof q.puntos === "number"
+          ? q.puntos
+          : typeof fromQuestion?.puntos === "number"
+            ? fromQuestion.puntos
+            : puntosDistribution[index];
 
-      return {
+      const baseQuestion: ExamenRealizadoPreguntaDetalle = {
         id: q.id,
         texto: q.texto,
+        puntos,
+        puntosObtenidos: fromQuestion?.puntosObtenidos,
+        acertada: fromQuestion?.acertada,
         respuestas: q.respuestas.map((r) => ({
           id: r.id,
           texto: r.texto,
@@ -179,6 +231,9 @@ export function buildCompletedExamQuestions(
         })),
         respuestasSeleccionadas: mergedSelected,
       };
+
+      const score = resolveQuestionScore(baseQuestion, mergedSelected);
+      return { ...baseQuestion, ...score };
     });
   }
 
