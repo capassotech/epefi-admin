@@ -16,6 +16,12 @@ import {
   buildCompletedExamQuestions,
   normalizeAnswerIds,
 } from "@/utils/completedExamDetail";
+import {
+  computeNotaFromPorcentaje,
+  computePorcentajeFromPuntos,
+  PUNTOS_TOTAL_EXAMEN,
+  sumPreguntasPuntosObtenidos,
+} from "@/utils/examPoints";
 import { formatTimestamp } from "@/utils/formatTimestamp";
 import {
   COMPLETED_EXAMS_LIST_PATH,
@@ -31,6 +37,10 @@ type DetailState = {
   nota: number;
   aprobado: boolean;
   fechaRealizacion?: FirestoreTimestamp | string | number;
+  intentoNumero?: number;
+  totalIntentos?: number;
+  porcentajeAciertos?: number;
+  puntosObtenidos?: number;
 };
 
 export default function CompletedExamDetail() {
@@ -63,14 +73,34 @@ export default function CompletedExamDetail() {
 
         const merged = buildCompletedExamQuestions(data, raw, exam);
         setPreguntas(merged);
+
+        const puntosFromQuestions = sumPreguntasPuntosObtenidos(merged);
+        const puntosObtenidos =
+          typeof data.puntosObtenidos === "number"
+            ? data.puntosObtenidos
+            : puntosFromQuestions;
+        const porcentajeAciertos =
+          typeof data.porcentajeAciertos === "number"
+            ? data.porcentajeAciertos
+            : computePorcentajeFromPuntos(puntosObtenidos);
+        const nota =
+          typeof data.nota === "number"
+            ? data.nota
+            : computeNotaFromPorcentaje(porcentajeAciertos);
+        const aprobado = porcentajeAciertos >= 70;
+
         setMeta({
           id: data.id,
           nombreAlumno: data.nombreAlumno,
           idFormacion: data.idFormacion,
           idExamen: data.idExamen,
-          nota: data.nota,
-          aprobado: data.aprobado,
+          nota,
+          aprobado,
           fechaRealizacion: data.fechaRealizacion,
+          intentoNumero: data.intentoNumero,
+          totalIntentos: data.totalIntentos,
+          porcentajeAciertos,
+          puntosObtenidos,
         });
 
         const course = data.idFormacion
@@ -153,6 +183,32 @@ export default function CompletedExamDetail() {
             </span>
           </div>
           <div>
+            <span className="text-muted-foreground">Puntos obtenidos: </span>
+            <span className="font-medium">
+              {typeof meta.puntosObtenidos === "number"
+                ? `${meta.puntosObtenidos} / ${PUNTOS_TOTAL_EXAMEN}`
+                : "—"}
+            </span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Porcentaje de aciertos: </span>
+            <span className="font-medium">
+              {typeof meta.porcentajeAciertos === "number"
+                ? `${meta.porcentajeAciertos}%`
+                : "—"}
+            </span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Intento: </span>
+            <span className="font-medium">
+              {typeof meta.intentoNumero === "number"
+                ? meta.totalIntentos != null
+                  ? `${meta.intentoNumero} de ${meta.totalIntentos}`
+                  : meta.intentoNumero
+                : "—"}
+            </span>
+          </div>
+          <div>
             <span className="text-muted-foreground">Estado: </span>
             <Badge variant={meta.aprobado ? "default" : "destructive"}>
               {meta.aprobado ? "Aprobado" : "No aprobado"}
@@ -182,13 +238,24 @@ export default function CompletedExamDetail() {
               normalizeAnswerIds(q.respuestasSeleccionadas)
             );
             const correctOptions = q.respuestas.filter((r) => r.esCorrecta);
+            const puntosObtenidos =
+              typeof q.puntosObtenidos === "number" ? q.puntosObtenidos : 0;
 
             return (
               <Card key={q.id || index}>
                 <CardHeader className="pb-2 space-y-2">
-                  <CardTitle className="text-base leading-snug">
-                    Pregunta {index + 1}
-                  </CardTitle>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <CardTitle className="text-base leading-snug">
+                      Pregunta {index + 1}
+                    </CardTitle>
+                    {typeof q.puntos === "number" && (
+                      <Badge
+                        variant={puntosObtenidos > 0 ? "default" : "secondary"}
+                      >
+                        {puntosObtenidos} / {q.puntos} pts
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm font-normal text-foreground">{q.texto}</p>
                 </CardHeader>
                 <CardContent>

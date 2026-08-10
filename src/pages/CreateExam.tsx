@@ -20,6 +20,11 @@ import { ExamsAPI } from "@/service/exams";
 import type { Course, Examen, ExamenCreatePayload } from "@/types/types";
 import { toast } from "sonner";
 import { useSidebarLayout } from "@/context/SidebarLayoutContext";
+import {
+  distributePuntosEqually,
+  PUNTOS_TOTAL_EXAMEN,
+  sumPreguntasPuntos,
+} from "@/utils/examPoints";
 
 type OptionForm = {
   id: string;
@@ -30,12 +35,14 @@ type OptionForm = {
 type QuestionForm = {
   id: string;
   texto: string;
+  puntos: number;
   respuestas: OptionForm[];
 };
 
 type QuestionError = {
   texto?: string;
   respuestas?: string;
+  puntos?: string;
 };
 
 type ValidationResult = {
@@ -57,32 +64,49 @@ const createEmptyOption = (): OptionForm => ({
 const createEmptyQuestion = (): QuestionForm => ({
   id: makeId(),
   texto: "",
+  puntos: PUNTOS_TOTAL_EXAMEN,
   respuestas: [createEmptyOption(), createEmptyOption()],
 });
+
+const applyEqualPuntos = (questions: QuestionForm[]): QuestionForm[] => {
+  const distribution = distributePuntosEqually(questions.length);
+  return questions.map((question, index) => ({
+    ...question,
+    puntos: distribution[index] ?? 0,
+  }));
+};
 
 function examToFormState(exam: Examen): {
   title: string;
   idFormacion: string;
   questions: QuestionForm[];
 } {
+  const rawQuestions =
+    exam.preguntas?.length > 0
+      ? exam.preguntas.map((q) => ({
+          id: q.id || makeId(),
+          texto: q.texto || "",
+          puntos: typeof q.puntos === "number" ? q.puntos : 0,
+          respuestas:
+            q.respuestas?.length > 0
+              ? q.respuestas.map((r) => ({
+                  id: r.id || makeId(),
+                  texto: r.texto || "",
+                  esCorrecta: Boolean(r.esCorrecta),
+                }))
+              : [createEmptyOption(), createEmptyOption()],
+        }))
+      : [createEmptyQuestion()];
+
+  const hasAllPuntos = rawQuestions.every((q) => q.puntos > 0);
+  const questions = hasAllPuntos
+    ? rawQuestions
+    : applyEqualPuntos(rawQuestions);
+
   return {
     title: exam.titulo || "",
     idFormacion: exam.idFormacion || "",
-    questions:
-      exam.preguntas?.length > 0
-        ? exam.preguntas.map((q) => ({
-            id: q.id || makeId(),
-            texto: q.texto || "",
-            respuestas:
-              q.respuestas?.length > 0
-                ? q.respuestas.map((r) => ({
-                    id: r.id || makeId(),
-                    texto: r.texto || "",
-                    esCorrecta: Boolean(r.esCorrecta),
-                  }))
-                : [createEmptyOption(), createEmptyOption()],
-          }))
-        : [createEmptyQuestion()],
+    questions,
   };
 }
 
@@ -103,6 +127,7 @@ export default function CreateExam() {
   const [formationError, setFormationError] = useState("");
   const [questionsError, setQuestionsError] = useState("");
   const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
+  const [puntosError, setPuntosError] = useState("");
   const lastQuestionRef = useRef<HTMLDivElement | null>(null);
   const scrollToNewQuestion = useRef(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -185,13 +210,17 @@ export default function CreateExam() {
     [saving, loadingCourses, loadingExam]
   );
 
+  const totalPuntos = useMemo(() => sumPreguntasPuntos(questions), [questions]);
+  const puntosValidos = totalPuntos === PUNTOS_TOTAL_EXAMEN;
+
   const updateQuestion = (questionId: string, updater: (q: QuestionForm) => QuestionForm) => {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
   };
 
   const addQuestion = () => {
     scrollToNewQuestion.current = true;
-    setQuestions((prev) => [...prev, createEmptyQuestion()]);
+    setQuestions((prev) => applyEqualPuntos([...prev, createEmptyQuestion()]));
+    setPuntosError("");
   };
 
   useEffect(() => {
@@ -201,12 +230,26 @@ export default function CreateExam() {
   }, [questions.length]);
 
   const removeQuestion = (questionId: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+    setQuestions((prev) => applyEqualPuntos(prev.filter((q) => q.id !== questionId)));
+    setPuntosError("");
     setQuestionErrors((prev) => {
       const next = { ...prev };
       delete next[questionId];
       return next;
     });
+  };
+
+  const redistributePuntos = () => {
+    setQuestions((prev) => applyEqualPuntos(prev));
+    setPuntosError("");
+  };
+
+  const updateQuestionPuntos = (questionId: string, value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    const puntos = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
+    updateQuestion(questionId, (q) => ({ ...q, puntos }));
+    setPuntosError("");
+    clearQuestionError(questionId, "puntos");
   };
 
   const addOption = (questionId: string) => {
@@ -248,7 +291,7 @@ export default function CreateExam() {
 
       const updated = { ...current };
       delete updated[field];
-      if (!updated.texto && !updated.respuestas) {
+      if (!updated.texto && !updated.respuestas && !updated.puntos) {
         const next = { ...prev };
         delete next[questionId];
         return next;
@@ -265,6 +308,7 @@ export default function CreateExam() {
     setTitleError("");
     setFormationError("");
     setQuestionsError("");
+    setPuntosError("");
 
     const markInvalid = (fieldId: string) => {
       isValid = false;
@@ -307,10 +351,17 @@ export default function CreateExam() {
         markInvalid(`question-${question.id}`);
       }
 
-      if (qError.texto || qError.respuestas) {
+      if (qError.texto || qError.respuestas || qError.puntos) {
         nextQuestionErrors[question.id] = qError;
       }
     });
+
+    if (totalPuntos !== PUNTOS_TOTAL_EXAMEN) {
+      setPuntosError(
+        `La suma de puntos debe ser ${PUNTOS_TOTAL_EXAMEN} (actual: ${totalPuntos})`
+      );
+      markInvalid("puntos-total");
+    }
 
     setQuestionErrors(nextQuestionErrors);
     return { isValid, firstErrorField };
@@ -333,6 +384,7 @@ export default function CreateExam() {
       preguntas: questions.map((q) => ({
         id: q.id,
         texto: q.texto.trim(),
+        puntos: q.puntos,
         respuestas: q.respuestas.map((r) => ({
             id: r.id,
             texto: r.texto.trim(),
@@ -443,10 +495,28 @@ export default function CreateExam() {
             <div className="space-y-4" ref={setFieldRef("questions")}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Label className="text-base">Preguntas</Label>
-                {questionsError && (
-                  <p className="text-sm text-red-600">{questionsError}</p>
-                )}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <div ref={setFieldRef("puntos-total")}>
+                    <Badge variant={puntosValidos ? "default" : "destructive"}>
+                      Total puntos: {totalPuntos} / {PUNTOS_TOTAL_EXAMEN}
+                    </Badge>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={redistributePuntos}
+                  >
+                    Distribuir equitativamente
+                  </Button>
+                </div>
               </div>
+              {questionsError && (
+                <p className="text-sm text-red-600">{questionsError}</p>
+              )}
+              {puntosError && (
+                <p className="text-sm text-red-600">{puntosError}</p>
+              )}
 
               {questions.map((question, index) => (
                 <Card
@@ -456,16 +526,34 @@ export default function CreateExam() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeQuestion(question.id)}
-                        disabled={questions.length === 1}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Eliminar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`puntos-${question.id}`} className="text-sm whitespace-nowrap">
+                            Puntos
+                          </Label>
+                          <Input
+                            id={`puntos-${question.id}`}
+                            type="number"
+                            min={1}
+                            max={100}
+                            className="w-20 h-8"
+                            value={question.puntos}
+                            onChange={(e) =>
+                              updateQuestionPuntos(question.id, e.target.value)
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeQuestion(question.id)}
+                          disabled={questions.length === 1}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
