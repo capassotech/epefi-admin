@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, BookOpen, Settings, Trash2 } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
 import { toast } from 'sonner';
+import { extractErrorMessage } from '@/utils/errorMessages';
 
 import {
     Dialog,
@@ -298,7 +299,7 @@ const SubjectModal = ({
             }
         } catch (error) {
             console.error('Error al procesar materia:', error);
-            toast.error('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+            toast.error(extractErrorMessage(error) || 'Error al guardar la materia. Por favor, inténtalo de nuevo.');
         } finally {
             setLoading(false);
         }
@@ -531,7 +532,7 @@ const SubjectModal = ({
                                         }
                                     } catch (error) {
                                         console.error('Error al guardar materia:', error);
-                                        toast.error('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+                                        toast.error(extractErrorMessage(error) || 'Error al guardar la materia. Por favor, inténtalo de nuevo.');
                                     } finally {
                                         setLoading(false);
                                     }
@@ -564,7 +565,7 @@ const SubjectModal = ({
                                         }
                                     } catch (error) {
                                         console.error('Error al guardar materia:', error);
-                                        alert('Error al guardar la materia. Por favor, inténtalo de nuevo.');
+                                        toast.error(extractErrorMessage(error) || 'Error al guardar la materia. Por favor, inténtalo de nuevo.');
                                     } finally {
                                         setLoading(false);
                                     }

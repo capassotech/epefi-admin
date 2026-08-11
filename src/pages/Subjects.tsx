@@ -139,11 +139,9 @@ export default function Subjects() {
 
             setMaterias(prev => [newSubject, ...prev]);
 
-            // No mostrar toast aquí porque se mostrará en SubjectModal después de guardar
+            // No mostrar toast aquí: SubjectModal muestra el mensaje del backend
             return newSubject;
         } catch (err: unknown) {
-            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-            toast.error("Error al crear materia: " + errorMessage);
             throw err;
         }
     };
@@ -175,8 +173,6 @@ export default function Subjects() {
             ));
             toast.success("Materia actualizada exitosamente");
         } catch (err: unknown) {
-            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-            toast.error("Error al actualizar materia: " + errorMessage);
             throw err;
         }
     };
