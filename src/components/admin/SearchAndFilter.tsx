@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, ArrowUpDown, Plus } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Plus, User } from "lucide-react";
 import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
 import type { StudentDB } from "@/types/types";
@@ -224,62 +224,105 @@ export const SearchAndFilter = ({
             </Select>
           )}
 
-          {filterOptions?.sortOptions &&
-            (currentFilters.sortBy ||
-              (hideUnsortedOption && "date")) && (
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 h-10 px-3"
-              onClick={handleSortDirectionToggle}
-              title={
-                (currentFilters.sortDirection ??
-                  defaultSortDirection(currentFilters.sortBy)) === "asc"
-                  ? "Orden ascendente"
-                  : "Orden descendente"
-              }
-            >
-              <ArrowUpDown className="w-4 h-4 mr-1.5" />
-              {(currentFilters.sortDirection ??
-                defaultSortDirection(currentFilters.sortBy)) === "asc"
-                ? "Asc"
-                : "Desc"}
-            </Button>
-          )}
-
-          {showClearFilters && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="shrink-0 h-10 px-3"
-              onClick={handleClearFilters}
-            >
-              Limpiar filtros
-            </Button>
+          {/* Misma línea: Desc + Limpiar + Crear (mobile) */}
+          {(!!(
+            filterOptions?.sortOptions &&
+            (currentFilters.sortBy || (hideUnsortedOption && "date"))
+          ) ||
+            showClearFilters ||
+            (!hideCreateButton && onCreateNew)) && (
+            <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2">
+              {filterOptions?.sortOptions &&
+                (currentFilters.sortBy ||
+                  (hideUnsortedOption && "date")) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 h-10 px-2.5 sm:px-3"
+                    onClick={handleSortDirectionToggle}
+                    title={
+                      (currentFilters.sortDirection ??
+                        defaultSortDirection(currentFilters.sortBy)) === "asc"
+                        ? "Orden ascendente"
+                        : "Orden descendente"
+                    }
+                  >
+                    <ArrowUpDown className="w-4 h-4 mr-1" />
+                    {(currentFilters.sortDirection ??
+                      defaultSortDirection(currentFilters.sortBy)) === "asc"
+                      ? "Asc"
+                      : "Desc"}
+                  </Button>
+                )}
+              {showClearFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="shrink-0 h-10 px-2 sm:px-3"
+                  onClick={handleClearFilters}
+                >
+                  <span className="sm:hidden">Limpiar</span>
+                  <span className="hidden sm:inline">Limpiar filtros</span>
+                </Button>
+              )}
+              {!hideCreateButton && onCreateNew && (
+                <div className="sm:hidden flex-1 min-w-0 ml-auto">
+                  {isStudentPage ? (
+                    <CreateUserModal onUserCreated={onCreateNew}>
+                      <Button
+                        className="cursor-pointer w-full justify-center px-4"
+                        data-tour="create-user"
+                      >
+                        <User className="w-4 h-4 mr-2" />
+                        Crear usuario
+                      </Button>
+                    </CreateUserModal>
+                  ) : (
+                    <Button
+                      onClick={() => onCreateNew?.()}
+                      className="cursor-pointer w-full justify-center px-4"
+                      data-tour="create-course"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {createButtonText}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
 
 
       {(extraActions || (!hideCreateButton && onCreateNew)) && (
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+        <div
+          className={`flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 ${
+            !extraActions && !hideCreateButton && onCreateNew
+              ? "hidden sm:flex"
+              : ""
+          }`}
+        >
           {extraActions}
-          {!hideCreateButton && onCreateNew &&
-            (isStudentPage ? (
-              <CreateUserModal
-                onUserCreated={onCreateNew}
-                triggerText={createButtonText}
-              />
-            ) : (
-              <Button
-                onClick={() => onCreateNew?.()}
-                className="cursor-pointer"
-                data-tour="create-course"
-              >
-                <Plus className="w-4 h-4 mr-2 cursor-pointer" />
-                {createButtonText}
-              </Button>
-            ))}
+          {!hideCreateButton && onCreateNew && (
+            <div className={extraActions ? "hidden sm:block" : undefined}>
+              {isStudentPage ? (
+                <CreateUserModal
+                  onUserCreated={onCreateNew}
+                  triggerText={createButtonText}
+                />
+              ) : (
+                <Button
+                  onClick={() => onCreateNew?.()}
+                  className="cursor-pointer"
+                  data-tour="create-course"
+                >
+                  <Plus className="w-4 h-4 mr-2 cursor-pointer" />
+                  {createButtonText}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

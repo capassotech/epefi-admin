@@ -95,11 +95,11 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                     <div className="flex-1 min-w-0">
                       <Link
                         to={`/subjects/${encodeURIComponent(m.id)}`}
-                        className="text-lg font-semibold text-gray-900 hover:text-[#7a1a3a] hover:underline transition-colors duration-200 block"
+                        className="text-base sm:text-lg font-semibold text-gray-900 hover:text-[#7a1a3a] hover:underline transition-colors duration-200 block break-words"
                       >
                         {m.nombre}
                       </Link>
-                      <p className='text-sm text-gray-500 mt-1'>
+                      <p className="text-sm text-gray-600 mt-1">
                         {m.modulos ? m.modulos.length : 0} {m.modulos && m.modulos.length !== 1 ? 'módulos' : 'módulo'}
                       </p>
                     </div>
@@ -153,11 +153,17 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
                     </Button>
                   )}
                   <div 
-                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:w-auto"
+                    className={`flex items-center justify-between gap-2 px-3 py-2 border rounded-md w-full sm:w-auto ${
+                      isSubjectActive(m)
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
+                    }`}
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
-                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                    <span className={`text-sm font-medium ${
+                      isSubjectActive(m) ? "text-green-700" : "text-red-700"
+                    }`}>
                       {updatingStatusId === m.id ? 'Actualizando...' : (isSubjectActive(m) ? 'Activo' : 'Inactivo')}
                     </span>
                     {updatingStatusId === m.id ? (

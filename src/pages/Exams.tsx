@@ -206,24 +206,24 @@ export default function Exams() {
             <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
               {exams.map((exam, index) => (
                 <div key={exam.id} className="p-4 space-y-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 break-words">
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="font-semibold text-gray-900 break-words text-base">
                       {exam.titulo || `Examen ${index + 1}`}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1 break-words">
+                    <p className="text-sm text-gray-600 break-words">
                       {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
                       {exam.preguntas?.length ?? 0} pregunta
                       {(exam.preguntas?.length ?? 0) !== 1 ? "s" : ""}
-                    </p>
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="cursor-pointer flex-1 min-w-[7rem]"
+                      className="cursor-pointer flex-1 min-w-[7rem] justify-center"
                       onClick={() =>
                         navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
                       }
@@ -235,7 +235,7 @@ export default function Exams() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="cursor-pointer flex-1 min-w-[7rem] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      className="cursor-pointer flex-1 min-w-[7rem] justify-center text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                       onClick={() => handleDeleteClick(exam.id)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />

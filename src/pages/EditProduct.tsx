@@ -437,7 +437,7 @@ export default function EditProduct() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <Link to="/products" className="shrink-0">
           <Button variant="outline" size="sm" className="flex items-center space-x-2 cursor-pointer w-full sm:w-auto">
@@ -485,7 +485,7 @@ export default function EditProduct() {
       <Form {...form}>
         <div className="border-b border-gray-200">
           <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
-            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
+            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide min-w-0">
               {tabs.map((tab, index) => (
                 <button
                   key={tab.id}
@@ -601,13 +601,13 @@ export default function EditProduct() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-between">
             <Button
               type="button"
               variant="outline"
               onClick={handleBack}
               disabled={currentTab === 0 || loading}
-              className="cursor-pointer"
+              className="cursor-pointer w-full sm:w-auto"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Anterior
@@ -616,7 +616,7 @@ export default function EditProduct() {
             {currentTab === 0 ? (
               <Button
                 type="button"
-                className="cursor-pointer"
+                className="cursor-pointer w-full sm:w-auto"
                 onClick={async () => {
                   const isValid = await form.trigger();
                   if (!isValid) {
@@ -651,7 +651,7 @@ export default function EditProduct() {
               </Button>
             ) : (
               <Button 
-                className="cursor-pointer" 
+                className="cursor-pointer w-full sm:w-auto" 
                 onClick={async () => {
                   const currentData = form.getValues();
                   

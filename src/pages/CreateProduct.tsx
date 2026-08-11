@@ -313,7 +313,7 @@ export default function CreateProduct() {
   const handleBack = () => { if (currentTab > 0) setCurrentTab(currentTab - 1) };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <Link to="/products" className="shrink-0">
           <Button
@@ -448,12 +448,13 @@ export default function CreateProduct() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-between">
             <Button
               type="button"
               variant="outline"
               onClick={handleBack}
               disabled={currentTab === 0 || loading || currentTab === 2 && !createdCourseId}
+              className="w-full sm:w-auto"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Anterior
@@ -462,7 +463,7 @@ export default function CreateProduct() {
             {currentTab === 0 ? (
               <Button
                 type="button"
-                className="cursor-pointer"
+                className="cursor-pointer w-full sm:w-auto"
                 onClick={async () => {
                   // Si el curso ya está creado, solo avanzar
                   if (createdCourseId && courseAlreadyCreatedInSession) {
@@ -504,7 +505,7 @@ export default function CreateProduct() {
                 )}
               </Button>
             ) : (
-              <Button type="button" onClick={finalizeCourse} disabled={loading}>
+              <Button type="button" onClick={finalizeCourse} disabled={loading} className="w-full sm:w-auto">
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

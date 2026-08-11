@@ -112,7 +112,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
       {selectedStudents.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 text-sm">
           <Users className="w-4 h-4 text-blue-700 shrink-0" />
-          <span className="font-medium text-blue-900">
+          <span className="font-medium text-blue-900 flex-1 min-w-0">
             {selectedStudents.length} usuario{selectedStudents.length !== 1 ? "s" : ""} seleccionado
             {selectedStudents.length !== 1 ? "s" : ""}
           </span>
@@ -120,7 +120,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 border-blue-200 text-blue-800 hover:bg-blue-100"
+            className="h-8 border-blue-200 text-blue-800 hover:bg-blue-100 w-full sm:w-auto"
             onClick={() => setSelectedRowIds([])}
           >
             Limpiar selección
@@ -128,7 +128,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
           <Button
             type="button"
             size="sm"
-            className="h-8 bg-blue-600 text-white hover:bg-blue-700"
+            className="h-8 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
             onClick={() => {
               setBulkSelectedCourseIds([]);
               setBulkAssignOpen(true);
@@ -142,7 +142,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
       )}
 
       {/* ── Vista mobile: tarjetas ── */}
-      <div className="block md:hidden divide-y divide-gray-100">
+      <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm overflow-hidden">
         {students.map((student, index) => (
           <div
             key={student.id || student.uid || `student-mobile-${index}`}
@@ -150,11 +150,11 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
           >
             {/* Cabecera: avatar + nombre + rol */}
             <div
-              className="flex items-center gap-3 cursor-pointer"
+              className="flex items-start gap-3 cursor-pointer"
               onClick={() => navigate(`/students/${student.id}`)}
             >
               <div
-                className="flex-shrink-0"
+                className="flex-shrink-0 pt-1"
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -169,41 +169,41 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                   {student.nombre?.charAt(0).toUpperCase() || "?"}
                 </span>
               </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{getFullName(student)}</p>
-                <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3 h-3 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-gray-900 break-words">{getFullName(student)}</p>
+                <p className="text-sm text-gray-600 truncate flex items-center gap-1 mt-0.5">
+                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
                   {student.email || "Sin email"}
                 </p>
-              </div>
-              <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-                {student.role?.admin && (
-                  <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-purple-100 text-purple-800">
-                    Admin
-                  </span>
-                )}
-                {student.role?.student && (
-                  <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-blue-100 text-blue-800">
-                    Alumno
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  {student.role?.admin && (
+                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-purple-100 text-purple-800">
+                      Admin
+                    </span>
+                  )}
+                  {student.role?.student && (
+                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-blue-100 text-blue-800">
+                      Alumno
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Acciones */}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate(`/students/${student.id}`)}
-                className="h-8 flex-1 min-w-[100px] border-green-200 text-green-700 hover:bg-green-50 cursor-pointer"
+                className="h-9 w-full justify-center border-green-200 text-green-700 hover:bg-green-50 cursor-pointer"
                 data-tour="view-student-details"
               >
                 <Eye className="w-3.5 h-3.5 mr-1" />
-                Ver Detalles
+                Ver
               </Button>
 
-              <div className="flex-1 min-w-[80px]">
+              <div className="w-full">
                 <CreateUserModal
                   onUserCreated={onUserUpdated}
                   triggerText=""
@@ -213,7 +213,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-full border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
+                    className="h-9 w-full justify-center border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
                     data-tour="edit-student"
                   >
                     <Edit2 className="w-3.5 h-3.5 mr-1" />
@@ -231,7 +231,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                   setSelectedCourseIds([]);
                   setAssignDialogOpen(true);
                 }}
-                className="h-8 flex-1 min-w-[80px] bg-blue-600 text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
+                className="h-9 w-full justify-center bg-blue-600 text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
                 title={
                   disableIndividualCursos
                     ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
@@ -245,7 +245,7 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
 
               {/* Toggle estado */}
               <div
-                className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-colors flex-1 min-w-[110px] ${
+                className={`flex items-center justify-between gap-2 px-3 py-1.5 border rounded-lg transition-colors min-h-9 ${
                   (student.activo ?? false)
                     ? 'bg-green-50 border-green-200'
                     : 'bg-red-50 border-red-200'
@@ -254,22 +254,22 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                 onMouseDown={(e) => e.stopPropagation()}
                 data-tour="toggle-student-status"
               >
-                <span className={`text-xs font-medium whitespace-nowrap ${
+                <span className={`text-sm font-medium ${
                   (student.activo ?? false) ? 'text-green-700' : 'text-red-700'
                 }`}>
                   {updatingStatusId === student.id
-                    ? 'Actualizando...'
-                    : (student.activo ?? false) ? 'Habilitado' : 'Deshabilitado'}
+                    ? '...'
+                    : (student.activo ?? false) ? 'Activo' : 'Inactivo'}
                 </span>
                 {updatingStatusId === student.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-500 ml-auto" />
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
                 ) : (
                   <Switch
                     checked={student.activo ?? false}
                     onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
                     onClick={(e) => e.stopPropagation()}
                     disabled={updatingStatusId !== null}
-                    className="ml-auto data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                    className="shrink-0 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
                   />
                 )}
               </div>

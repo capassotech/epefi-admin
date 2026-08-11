@@ -314,29 +314,29 @@ export default function CompletedExams() {
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : items.length > 0 ? (
         <>
-          <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
+          <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm">
             {items.map((row) => (
-              <div key={row.id} className="p-4 space-y-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="font-semibold text-gray-900 break-words">
+              <div key={row.id} className="p-4 space-y-3 bg-white">
+                <div className="min-w-0 space-y-1.5">
+                  <p className="font-semibold text-gray-900 break-words text-base">
                     {row.nombreAlumno || "—"}
                   </p>
-                  <p className="text-sm text-gray-600 break-words">
+                  <p className="text-sm text-gray-700 break-words">
                     {row.tituloFormacion ||
                       coursesById[row.idFormacion]?.titulo ||
                       row.idFormacion}
                   </p>
-                  <p className="text-sm text-gray-500 break-words">
+                  <p className="text-sm text-gray-600 break-words">
                     {row.tituloExamen ||
                       examsById[row.idExamen]?.titulo ||
                       row.idExamen}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <span className="text-sm font-semibold text-gray-900">
                       Nota: {typeof row.nota === "number" ? row.nota : "—"}
                     </span>
                     <span
-                      className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                      className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
                         row.aprobado
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
@@ -345,7 +345,7 @@ export default function CompletedExams() {
                       {row.aprobado ? "Aprobado" : "No aprobado"}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-500">
                     {formatTimestamp(row.fechaRealizacion)}
                   </p>
                 </div>
