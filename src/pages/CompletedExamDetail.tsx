@@ -54,6 +54,7 @@ export default function CompletedExamDetail() {
   const [preguntas, setPreguntas] = useState<ExamenRealizadoPreguntaDetalle[]>([]);
   const [formationTitle, setFormationTitle] = useState("");
   const [examTitle, setExamTitle] = useState("");
+  const [detalleIncompleto, setDetalleIncompleto] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,13 +68,20 @@ export default function CompletedExamDetail() {
         const data = await CompletedExamsAPI.getById(id);
         const raw = data._raw;
 
+        // Solo para título / fallback legacy. El detalle prioriza el snapshot del intento.
         const exam = data.idExamen
           ? await ExamsAPI.getById(data.idExamen).catch(() => null)
           : null;
 
         const merged = buildCompletedExamQuestions(data, raw, exam);
         setPreguntas(merged);
+        setDetalleIncompleto(
+          raw.detalleIncompleto === true ||
+            (merged.length > 0 &&
+              merged.every((q) => (q.respuestas?.length ?? 0) === 0))
+        );
 
+        // Nota y puntaje del intento guardado; no recalcular contra el examen editado.
         const puntosFromQuestions = sumPreguntasPuntosObtenidos(merged);
         const puntosObtenidos =
           typeof data.puntosObtenidos === "number"
@@ -87,7 +95,10 @@ export default function CompletedExamDetail() {
           typeof data.nota === "number"
             ? data.nota
             : computeNotaFromPorcentaje(porcentajeAciertos);
-        const aprobado = porcentajeAciertos >= 70;
+        const aprobado =
+          typeof data.aprobado === "boolean"
+            ? data.aprobado
+            : porcentajeAciertos >= 70;
 
         setMeta({
           id: data.id,
@@ -227,10 +238,19 @@ export default function CompletedExamDetail() {
         <h2 className="text-lg font-semibold text-gray-900">
           Preguntas y respuestas
         </h2>
+        {detalleIncompleto && (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Este intento se rindió antes de que el sistema guardara una copia de
+            las preguntas, y el examen se editó después. La nota del encabezado
+            es la correcta; el detalle de cada pregunta ya no se puede
+            reconstruir. Los intentos nuevos sí conservan el detalle aunque se
+            edite el examen.
+          </p>
+        )}
         {preguntas.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No se pudo reconstruir el detalle de preguntas. Verifica que el
-            registro incluya respuestas o que el examen original siga existiendo.
+            registro del intento incluya el snapshot de preguntas y respuestas.
           </p>
         ) : (
           preguntas.map((q, index) => {
