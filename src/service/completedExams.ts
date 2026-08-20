@@ -155,7 +155,15 @@ export const CompletedExamsAPI = {
                       ),
                     };
                   })
-                : [],
+                : Array.isArray(pr.opciones)
+                  ? (pr.opciones as Record<string, unknown>[]).map((rr) => ({
+                      id: String(rr.id ?? ""),
+                      texto: String(rr.texto ?? rr.text ?? ""),
+                      esCorrecta: Boolean(
+                        rr.esCorrecta ?? rr.correcta ?? rr.isCorrect
+                      ),
+                    }))
+                  : [],
               respuestasSeleccionadas: seleccionadas,
             };
           })

@@ -191,34 +191,119 @@ function normalizeQuestionFromRaw(
   };
 }
 
+function withResolvedScore(
+  question: ExamenRealizadoPreguntaDetalle,
+  selections: Map<string, Set<string>>
+): ExamenRealizadoPreguntaDetalle {
+  const selected =
+    question.respuestasSeleccionadas?.length
+      ? question.respuestasSeleccionadas
+      : Array.from(selections.get(question.id) ?? []);
+  const withSelected = { ...question, respuestasSeleccionadas: selected };
+  const score = resolveQuestionScore(withSelected, selected);
+  return { ...withSelected, ...score };
+}
+
 /**
- * Arma el detalle mostrable: plantilla del examen + respuestas del alumno.
+ * Preguntas del intento (snapshot). Prioriza el registro ya normalizado y,
+ * si hace falta, el payload crudo del backend.
  */
-export function buildCompletedExamQuestions(
+function buildQuestionsFromAttemptSnapshot(
   record: ExamenRealizadoDetalle,
   raw: Record<string, unknown>,
-  examTemplate: Examen | null | undefined
+  selections: Map<string, Set<string>>
 ): ExamenRealizadoPreguntaDetalle[] {
-  const selections = extractStudentSelections(raw);
+  const fromRecord = record.preguntas ?? [];
+  if (fromRecord.length > 0) {
+    const built = fromRecord
+      .map((p) =>
+        normalizeQuestionFromRaw(
+          p as unknown as Record<string, unknown>,
+          selections
+        )
+      )
+      .filter((q): q is ExamenRealizadoPreguntaDetalle => q != null);
+    if (built.length > 0) return built;
+  }
 
-  if (examTemplate?.preguntas?.length) {
-    const puntosDistribution = distributePuntosEqually(examTemplate.preguntas.length);
+  const preguntasRaw = raw.preguntas;
+  if (!Array.isArray(preguntasRaw) || preguntasRaw.length === 0) return [];
 
-    return examTemplate.preguntas.map((q, index) => {
-      const selected = Array.from(selections.get(q.id) ?? []);
-      const fromQuestion = record.preguntas?.find((p) => p.id === q.id);
-      const mergedSelected =
-        fromQuestion?.respuestasSeleccionadas?.length
-          ? fromQuestion.respuestasSeleccionadas
-          : selected;
-      const puntos =
-        typeof q.puntos === "number"
+  return preguntasRaw
+    .map((p) =>
+      normalizeQuestionFromRaw(p as Record<string, unknown>, selections)
+    )
+    .filter((q): q is ExamenRealizadoPreguntaDetalle => q != null);
+}
+
+/**
+ * Completa texto/opciones faltantes desde la plantilla actual, pero solo para
+ * IDs que ya estaban en el intento (no agrega preguntas nuevas del examen editado).
+ */
+function enrichSnapshotFromTemplate(
+  snapshot: ExamenRealizadoPreguntaDetalle[],
+  examTemplate: Examen,
+  selections: Map<string, Set<string>>
+): ExamenRealizadoPreguntaDetalle[] {
+  const templateById = new Map(
+    examTemplate.preguntas.map((q) => [q.id, q] as const)
+  );
+
+  return snapshot.map((q) => {
+    const template = templateById.get(q.id);
+    if (!template) return withResolvedScore(q, selections);
+
+    const respuestas =
+      q.respuestas.length > 0
+        ? q.respuestas
+        : template.respuestas.map((r) => ({
+            id: r.id,
+            texto: r.texto,
+            esCorrecta: Boolean(r.esCorrecta),
+          }));
+
+    return withResolvedScore(
+      {
+        ...q,
+        texto: q.texto || template.texto,
+        puntos:
+          typeof q.puntos === "number"
+            ? q.puntos
+            : typeof template.puntos === "number"
+              ? template.puntos
+              : q.puntos,
+        respuestas,
+      },
+      selections
+    );
+  });
+}
+
+function buildQuestionsFromLiveTemplate(
+  record: ExamenRealizadoDetalle,
+  examTemplate: Examen,
+  selections: Map<string, Set<string>>
+): ExamenRealizadoPreguntaDetalle[] {
+  const puntosDistribution = distributePuntosEqually(
+    examTemplate.preguntas.length
+  );
+
+  return examTemplate.preguntas.map((q, index) => {
+    const selected = Array.from(selections.get(q.id) ?? []);
+    const fromQuestion = record.preguntas?.find((p) => p.id === q.id);
+    const mergedSelected =
+      fromQuestion?.respuestasSeleccionadas?.length
+        ? fromQuestion.respuestasSeleccionadas
+        : selected;
+    const puntos =
+      typeof fromQuestion?.puntos === "number"
+        ? fromQuestion.puntos
+        : typeof q.puntos === "number"
           ? q.puntos
-          : typeof fromQuestion?.puntos === "number"
-            ? fromQuestion.puntos
-            : puntosDistribution[index];
+          : puntosDistribution[index];
 
-      const baseQuestion: ExamenRealizadoPreguntaDetalle = {
+    return withResolvedScore(
+      {
         id: q.id,
         texto: q.texto,
         puntos,
@@ -230,39 +315,52 @@ export function buildCompletedExamQuestions(
           esCorrecta: Boolean(r.esCorrecta),
         })),
         respuestasSeleccionadas: mergedSelected,
-      };
+      },
+      selections
+    );
+  });
+}
 
-      const score = resolveQuestionScore(baseQuestion, mergedSelected);
-      return { ...baseQuestion, ...score };
+/**
+ * Arma el detalle mostrable priorizando el snapshot del intento.
+ * La plantilla actual del examen solo se usa como respaldo legacy o para
+ * completar opciones faltantes de preguntas que ya existían al rendir.
+ */
+export function buildCompletedExamQuestions(
+  record: ExamenRealizadoDetalle,
+  raw: Record<string, unknown>,
+  examTemplate: Examen | null | undefined
+): ExamenRealizadoPreguntaDetalle[] {
+  const selections = extractStudentSelections(raw);
+  const snapshot = buildQuestionsFromAttemptSnapshot(record, raw, selections);
+
+  if (snapshot.length > 0) {
+    const hasOptions = snapshot.some((q) => q.respuestas.length > 0);
+    if (hasOptions) {
+      return snapshot.map((q) => withResolvedScore(q, selections));
+    }
+    if (examTemplate?.preguntas?.length) {
+      return enrichSnapshotFromTemplate(snapshot, examTemplate, selections);
+    }
+    // Sin opciones en plantilla: respetar puntaje/acertada ya guardados en el intento
+    return snapshot.map((q) => {
+      const selected =
+        q.respuestasSeleccionadas?.length
+          ? q.respuestasSeleccionadas
+          : Array.from(selections.get(q.id) ?? []);
+      if (
+        typeof q.acertada === "boolean" ||
+        typeof q.puntosObtenidos === "number"
+      ) {
+        return { ...q, respuestasSeleccionadas: selected };
+      }
+      return withResolvedScore({ ...q, respuestasSeleccionadas: selected }, selections);
     });
   }
 
-  const fromRecord = record.preguntas ?? [];
-  if (fromRecord.length > 0) {
-    const built = fromRecord
-      .map((p) =>
-        normalizeQuestionFromRaw(p as unknown as Record<string, unknown>, selections)
-      )
-      .filter((q): q is ExamenRealizadoPreguntaDetalle => q != null);
-
-    if (built.some((q) => q.respuestas.length > 0)) {
-      return built.map((q) => ({
-        ...q,
-        respuestasSeleccionadas:
-          q.respuestasSeleccionadas?.length
-            ? q.respuestasSeleccionadas
-            : Array.from(selections.get(q.id) ?? []),
-      }));
-    }
-  }
-
-  const preguntasRaw = raw.preguntas;
-  if (Array.isArray(preguntasRaw)) {
-    return preguntasRaw
-      .map((p) =>
-        normalizeQuestionFromRaw(p as Record<string, unknown>, selections)
-      )
-      .filter((q): q is ExamenRealizadoPreguntaDetalle => q != null);
+  // Legacy: intentos sin snapshot de preguntas → reconstruir con plantilla actual
+  if (examTemplate?.preguntas?.length) {
+    return buildQuestionsFromLiveTemplate(record, examTemplate, selections);
   }
 
   return [];
