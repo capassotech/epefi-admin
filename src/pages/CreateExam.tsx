@@ -22,7 +22,10 @@ import { toast } from "sonner";
 import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 import {
   distributePuntosEqually,
+  parsePuntosInput,
+  puntosSumEqualsTotal,
   PUNTOS_TOTAL_EXAMEN,
+  roundPuntos,
   sumPreguntasPuntos,
 } from "@/utils/examPoints";
 
@@ -137,6 +140,7 @@ export default function CreateExam() {
   const [questionsError, setQuestionsError] = useState("");
   const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
   const [puntosError, setPuntosError] = useState("");
+  const [puntosDraft, setPuntosDraft] = useState<Record<string, string>>({});
   const lastQuestionRef = useRef<HTMLDivElement | null>(null);
   const scrollToNewQuestion = useRef(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -221,7 +225,7 @@ export default function CreateExam() {
   );
 
   const totalPuntos = useMemo(() => sumPreguntasPuntos(questions), [questions]);
-  const puntosValidos = totalPuntos === PUNTOS_TOTAL_EXAMEN;
+  const puntosValidos = puntosSumEqualsTotal(totalPuntos);
 
   const updateQuestion = (questionId: string, updater: (q: QuestionForm) => QuestionForm) => {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
@@ -242,6 +246,11 @@ export default function CreateExam() {
   const removeQuestion = (questionId: string) => {
     setQuestions((prev) => applyEqualPuntos(prev.filter((q) => q.id !== questionId)));
     setPuntosError("");
+    setPuntosDraft((prev) => {
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
     setQuestionErrors((prev) => {
       const next = { ...prev };
       delete next[questionId];
@@ -251,15 +260,44 @@ export default function CreateExam() {
 
   const redistributePuntos = () => {
     setQuestions((prev) => applyEqualPuntos(prev));
+    setPuntosDraft({});
     setPuntosError("");
   };
 
   const updateQuestionPuntos = (questionId: string, value: string) => {
-    const parsed = Number.parseInt(value, 10);
-    const puntos = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
-    updateQuestion(questionId, (q) => ({ ...q, puntos }));
+    const normalized = value.replace(",", ".");
+    // Permitir teclear decimales a medias (ej. "33." / "33,")
+    if (normalized !== "" && !/^\d*\.?\d*$/.test(normalized)) {
+      return;
+    }
+
+    setPuntosDraft((prev) => ({ ...prev, [questionId]: value }));
+
+    if (normalized === "" || normalized === ".") {
+      updateQuestion(questionId, (q) => ({ ...q, puntos: 0 }));
+    } else if (!normalized.endsWith(".")) {
+      updateQuestion(questionId, (q) => ({
+        ...q,
+        puntos: parsePuntosInput(value),
+      }));
+    }
+
     setPuntosError("");
     clearQuestionError(questionId, "puntos");
+  };
+
+  const commitQuestionPuntos = (questionId: string) => {
+    const draft = puntosDraft[questionId];
+    const puntos =
+      draft !== undefined ? parsePuntosInput(draft) : undefined;
+    if (puntos !== undefined) {
+      updateQuestion(questionId, (q) => ({ ...q, puntos }));
+    }
+    setPuntosDraft((prev) => {
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
   };
 
   const addOption = (questionId: string) => {
@@ -377,9 +415,9 @@ export default function CreateExam() {
       }
     });
 
-    if (totalPuntos !== PUNTOS_TOTAL_EXAMEN) {
+    if (!puntosSumEqualsTotal(totalPuntos)) {
       setPuntosError(
-        `La suma de puntos debe ser ${PUNTOS_TOTAL_EXAMEN} (actual: ${totalPuntos})`
+        `La suma de puntos debe ser ${PUNTOS_TOTAL_EXAMEN} (actual: ${roundPuntos(totalPuntos)})`
       );
       markInvalid("puntos-total");
     }
@@ -406,7 +444,7 @@ export default function CreateExam() {
       preguntas: questions.map((q) => ({
         id: q.id,
         texto: q.texto.trim(),
-        puntos: q.puntos,
+        puntos: roundPuntos(q.puntos),
         respuestas: q.respuestas.map((r) => ({
             id: r.id,
             texto: r.texto.trim(),
@@ -522,11 +560,19 @@ export default function CreateExam() {
                 min={1}
                 max={480}
                 step={1}
-                value={duracionMinutos}
+                value={duracionMinutos === 0 ? "" : duracionMinutos}
                 onChange={(e) => {
-                  const value = Number(e.target.value);
-                  setDuracionMinutos(Number.isNaN(value) ? 0 : value);
-                  if (duracionError) setDuracionError("");
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setDuracionMinutos(0);
+                    if (duracionError) setDuracionError("");
+                    return;
+                  }
+                  const value = Number.parseInt(raw, 10);
+                  if (!Number.isNaN(value)) {
+                    setDuracionMinutos(value);
+                    if (duracionError) setDuracionError("");
+                  }
                 }}
               />
               <p className="text-xs text-muted-foreground">
@@ -576,14 +622,16 @@ export default function CreateExam() {
                           </Label>
                           <Input
                             id={`puntos-${question.id}`}
-                            type="number"
-                            min={1}
-                            max={100}
-                            className="w-20 h-8"
-                            value={question.puntos}
+                            type="text"
+                            inputMode="decimal"
+                            className="w-24 h-8"
+                            value={
+                              puntosDraft[question.id] ?? String(question.puntos)
+                            }
                             onChange={(e) =>
                               updateQuestionPuntos(question.id, e.target.value)
                             }
+                            onBlur={() => commitQuestionPuntos(question.id)}
                           />
                         </div>
                         <Button
