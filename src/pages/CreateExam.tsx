@@ -233,7 +233,10 @@ export default function CreateExam() {
 
   const addQuestion = () => {
     scrollToNewQuestion.current = true;
-    setQuestions((prev) => applyEqualPuntos([...prev, createEmptyQuestion()]));
+    setQuestions((prev) => [
+      ...prev,
+      { ...createEmptyQuestion(), puntos: 0 },
+    ]);
     setPuntosError("");
   };
 
@@ -244,7 +247,7 @@ export default function CreateExam() {
   }, [questions.length]);
 
   const removeQuestion = (questionId: string) => {
-    setQuestions((prev) => applyEqualPuntos(prev.filter((q) => q.id !== questionId)));
+    setQuestions((prev) => prev.filter((q) => q.id !== questionId));
     setPuntosError("");
     setPuntosDraft((prev) => {
       const next = { ...prev };
