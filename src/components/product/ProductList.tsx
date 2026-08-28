@@ -185,7 +185,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
             products.map((f) => (
               <li
                 key={f.id}
-                className="px-6 py-5 bg-white hover:bg-gray-50 border-b border-gray-200 transition-all duration-200"
+                className="px-4 py-4 sm:px-6 sm:py-5 bg-white hover:bg-gray-50 border-b border-gray-200 transition-all duration-200"
               >
                 <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
                   {/* Imagen */}
@@ -209,14 +209,14 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                             {f.titulo}
                           </Link>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-500 mb-2">
-                          <span className="font-medium">📚 {f.materias?.length || 0} materias</span>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-600 mb-2">
+                          <span className="font-medium">{f.materias?.length || 0} materias</span>
                         </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-1 sm:line-clamp-1 flex-1 sm:mr-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-sm text-gray-700 line-clamp-2 flex-1 sm:mr-4">
                             {f.descripcion}
                           </p>
-                          <p className="text-base sm:text-lg font-bold text-gray-900 flex-shrink-0">
+                          <p className="text-lg font-bold text-gray-900 flex-shrink-0">
                             {formatCurrency(f.precio)}
                           </p>
                         </div>
@@ -255,7 +255,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                         
                         <div 
                           data-tour="switch-toggle"
-                          className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors ${
+                          className={`flex items-center justify-between gap-2 px-3 py-2 border rounded-lg transition-colors w-full sm:w-auto ${
                             (f.estado === "activo")
                               ? 'bg-green-50 border-green-200' 
                               : 'bg-red-50 border-red-200'
@@ -267,7 +267,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                             e.stopPropagation();
                           }}
                         >
-                          <span className={`text-xs whitespace-nowrap font-medium ${
+                          <span className={`text-sm font-medium ${
                             (f.estado === "activo")
                               ? 'text-green-700' 
                               : 'text-red-700'
