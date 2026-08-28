@@ -402,6 +402,10 @@ export default function CreateExam() {
         qError.texto = "La pregunta no puede estar vacía";
         markInvalid(`question-${question.id}`);
       }
+      if (!(question.puntos > 0)) {
+        qError.puntos = "La pregunta debe tener más de 0 puntos";
+        markInvalid(`question-${question.id}`);
+      }
       if (hasEmptyOption) {
         qError.respuestas = "Todas las respuestas deben tener texto";
         markInvalid(`question-${question.id}`);
@@ -637,6 +641,11 @@ export default function CreateExam() {
                             onBlur={() => commitQuestionPuntos(question.id)}
                           />
                         </div>
+                        {questionErrors[question.id]?.puntos && (
+                          <p className="text-sm text-red-600 whitespace-nowrap">
+                            {questionErrors[question.id]?.puntos}
+                          </p>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
