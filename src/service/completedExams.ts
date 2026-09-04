@@ -64,6 +64,14 @@ function normalizeListItem(raw: Record<string, unknown>): ExamenRealizado {
     idFormacion: String(raw.idFormacion ?? ""),
     nota: Number(raw.nota ?? raw.puntuacion ?? 0),
     aprobado: Boolean(raw.aprobado ?? raw.approved ?? false),
+    estado:
+      raw.estado === "pendiente_correccion" ||
+      raw.estadoCorreccion === "pendiente_correccion"
+        ? "pendiente_correccion"
+        : raw.estado === "completado" ||
+            raw.estadoCorreccion === "completado"
+          ? "completado"
+          : undefined,
     fechaRealizacion: raw.fechaRealizacion as ExamenRealizado["fechaRealizacion"],
     nombreAlumno: nombreCompleto || undefined,
     nombre: nombre || undefined,
@@ -144,6 +152,12 @@ export const CompletedExamsAPI = {
                   : typeof pr.esCorrecta === "boolean"
                     ? pr.esCorrecta
                     : undefined,
+              tipoPregunta:
+                pr.tipoPregunta === "desarrollo"
+                  ? ("desarrollo" as const)
+                  : pr.tipoPregunta === "opcion_multiple"
+                    ? ("opcion_multiple" as const)
+                    : undefined,
               respuestas: Array.isArray(respuestasRaw)
                 ? respuestasRaw.map((r) => {
                     const rr = r as Record<string, unknown>;
@@ -165,6 +179,10 @@ export const CompletedExamsAPI = {
                     }))
                   : [],
               respuestasSeleccionadas: seleccionadas,
+              respuestaDesarrollo:
+                typeof pr.respuestaDesarrollo === "string"
+                  ? pr.respuestaDesarrollo
+                  : undefined,
             };
           })
         : undefined;
