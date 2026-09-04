@@ -65,7 +65,12 @@ function toExportRows(
     examen:
       row.tituloExamen || examsById[row.idExamen]?.titulo || row.idExamen || "—",
     nota: typeof row.nota === "number" ? row.nota : "—",
-    estado: row.aprobado ? "Aprobado" : "No aprobado",
+    estado:
+      row.estado === "pendiente_correccion"
+        ? "Pendiente de corrección"
+        : row.aprobado
+          ? "Aprobado"
+          : "No aprobado",
     fecha: formatTimestamp(row.fechaRealizacion),
   }));
 }
@@ -337,12 +342,18 @@ export default function CompletedExams() {
                     </span>
                     <span
                       className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                        row.aprobado
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        row.estado === "pendiente_correccion"
+                          ? "bg-amber-100 text-amber-800"
+                          : row.aprobado
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {row.aprobado ? "Aprobado" : "No aprobado"}
+                      {row.estado === "pendiente_correccion"
+                        ? "Pendiente de corrección"
+                        : row.aprobado
+                          ? "Aprobado"
+                          : "No aprobado"}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500">
@@ -403,12 +414,18 @@ export default function CompletedExams() {
                     <TableCell>
                       <span
                         className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          row.aprobado
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                          row.estado === "pendiente_correccion"
+                            ? "bg-amber-100 text-amber-800"
+                            : row.aprobado
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {row.aprobado ? "Aprobado" : "No aprobado"}
+                        {row.estado === "pendiente_correccion"
+                          ? "Pendiente de corrección"
+                          : row.aprobado
+                            ? "Aprobado"
+                            : "No aprobado"}
                       </span>
                     </TableCell>
                     <TableCell>{formatTimestamp(row.fechaRealizacion)}</TableCell>

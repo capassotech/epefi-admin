@@ -9,6 +9,7 @@ import { CompletedExamsAPI } from "@/service/completedExams";
 import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
 import type {
+  EstadoExamenRealizado,
   ExamenRealizadoPreguntaDetalle,
   FirestoreTimestamp,
 } from "@/types/types";
@@ -36,6 +37,7 @@ type DetailState = {
   idExamen: string;
   nota: number;
   aprobado: boolean;
+  estado?: EstadoExamenRealizado;
   fechaRealizacion?: FirestoreTimestamp | string | number;
   intentoNumero?: number;
   totalIntentos?: number;
@@ -78,7 +80,11 @@ export default function CompletedExamDetail() {
         setDetalleIncompleto(
           raw.detalleIncompleto === true ||
             (merged.length > 0 &&
-              merged.every((q) => (q.respuestas?.length ?? 0) === 0))
+              merged.every(
+                (q) =>
+                  q.tipoPregunta !== "desarrollo" &&
+                  (q.respuestas?.length ?? 0) === 0
+              ))
         );
 
         // Nota y puntaje del intento guardado; no recalcular contra el examen editado.
@@ -99,6 +105,18 @@ export default function CompletedExamDetail() {
           typeof data.aprobado === "boolean"
             ? data.aprobado
             : porcentajeAciertos >= 70;
+        const estado: EstadoExamenRealizado | undefined =
+          data.estado === "pendiente_correccion" ||
+          raw.estadoCorreccion === "pendiente_correccion" ||
+          raw.estado === "pendiente_correccion"
+            ? "pendiente_correccion"
+            : data.estado === "completado" ||
+                raw.estadoCorreccion === "completado" ||
+                raw.estado === "completado"
+              ? "completado"
+              : merged.some((q) => q.tipoPregunta === "desarrollo")
+                ? "pendiente_correccion"
+                : undefined;
 
         setMeta({
           id: data.id,
@@ -107,6 +125,7 @@ export default function CompletedExamDetail() {
           idExamen: data.idExamen,
           nota,
           aprobado,
+          estado,
           fechaRealizacion: data.fechaRealizacion,
           intentoNumero: data.intentoNumero,
           totalIntentos: data.totalIntentos,
@@ -221,9 +240,13 @@ export default function CompletedExamDetail() {
           </div>
           <div>
             <span className="text-muted-foreground">Estado: </span>
-            <Badge variant={meta.aprobado ? "default" : "destructive"}>
-              {meta.aprobado ? "Aprobado" : "No aprobado"}
-            </Badge>
+            {meta.estado === "pendiente_correccion" ? (
+              <Badge variant="secondary">Pendiente de corrección</Badge>
+            ) : (
+              <Badge variant={meta.aprobado ? "default" : "destructive"}>
+                {meta.aprobado ? "Aprobado" : "No aprobado"}
+              </Badge>
+            )}
           </div>
           <div>
             <span className="text-muted-foreground">Fecha: </span>
@@ -260,25 +283,45 @@ export default function CompletedExamDetail() {
             const correctOptions = q.respuestas.filter((r) => r.esCorrecta);
             const puntosObtenidos =
               typeof q.puntosObtenidos === "number" ? q.puntosObtenidos : 0;
+            const esDesarrollo = q.tipoPregunta === "desarrollo";
 
             return (
               <Card key={q.id || index}>
                 <CardHeader className="pb-2 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <CardTitle className="text-base leading-snug">
-                      Pregunta {index + 1}
-                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-base leading-snug">
+                        Pregunta {index + 1}
+                      </CardTitle>
+                      <Badge variant="outline">
+                        {esDesarrollo ? "Desarrollo" : "Opción múltiple"}
+                      </Badge>
+                    </div>
                     {typeof q.puntos === "number" && (
                       <Badge
                         variant={puntosObtenidos > 0 ? "default" : "secondary"}
                       >
-                        {puntosObtenidos} / {q.puntos} pts
+                        {esDesarrollo && meta.estado === "pendiente_correccion"
+                          ? `Pendiente / ${q.puntos} pts`
+                          : `${puntosObtenidos} / ${q.puntos} pts`}
                       </Badge>
                     )}
                   </div>
                   <p className="text-sm font-normal text-foreground">{q.texto}</p>
                 </CardHeader>
                 <CardContent>
+                  {esDesarrollo ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        Respuesta del alumno
+                      </p>
+                      <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm whitespace-pre-wrap">
+                        {q.respuestaDesarrollo?.trim()
+                          ? q.respuestaDesarrollo
+                          : "Sin respuesta"}
+                      </div>
+                    </div>
+                  ) : (
                   <div className="grid gap-4 md:grid-cols-[1fr_minmax(10rem,auto)] md:items-start">
                     <div className="space-y-2 min-w-0">
                       {q.respuestas.length > 0 ? (
@@ -335,6 +378,7 @@ export default function CompletedExamDetail() {
                       )}
                     </div>
                   </div>
+                  )}
                 </CardContent>
               </Card>
             );

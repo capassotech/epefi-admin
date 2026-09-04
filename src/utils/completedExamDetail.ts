@@ -22,6 +22,17 @@ function resolveQuestionScore(
   pregunta: ExamenRealizadoPreguntaDetalle,
   selectedIds: string[]
 ): Pick<ExamenRealizadoPreguntaDetalle, "acertada" | "puntosObtenidos"> {
+  if (pregunta.tipoPregunta === "desarrollo") {
+    return {
+      acertada:
+        typeof pregunta.acertada === "boolean" ? pregunta.acertada : false,
+      puntosObtenidos:
+        typeof pregunta.puntosObtenidos === "number"
+          ? pregunta.puntosObtenidos
+          : 0,
+    };
+  }
+
   const acertada =
     typeof pregunta.acertada === "boolean"
       ? pregunta.acertada
@@ -186,8 +197,18 @@ function normalizeQuestionFromRaw(
         : typeof pr.esCorrecta === "boolean"
           ? pr.esCorrecta
           : undefined,
+    tipoPregunta:
+      pr.tipoPregunta === "desarrollo"
+        ? "desarrollo"
+        : pr.tipoPregunta === "opcion_multiple"
+          ? "opcion_multiple"
+          : undefined,
     respuestas,
     respuestasSeleccionadas,
+    respuestaDesarrollo:
+      typeof pr.respuestaDesarrollo === "string"
+        ? pr.respuestaDesarrollo
+        : undefined,
   };
 }
 

@@ -256,10 +256,16 @@ export interface ExamenRespuesta {
   esCorrecta: boolean;
 }
 
+export type TipoPregunta = "opcion_multiple" | "desarrollo";
+
+export type EstadoExamenRealizado = "completado" | "pendiente_correccion";
+
 export interface ExamenPregunta {
   id: string;
   texto: string;
   puntos?: number;
+  /** Por defecto opcion_multiple (exámenes legacy). */
+  tipoPregunta?: TipoPregunta;
   respuestas: ExamenRespuesta[];
 }
 
@@ -284,6 +290,8 @@ export interface ExamenRealizado {
   idFormacion: string;
   nota: number;
   aprobado: boolean;
+  /** completado = solo opción múltiple / ya corregido; pendiente_correccion = tiene desarrollo. */
+  estado?: EstadoExamenRealizado;
   fechaRealizacion?: FirestoreTimestamp | string | number;
   nombreAlumno?: string;
   nombre?: string;
@@ -299,9 +307,11 @@ export interface ExamenRealizadoPreguntaDetalle {
   puntos?: number;
   puntosObtenidos?: number;
   acertada?: boolean;
+  tipoPregunta?: TipoPregunta;
   respuestas: ExamenRespuesta[];
   respuestasSeleccionadas?: string[];
   idsRespuestasSeleccionadas?: string[];
+  respuestaDesarrollo?: string;
 }
 
 export interface ExamenRealizadoDetalle extends ExamenRealizado {

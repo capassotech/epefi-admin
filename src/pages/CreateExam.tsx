@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
-import type { Course, Examen, ExamenCreatePayload } from "@/types/types";
+import type { Course, Examen, ExamenCreatePayload, TipoPregunta } from "@/types/types";
 import { toast } from "sonner";
 import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 import {
@@ -39,6 +39,7 @@ type QuestionForm = {
   id: string;
   texto: string;
   puntos: number;
+  tipoPregunta: TipoPregunta;
   respuestas: OptionForm[];
 };
 
@@ -68,6 +69,7 @@ const createEmptyQuestion = (): QuestionForm => ({
   id: makeId(),
   texto: "",
   puntos: PUNTOS_TOTAL_EXAMEN,
+  tipoPregunta: "opcion_multiple",
   respuestas: [createEmptyOption(), createEmptyOption()],
 });
 
@@ -96,14 +98,20 @@ function examToFormState(exam: Examen): {
           id: q.id || makeId(),
           texto: q.texto || "",
           puntos: typeof q.puntos === "number" ? q.puntos : 0,
+          tipoPregunta:
+            q.tipoPregunta === "desarrollo"
+              ? ("desarrollo" as const)
+              : ("opcion_multiple" as const),
           respuestas:
-            q.respuestas?.length > 0
-              ? q.respuestas.map((r) => ({
-                  id: r.id || makeId(),
-                  texto: r.texto || "",
-                  esCorrecta: Boolean(r.esCorrecta),
-                }))
-              : [createEmptyOption(), createEmptyOption()],
+            q.tipoPregunta === "desarrollo"
+              ? []
+              : q.respuestas?.length > 0
+                ? q.respuestas.map((r) => ({
+                    id: r.id || makeId(),
+                    texto: r.texto || "",
+                    esCorrecta: Boolean(r.esCorrecta),
+                  }))
+                : [createEmptyOption(), createEmptyOption()],
         }))
       : [createEmptyQuestion()];
 
@@ -310,6 +318,23 @@ export default function CreateExam() {
     }));
   };
 
+  const changeQuestionTipo = (questionId: string, tipoPregunta: TipoPregunta) => {
+    updateQuestion(questionId, (q) => {
+      if (tipoPregunta === "desarrollo") {
+        return { ...q, tipoPregunta, respuestas: [] };
+      }
+      return {
+        ...q,
+        tipoPregunta,
+        respuestas:
+          q.respuestas.length >= 2
+            ? q.respuestas
+            : [createEmptyOption(), createEmptyOption()],
+      };
+    });
+    clearQuestionError(questionId, "respuestas");
+  };
+
   const removeOption = (questionId: string, optionId: string) => {
     updateQuestion(questionId, (q) => ({
       ...q,
@@ -394,9 +419,6 @@ export default function CreateExam() {
 
     questions.forEach((question) => {
       const qError: QuestionError = {};
-      const filledOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
-      const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
-      const hasCorrect = question.respuestas.some((r) => r.esCorrecta && r.texto.trim().length > 0);
 
       if (!question.texto.trim()) {
         qError.texto = "La pregunta no puede estar vacía";
@@ -406,15 +428,27 @@ export default function CreateExam() {
         qError.puntos = "La pregunta debe tener más de 0 puntos";
         markInvalid(`question-${question.id}`);
       }
-      if (hasEmptyOption) {
-        qError.respuestas = "Todas las respuestas deben tener texto";
-        markInvalid(`question-${question.id}`);
-      } else if (filledOptions.length < 2) {
-        qError.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
-        markInvalid(`question-${question.id}`);
-      } else if (!hasCorrect) {
-        qError.respuestas = "Debes marcar al menos una respuesta correcta";
-        markInvalid(`question-${question.id}`);
+
+      if (question.tipoPregunta !== "desarrollo") {
+        const filledOptions = question.respuestas.filter(
+          (r) => r.texto.trim().length > 0
+        );
+        const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
+        const hasCorrect = question.respuestas.some(
+          (r) => r.esCorrecta && r.texto.trim().length > 0
+        );
+
+        if (hasEmptyOption) {
+          qError.respuestas = "Todas las respuestas deben tener texto";
+          markInvalid(`question-${question.id}`);
+        } else if (filledOptions.length < 2) {
+          qError.respuestas =
+            "Cada pregunta debe tener al menos 2 respuestas con texto";
+          markInvalid(`question-${question.id}`);
+        } else if (!hasCorrect) {
+          qError.respuestas = "Debes marcar al menos una respuesta correcta";
+          markInvalid(`question-${question.id}`);
+        }
       }
 
       if (qError.texto || qError.respuestas || qError.puntos) {
@@ -452,11 +486,15 @@ export default function CreateExam() {
         id: q.id,
         texto: q.texto.trim(),
         puntos: roundPuntos(q.puntos),
-        respuestas: q.respuestas.map((r) => ({
-            id: r.id,
-            texto: r.texto.trim(),
-            esCorrecta: r.esCorrecta,
-          })),
+        tipoPregunta: q.tipoPregunta,
+        respuestas:
+          q.tipoPregunta === "desarrollo"
+            ? []
+            : q.respuestas.map((r) => ({
+                id: r.id,
+                texto: r.texto.trim(),
+                esCorrecta: r.esCorrecta,
+              })),
       })),
     };
 
@@ -661,6 +699,31 @@ export default function CreateExam() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
+                      <Label>Tipo de respuesta</Label>
+                      <Select
+                        value={question.tipoPregunta}
+                        onValueChange={(value) =>
+                          changeQuestionTipo(
+                            question.id,
+                            value === "desarrollo" ? "desarrollo" : "opcion_multiple"
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="opcion_multiple">
+                            Opción múltiple
+                          </SelectItem>
+                          <SelectItem value="desarrollo">
+                            Desarrollo (texto libre)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label>Texto de la pregunta</Label>
                       <Textarea
                         value={question.texto}
@@ -678,6 +741,18 @@ export default function CreateExam() {
                       )}
                     </div>
 
+                    {question.tipoPregunta === "desarrollo" ? (
+                      <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Respuesta de desarrollo
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          El alumno responderá con un campo de texto libre. Esta
+                          pregunta no se corrige automáticamente: el examen
+                          quedará en pendiente de corrección.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="space-y-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <Label>Respuestas</Label>
@@ -760,6 +835,7 @@ export default function CreateExam() {
                         </p>
                       )}
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
