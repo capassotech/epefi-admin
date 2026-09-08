@@ -7,7 +7,6 @@ import { Plus } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import {
     ArrowLeft,
-    Clock,
     BookOpen,
     Image as ImageIcon,
     Trash,
@@ -60,29 +59,34 @@ export const SubjectDetail = () => {
             try {
                 const data = await CoursesAPI.getMateriaById(id, { skipCache: true });
                 setMateria(data);
+                setError(null);
 
                 if (data.modulos && data.modulos.length > 0) {
                     setLoadingModulos(true);
                     try {
                         const [materiasData, estado] = await Promise.all([
                             CoursesAPI.getModulesByIds(data.modulos),
-                            CoursesAPI.getModulosHabilitadosEstado(id),
+                            CoursesAPI.getModulosHabilitadosEstado(id).catch(() => ({})),
                         ]);
                         setModulos(materiasData);
                         setModulosHabilitadosEstado(estado);
                     } catch (moduloError) {
                         console.error("⚠️ Error al cargar módulos o estado:", moduloError);
-                        setError("No se pudo cargar el estado de los módulos. Verificá tu conexión e iniciá sesión como admin.");
+                        toast.error("No se pudieron cargar los módulos. Verificá tu conexión.");
+                        setModulos([]);
+                        setModulosHabilitadosEstado({});
                     } finally {
                         setLoadingModulos(false);
                     }
                 } else {
+                    setModulos([]);
                     setModulosHabilitadosEstado({});
                 }
             } catch (error) {
                 const err = error as { message?: string };
-                console.error("❌ Error al cargar curso:", err);
-                setError(err.message || 'Error al cargar el curso');
+                console.error("❌ Error al cargar materia:", err);
+                setError(err.message || 'Error al cargar la materia');
+                setMateria(null);
             } finally {
                 setLoading(false);
             }
@@ -113,6 +117,11 @@ export const SubjectDetail = () => {
         try {
           await CoursesAPI.deleteModule(selectedId, id || '');
           setModulos(prev => prev.filter(m => m.id !== selectedId));
+          setMateria(prev =>
+            prev
+              ? { ...prev, modulos: (prev.modulos || []).filter(mid => mid !== selectedId) }
+              : prev
+          );
     
           toast.success('Módulo eliminado con éxito');
     
@@ -212,11 +221,13 @@ export const SubjectDetail = () => {
             delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
         />
     );
-    if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
-    if (!materia) return <div className="p-6">No se encontró el curso</div>;
+    if (error && !materia) return <div className="p-6 text-red-500">❌ {error}</div>;
+    if (!materia) return <div className="p-6">No se encontró la materia</div>;
+
+    const moduleCount = materia.modulos?.length ?? 0;
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center min-w-0">
                     <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
@@ -237,7 +248,7 @@ export const SubjectDetail = () => {
                     </CardHeader>
                     <CardContent>
                         <img
-                            src={materia.imagen ?? materia.imagen ?? '/placeholder.svg'}
+                            src={materia.imagen || '/placeholder.svg'}
                             alt={materia.nombre}
                             className="max-w-full h-auto rounded-lg border"
                         />
@@ -247,43 +258,66 @@ export const SubjectDetail = () => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <Clock className="w-5 h-5 mr-2 text-gray-600" />
-                        Detalles del curso
+                    <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center min-w-0">
+                            <BookOpen className="w-5 h-5 mr-2 text-gray-600 shrink-0" />
+                            <span className="break-words">Módulos ({moduleCount})</span>
+                        </div>
+                        <Button
+                            size="sm"
+                            className="cursor-pointer w-full sm:w-auto shrink-0"
+                            onClick={() => {
+                                setEditingSubject(null);
+                                setIsCreateModalOpen(true);
+                            }}
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Crear módulo
+                        </Button>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {materia.modulos && materia.modulos.length > 0 && (
-                        <div className="mt-6 pt-4 border-t">
-                            <CardTitle className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div className='flex items-center'>
-                                    <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
-                                    Modulos ({materia.modulos.length})
-                                </div>
-                                <Button size="sm" className='cursor-pointer' onClick={() => setIsCreateModalOpen(true)}>
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Crear módulo
-                                </Button>
-                            </CardTitle>
-                            {loadingModulos ? (
-                                <p>Cargando materias...</p>
-                            ) : modulos.length > 0 ? (
-<ModulesList
-                                modules={modulos}
-                                materiaId={id || ''}
-                                onDelete={handleDeleteClick}
-                                onEdit={handleEditClick}
-                                defaultEnabledByModule={modulosHabilitadosEstado}
-                                onToggleSuccess={async () => {
-                                    if (id) {
+                    {loadingModulos ? (
+                        <div className="flex items-center justify-center py-8 gap-2 text-gray-500">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <p>Cargando módulos...</p>
+                        </div>
+                    ) : modulos.length > 0 ? (
+                        <ModulesList
+                            modules={modulos}
+                            materiaId={id || ''}
+                            onDelete={handleDeleteClick}
+                            onEdit={handleEditClick}
+                            defaultEnabledByModule={modulosHabilitadosEstado}
+                            onToggleSuccess={async () => {
+                                if (id) {
+                                    try {
                                         const estado = await CoursesAPI.getModulosHabilitadosEstado(id);
                                         setModulosHabilitadosEstado(estado);
+                                    } catch {
+                                        // silencioso: el listado sigue usable
                                     }
+                                }
+                            }}
+                        />
+                    ) : (
+                        <div className="text-center py-10 px-4">
+                            <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                            <p className="text-gray-600 font-medium">Esta materia aún no tiene módulos</p>
+                            <p className="text-sm text-gray-400 mt-1 mb-4">
+                                Creá el primero para empezar a cargar contenido.
+                            </p>
+                            <Button
+                                size="sm"
+                                className="cursor-pointer"
+                                onClick={() => {
+                                    setEditingSubject(null);
+                                    setIsCreateModalOpen(true);
                                 }}
-                            />
-                            ) : (
-                                <p className="text-gray-500">No se pudieron cargar los detalles de los modulos.</p>
-                            )}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Crear módulo
+                            </Button>
                         </div>
                     )}
                 </CardContent>

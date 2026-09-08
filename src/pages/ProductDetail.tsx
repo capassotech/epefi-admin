@@ -24,7 +24,10 @@ import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject, Module } from '@/types/types';
 import { formatDictadoDateForDisplay } from '@/utils/courseDates';
 import ModulesList from '@/components/subject/ModulesList';
+import ModulesModal from '@/components/subject/ModulesModal';
+import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 // Componente para mostrar la vista previa cuadrada
 const SquareImagePreview = ({ src }: { src: string }) => {
@@ -53,6 +56,13 @@ const ProductDetail = () => {
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewImageOpen, setPreviewImageOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [editingModuleMateriaId, setEditingModuleMateriaId] = useState<string | null>(null);
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
+  const [confirmDeleteModuleId, setConfirmDeleteModuleId] = useState<string | null>(null);
+  const [confirmDeleteMateriaId, setConfirmDeleteMateriaId] = useState<string | null>(null);
+  const [isDeleteModuleModalOpen, setIsDeleteModuleModalOpen] = useState(false);
+  const [deleteModuleLoading, setDeleteModuleLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -133,6 +143,94 @@ const ProductDetail = () => {
       }
       return newSet;
     });
+  };
+
+  const handleEditModule = (module: Module, materiaId: string) => {
+    setEditingModule(module);
+    setEditingModuleMateriaId(materiaId);
+    setIsModuleModalOpen(true);
+  };
+
+  const handleDeleteModuleClick = (moduleId: string, materiaId: string) => {
+    setConfirmDeleteModuleId(moduleId);
+    setConfirmDeleteMateriaId(materiaId);
+    setIsDeleteModuleModalOpen(true);
+  };
+
+  const handleCancelDeleteModule = () => {
+    setIsDeleteModuleModalOpen(false);
+    setConfirmDeleteModuleId(null);
+    setConfirmDeleteMateriaId(null);
+  };
+
+  const handleConfirmDeleteModule = async (selectedId: string) => {
+    if (!selectedId || !confirmDeleteMateriaId) return;
+    setDeleteModuleLoading(true);
+    try {
+      await CoursesAPI.deleteModule(selectedId, confirmDeleteMateriaId);
+      setModulosPorMateria(prev => ({
+        ...prev,
+        [confirmDeleteMateriaId]: (prev[confirmDeleteMateriaId] || []).filter(m => m.id !== selectedId),
+      }));
+      setMaterias(prev =>
+        prev.map(m =>
+          m.id === confirmDeleteMateriaId
+            ? { ...m, modulos: (m.modulos || []).filter(idModulo => idModulo !== selectedId) }
+            : m
+        )
+      );
+      toast.success('Módulo eliminado con éxito');
+      setConfirmDeleteModuleId(null);
+      setConfirmDeleteMateriaId(null);
+    } catch (err) {
+      toast.error('Error al eliminar el módulo');
+      console.error('Error al eliminar módulo:', err);
+    } finally {
+      setDeleteModuleLoading(false);
+      setIsDeleteModuleModalOpen(false);
+    }
+  };
+
+  const handleCancelModuleModal = () => {
+    setIsModuleModalOpen(false);
+    setEditingModule(null);
+    setEditingModuleMateriaId(null);
+  };
+
+  const handleModuleUpdated = async (moduleData: Module): Promise<void> => {
+    try {
+      await CoursesAPI.updateModule(moduleData.id, {
+        id: moduleData.id,
+        titulo: moduleData.titulo,
+        descripcion: moduleData.descripcion,
+        id_materia: moduleData.id_materia,
+        tipo_contenido: moduleData.tipo_contenido,
+        bibliografia: moduleData.bibliografia,
+        url_miniatura: moduleData.url_miniatura,
+        url_archivo: moduleData.url_archivo,
+        url_video: moduleData.url_video,
+        nombres_archivos: moduleData.nombres_archivos || "",
+        nombres_videos: moduleData.nombres_videos || "",
+      });
+
+      const materiaId = editingModuleMateriaId || moduleData.id_materia;
+      if (materiaId) {
+        setModulosPorMateria(prev => ({
+          ...prev,
+          [materiaId]: (prev[materiaId] || []).map(m =>
+            m.id === moduleData.id ? { ...m, ...moduleData } : m
+          ),
+        }));
+      }
+
+      toast.success('Módulo actualizado con éxito');
+      setEditingModule(null);
+      setEditingModuleMateriaId(null);
+      setIsModuleModalOpen(false);
+    } catch (e) {
+      console.error('Error al actualizar módulo:', e);
+      throw e as Error;
+    }
   };
 
   if (loading) return (
@@ -348,6 +446,8 @@ const ProductDetail = () => {
                                 modules={modulosCargados} 
                                 materiaId={materia.id}
                                 defaultEnabledByModule={modulosHabilitadosEstadoPorMateria[materia.id] ?? {}}
+                                onEdit={(module) => handleEditModule(module, materia.id)}
+                                onDelete={(moduleId) => handleDeleteModuleClick(moduleId, materia.id)}
                                 onToggleSuccess={async () => {
                                   const estado = await CoursesAPI.getModulosHabilitadosEstado(materia.id);
                                   setModulosHabilitadosEstadoPorMateria(prev => ({ ...prev, [materia.id]: estado }));
@@ -487,6 +587,29 @@ const ProductDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ModulesModal
+        isOpen={isModuleModalOpen}
+        onCancel={handleCancelModuleModal}
+        onModuleCreated={async () => ({ id: '' })}
+        courseId={editingModuleMateriaId}
+        editingModule={editingModule}
+        onModuleUpdated={handleModuleUpdated}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModuleModalOpen}
+        onCancel={handleCancelDeleteModule}
+        onConfirm={handleConfirmDeleteModule}
+        deleteLoading={deleteModuleLoading}
+        itemName={
+          (confirmDeleteMateriaId &&
+            confirmDeleteModuleId &&
+            modulosPorMateria[confirmDeleteMateriaId]?.find(m => m.id === confirmDeleteModuleId)?.titulo) ||
+          'este módulo'
+        }
+        id={confirmDeleteModuleId || ''}
+      />
     </div>
   );
 };
