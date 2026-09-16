@@ -391,36 +391,36 @@ export const CoursesAsignStudentModal = ({
                     <Button className="text-zinc-200" variant="outline" onClick={() => setAssignDialogOpen(true)}>Asignar Cursos</Button>
                 </DialogTrigger>
             )}
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] overflow-x-hidden flex flex-col">
-                <DialogHeader>
-                    <div className="space-y-1">
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] overflow-x-hidden overflow-y-auto flex flex-col min-w-0">
+                <DialogHeader className="min-w-0">
+                    <div className="space-y-1 min-w-0">
                         <DialogTitle className="text-2xl font-semibold text-gray-900">Asignar cursos</DialogTitle>
                         <DialogDescription className="text-sm text-gray-500">
                             Gestiona los cursos asociados al estudiante. Puedes quitar los existentes o sumar nuevos.
                         </DialogDescription>
                         {student && (
-                            <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-600">
-                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                            <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-600 min-w-0">
+                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 max-w-full truncate">
                                     {student.nombre} {student.apellido}
                                 </Badge>
-                                <span className="text-gray-400">•</span>
-                                <span>{student.email}</span>
+                                <span className="text-gray-400 shrink-0">•</span>
+                                <span className="min-w-0 truncate">{student.email}</span>
                             </div>
                         )}
                     </div>
                 </DialogHeader>
                 {/* En mobile el grid pasa a 1 columna; el wrapper scrollea verticalmente.
                     En desktop cada columna tiene su propio ScrollArea de altura fija. */}
-                <div className="flex-1 overflow-y-auto lg:overflow-hidden">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden lg:overflow-hidden min-w-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-10">
                             <Loader2 className="w-5 h-5 mr-2 animate-spin text-blue-600" />
                             <span className="text-sm text-gray-500">Cargando cursos...</span>
                         </div>
                     ) : (
-                        <div className="grid gap-0 lg:gap-6 lg:grid-cols-2 lg:divide-x lg:divide-gray-100 lg:h-full">
+                        <div className="grid gap-0 lg:gap-6 lg:grid-cols-2 lg:divide-x lg:divide-gray-100 lg:h-full min-w-0 overflow-x-hidden">
                             {/* ── Columna izquierda: cursos ya asignados ── */}
-                            <div className="pr-0 lg:pr-6 space-y-3 pb-4 lg:pb-0">
+                            <div className="pr-0 lg:pr-6 space-y-3 pb-4 lg:pb-0 min-w-0 overflow-x-hidden">
                                 <div className="flex items-center gap-2">
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                                     <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Cursos asignados</h3>
@@ -441,14 +441,14 @@ export const CoursesAsignStudentModal = ({
                                             {assignedCourses.map((curso) => (
                                                 <div
                                                     key={`assigned-${curso.id}`}
-                                                    className="group border border-gray-200 bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200"
+                                                    className="group border border-gray-200 bg-white rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-200 min-w-0 max-w-full overflow-hidden"
                                                 >
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div className="min-w-0">
+                                                    <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0">
+                                                        <div className="min-w-0 flex-1 overflow-hidden">
                                                             <h4 className="text-sm font-semibold text-gray-900 truncate">
                                                                 {curso.titulo}
                                                             </h4>
-                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
                                                                 {curso.descripcion || 'Sin descripción'}
                                                             </p>
                                                         </div>
@@ -456,7 +456,7 @@ export const CoursesAsignStudentModal = ({
                                                             type="button"
                                                             onClick={() => unassignCourse(curso.id)}
                                                             disabled={assigning}
-                                                            className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
+                                                            className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 shrink-0"
                                                         >
                                                             <CircleMinus className="w-3.5 h-3.5" />
                                                             Quitar
@@ -473,15 +473,15 @@ export const CoursesAsignStudentModal = ({
                             <div className="block lg:hidden border-t border-gray-200 my-2" />
 
                             {/* ── Columna derecha: cursos disponibles ── */}
-                            <div className="pl-0 lg:pl-6 space-y-3 pt-2 lg:pt-0">
-                                <div className="flex items-center gap-2">
-                                    <PlusCircle className="w-4 h-4 text-blue-600" />
-                                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Agregar cursos</h3>
-                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                            <div className="pl-0 lg:pl-6 space-y-3 pt-2 lg:pt-0 min-w-0 overflow-x-hidden">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <PlusCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide truncate">Agregar cursos</h3>
+                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 shrink-0">
                                         {availableCourses.length}
                                     </Badge>
                                 </div>
-                                <ScrollArea className="h-auto lg:h-[300px] pr-2">
+                                <ScrollArea className="h-auto lg:h-[300px] pr-2 max-w-full overflow-x-hidden">
                                     {availableCourses.length === 0 ? (
                                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center">
                                             <BookOpen className="w-6 h-6 mx-auto mb-2 text-gray-300" />
@@ -489,7 +489,7 @@ export const CoursesAsignStudentModal = ({
                                             <p className="text-xs text-gray-400 mt-1">Todos los cursos ya están asociados a este estudiante.</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 min-w-0">
                                             {availableCourses.map((curso: Course) => {
                                                 const isSelected = selectedCourseIds.includes(curso.id);
                                                 return (
@@ -503,16 +503,16 @@ export const CoursesAsignStudentModal = ({
                                                                     : [...prev, curso.id]
                                                             );
                                                         }}
-                                                        className={`w-full text-left border rounded-lg p-4 transition-all duration-200 flex items-start justify-between gap-4 ${isSelected ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/60'}`}
+                                                        className={`w-full max-w-full min-w-0 box-border text-left border rounded-lg p-3 sm:p-4 transition-all duration-200 flex items-start justify-between gap-2 sm:gap-3 overflow-hidden ${isSelected ? 'border-blue-500 outline outline-2 outline-blue-100 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/60'}`}
                                                     >
-                                                        <div className="min-w-0">
+                                                        <div className="min-w-0 flex-1 overflow-hidden">
                                                             <h4 className="text-sm font-semibold text-gray-900 truncate">
                                                                 {curso.titulo}
                                                             </h4>
-                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
                                                                 {curso.descripcion || 'Sin descripción'}
                                                             </p>
-                                                            <div className="mt-2 flex items-center gap-2">
+                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
                                                                 <Badge variant="outline" className="text-[0.7rem] border-gray-200 text-gray-600">
                                                                     {curso.estado === 'activo' ? 'Activo' : 'Inactivo'}
                                                                 </Badge>
@@ -521,9 +521,16 @@ export const CoursesAsignStudentModal = ({
                                                                 </Badge>
                                                             </div>
                                                         </div>
-                                                        <div className="flex flex-col items-end gap-2">
-                                                            <Badge className={`transition-colors text-xs ${isSelected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                                                                {isSelected ? 'Seleccionado' : 'Asignar'}
+                                                        <div className="flex flex-col items-end gap-2 shrink-0">
+                                                            <Badge className={`transition-colors text-xs whitespace-nowrap ${isSelected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>
+                                                                {isSelected ? (
+                                                                    <span className="inline-flex items-center gap-1">
+                                                                        <CheckCircle2 className="w-3 h-3" />
+                                                                        Listo
+                                                                    </span>
+                                                                ) : (
+                                                                    'Asignar'
+                                                                )}
                                                             </Badge>
                                                         </div>
                                                     </button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -657,45 +657,44 @@ export default function CreateExam() {
                   key={question.id}
                   ref={setQuestionCardRef(question.id, index === questions.length - 1)}
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`puntos-${question.id}`} className="text-sm whitespace-nowrap">
-                            Puntos
-                          </Label>
-                          <Input
-                            id={`puntos-${question.id}`}
-                            type="text"
-                            inputMode="decimal"
-                            className="w-24 h-8"
-                            value={
-                              puntosDraft[question.id] ?? String(question.puntos)
-                            }
-                            onChange={(e) =>
-                              updateQuestionPuntos(question.id, e.target.value)
-                            }
-                            onBlur={() => commitQuestionPuntos(question.id)}
-                          />
-                        </div>
-                        {questionErrors[question.id]?.puntos && (
-                          <p className="text-sm text-red-600 whitespace-nowrap">
-                            {questionErrors[question.id]?.puntos}
-                          </p>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeQuestion(question.id)}
-                          disabled={questions.length === 1}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Eliminar
-                        </Button>
+                  <CardHeader className="pb-2 space-y-2">
+                    <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Label htmlFor={`puntos-${question.id}`} className="text-sm shrink-0">
+                          Puntos
+                        </Label>
+                        <Input
+                          id={`puntos-${question.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          className="w-16 sm:w-20 h-8"
+                          value={
+                            puntosDraft[question.id] ?? String(question.puntos)
+                          }
+                          onChange={(e) =>
+                            updateQuestionPuntos(question.id, e.target.value)
+                          }
+                          onBlur={() => commitQuestionPuntos(question.id)}
+                        />
                       </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => removeQuestion(question.id)}
+                        disabled={questions.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Eliminar</span>
+                      </Button>
                     </div>
+                    {questionErrors[question.id]?.puntos && (
+                      <p className="text-sm text-red-600 break-words">
+                        {questionErrors[question.id]?.puntos}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -754,27 +753,27 @@ export default function CreateExam() {
                       </div>
                     ) : (
                     <div className="space-y-3">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <Label>Respuestas</Label>
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <Label className="shrink-0">Respuestas</Label>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="w-full sm:w-auto"
+                          className="shrink-0 h-8"
                           onClick={() => addOption(question.id)}
                         >
                           <Plus className="w-4 h-4 mr-1" />
-                          Agregar respuesta
+                          Agregar
                         </Button>
                       </div>
 
                       {question.respuestas.map((option, optionIndex) => (
                         <div
                           key={option.id}
-                          className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                          className="flex items-center gap-1.5 sm:gap-2 min-w-0"
                         >
                           <Input
-                            className="min-w-0 flex-1"
+                            className="min-w-0 flex-1 h-9"
                             value={option.texto}
                             onChange={(e) => {
                               updateQuestion(question.id, (q) => ({
@@ -787,36 +786,38 @@ export default function CreateExam() {
                             }}
                             placeholder={`Respuesta ${optionIndex + 1}`}
                           />
-                          <div className="flex gap-2 w-full sm:w-auto shrink-0">
-                            <Button
-                              type="button"
-                              variant={option.esCorrecta ? "default" : "outline"}
-                              className="flex-1 sm:flex-none"
-                              onClick={() => toggleCorrectOption(question.id, option.id)}
-                            >
-                              <span className="sm:hidden">
-                                {option.esCorrecta ? "✓ Correcta" : "Marcar"}
-                              </span>
-                              <span className="hidden sm:inline">
-                                {option.esCorrecta ? "Correcta" : "Marcar correcta"}
-                              </span>
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="shrink-0"
-                              onClick={() => removeOption(question.id, option.id)}
-                              disabled={question.respuestas.length <= 2}
-                              title="Eliminar respuesta"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            type="button"
+                            variant={option.esCorrecta ? "default" : "outline"}
+                            size="sm"
+                            className="shrink-0 h-9 px-2 sm:px-3"
+                            onClick={() => toggleCorrectOption(question.id, option.id)}
+                            title={option.esCorrecta ? "Respuesta correcta" : "Marcar como correcta"}
+                          >
+                            {option.esCorrecta ? (
+                              <CheckCircle2 className="w-4 h-4 sm:mr-1.5" />
+                            ) : (
+                              <Circle className="w-4 h-4 sm:mr-1.5" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {option.esCorrecta ? "Correcta" : "Marcar"}
+                            </span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 h-9 w-9"
+                            onClick={() => removeOption(question.id, option.id)}
+                            disabled={question.respuestas.length <= 2}
+                            title="Eliminar respuesta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       ))}
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="hidden sm:flex flex-wrap gap-2">
                         {question.respuestas.map((option) => (
                           <Badge
                             key={option.id}

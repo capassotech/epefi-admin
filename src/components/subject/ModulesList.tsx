@@ -25,7 +25,6 @@ interface ModulesListProps {
 
 export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
   const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
   const [moduleEnabledStates, setModuleEnabledStates] = useState<Record<string, boolean>>({});
   const [moduloExcepciones, setModuloExcepciones] = useState<Record<string, Array<{ id: string; nombre: string }>>>({});
@@ -67,14 +66,6 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
     }
     refetchExcepciones();
   }, [materiaId, modules.length]);
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    if (onDelete) {
-      await onDelete(id);
-    }
-    setTimeout(() => setDeletingId(null), 1000);
-  };
 
   const handleToggleModuleForAll = async (moduleId: string, enabled: boolean) => {
     setTogglingModuleId(moduleId);
@@ -146,24 +137,14 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
+                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(m.id);
+                      onDelete?.(m.id);
                     }}
-                    disabled={deletingId === m.id}
                   >
-                    {deletingId === m.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                        Eliminando...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4 mr-1.5" />
-                        Eliminar
-                      </>
-                    )}
+                    <Trash2 className="w-4 h-4 mr-1.5" />
+                    Eliminar
                   </Button>
                   <div className="flex flex-col gap-1 w-full sm:w-auto">
                     {loadingExcepciones ? (
