@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, Eye, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Download, Eye, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,6 +112,23 @@ export default function CompletedExams() {
     if (!filterFormacion) return exams;
     return exams.filter((e) => e.idFormacion === filterFormacion);
   }, [exams, filterFormacion]);
+
+  const pendientes = useMemo(
+    () => items.filter((row) => row.estado === "pendiente_correccion"),
+    [items]
+  );
+  const generales = useMemo(
+    () => items.filter((row) => row.estado !== "pendiente_correccion"),
+    [items]
+  );
+
+  const goToDetalle = (rowId: string) => {
+    navigate(`/exams/completed/${encodeURIComponent(rowId)}`, {
+      state: {
+        returnTo: buildCompletedExamsListPath(searchParams),
+      },
+    });
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -312,6 +329,9 @@ export default function CompletedExams() {
 
       <p className="text-sm text-gray-600">
         Mostrando {items.length} registro{items.length !== 1 ? "s" : ""}
+        {pendientes.length > 0
+          ? ` · ${pendientes.length} pendiente${pendientes.length !== 1 ? "s" : ""} de corrección`
+          : ""}
         {loading ? " (actualizando…)" : ""}
       </p>
 
@@ -319,141 +339,224 @@ export default function CompletedExams() {
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : items.length > 0 ? (
         <>
-          <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm">
-            {items.map((row) => (
-              <div key={row.id} className="p-4 space-y-3 bg-white">
-                <div className="min-w-0 space-y-1.5">
-                  <p className="font-semibold text-gray-900 break-words text-base">
-                    {row.nombreAlumno || "—"}
-                  </p>
-                  <p className="text-sm text-gray-700 break-words">
-                    {row.tituloFormacion ||
-                      coursesById[row.idFormacion]?.titulo ||
-                      row.idFormacion}
-                  </p>
-                  <p className="text-sm text-gray-600 break-words">
-                    {row.tituloExamen ||
-                      examsById[row.idExamen]?.titulo ||
-                      row.idExamen}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <span className="text-sm font-semibold text-gray-900">
-                      Nota: {typeof row.nota === "number" ? row.nota : "—"}
-                    </span>
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                        row.estado === "pendiente_correccion"
-                          ? "bg-amber-100 text-amber-800"
-                          : row.aprobado
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {row.estado === "pendiente_correccion"
-                        ? "Pendiente de corrección"
-                        : row.aprobado
-                          ? "Aprobado"
-                          : "No aprobado"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {formatTimestamp(row.fechaRealizacion)}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() =>
-                    navigate(`/exams/completed/${encodeURIComponent(row.id)}`, {
-                      state: {
-                        returnTo: buildCompletedExamsListPath(searchParams),
-                      },
-                    })
-                  }
-                >
-                  <Eye className="w-4 h-4 mr-1" />
-                  Ver detalle
-                </Button>
+          {pendientes.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold text-amber-900">
+                  Pendientes de corrección
+                </h2>
+                <span className="text-xs font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                  {pendientes.length}
+                </span>
               </div>
-            ))}
-          </div>
-          <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Alumno</TableHead>
-                  <TableHead>Formación</TableHead>
-                  <TableHead>Examen</TableHead>
-                  <TableHead className="text-right">Nota</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">
-                      {row.nombreAlumno || "—"}
-                    </TableCell>
-                    <TableCell>
-                      {row.tituloFormacion ||
-                        coursesById[row.idFormacion]?.titulo ||
-                        row.idFormacion}
-                    </TableCell>
-                    <TableCell>
-                      {row.tituloExamen ||
-                        examsById[row.idExamen]?.titulo ||
-                        row.idExamen}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {typeof row.nota === "number" ? row.nota : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          row.estado === "pendiente_correccion"
-                            ? "bg-amber-100 text-amber-800"
-                            : row.aprobado
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                        }`}
+              <div className="rounded-md border border-amber-200 bg-amber-50/60 overflow-hidden">
+                <div className="block md:hidden divide-y divide-amber-200">
+                  {pendientes.map((row) => (
+                    <div key={`pending-m-${row.id}`} className="p-4 space-y-3">
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="font-semibold text-gray-900 break-words">
+                          {row.nombreAlumno || "—"}
+                        </p>
+                        <p className="text-sm text-gray-700 break-words">
+                          {row.tituloFormacion ||
+                            coursesById[row.idFormacion]?.titulo ||
+                            row.idFormacion}
+                        </p>
+                        <p className="text-sm text-gray-600 break-words">
+                          {row.tituloExamen ||
+                            examsById[row.idExamen]?.titulo ||
+                            row.idExamen}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatTimestamp(row.fechaRealizacion)}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => goToDetalle(row.id)}
                       >
-                        {row.estado === "pendiente_correccion"
-                          ? "Pendiente de corrección"
-                          : row.aprobado
-                            ? "Aprobado"
-                            : "No aprobado"}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatTimestamp(row.fechaRealizacion)}</TableCell>
-                    <TableCell className="text-right">
+                        <ClipboardCheck className="w-4 h-4 mr-1" />
+                        Corregir examen
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block overflow-x-auto bg-white/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Alumno</TableHead>
+                        <TableHead>Formación</TableHead>
+                        <TableHead>Examen</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendientes.map((row) => (
+                        <TableRow key={`pending-${row.id}`}>
+                          <TableCell className="font-medium">
+                            {row.nombreAlumno || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {row.tituloFormacion ||
+                              coursesById[row.idFormacion]?.titulo ||
+                              row.idFormacion}
+                          </TableCell>
+                          <TableCell>
+                            {row.tituloExamen ||
+                              examsById[row.idExamen]?.titulo ||
+                              row.idExamen}
+                          </TableCell>
+                          <TableCell>
+                            {formatTimestamp(row.fechaRealizacion)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => goToDetalle(row.id)}
+                            >
+                              <ClipboardCheck className="w-4 h-4 mr-1" />
+                              Corregir examen
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section className={`space-y-3 ${pendientes.length > 0 ? "pt-4 mt-2 border-t border-gray-200" : ""}`}>
+            {pendientes.length > 0 && (
+              <h2 className="text-lg font-semibold text-gray-900">
+                Todos los exámenes realizados
+              </h2>
+            )}
+            {generales.length === 0 && pendientes.length > 0 ? (
+              <p className="text-sm text-gray-600 py-4">
+                No hay otros exámenes realizados con los filtros actuales.
+              </p>
+            ) : generales.length > 0 ? (
+              <>
+                <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm">
+                  {generales.map((row) => (
+                    <div key={row.id} className="p-4 space-y-3 bg-white">
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="font-semibold text-gray-900 break-words text-base">
+                          {row.nombreAlumno || "—"}
+                        </p>
+                        <p className="text-sm text-gray-700 break-words">
+                          {row.tituloFormacion ||
+                            coursesById[row.idFormacion]?.titulo ||
+                            row.idFormacion}
+                        </p>
+                        <p className="text-sm text-gray-600 break-words">
+                          {row.tituloExamen ||
+                            examsById[row.idExamen]?.titulo ||
+                            row.idExamen}
+                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <span className="text-sm font-semibold text-gray-900">
+                            Nota: {typeof row.nota === "number" ? row.nota : "—"}
+                          </span>
+                          <span
+                            className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                              row.aprobado
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {row.aprobado ? "Aprobado" : "No aprobado"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {formatTimestamp(row.fechaRealizacion)}
+                        </p>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          navigate(
-                            `/exams/completed/${encodeURIComponent(row.id)}`,
-                            {
-                              state: {
-                                returnTo: buildCompletedExamsListPath(searchParams),
-                              },
-                            }
-                          )
-                        }
+                        className="w-full"
+                        onClick={() => goToDetalle(row.id)}
                       >
                         <Eye className="w-4 h-4 mr-1" />
                         Ver detalle
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Alumno</TableHead>
+                        <TableHead>Formación</TableHead>
+                        <TableHead>Examen</TableHead>
+                        <TableHead className="text-right">Nota</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {generales.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="font-medium">
+                            {row.nombreAlumno || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {row.tituloFormacion ||
+                              coursesById[row.idFormacion]?.titulo ||
+                              row.idFormacion}
+                          </TableCell>
+                          <TableCell>
+                            {row.tituloExamen ||
+                              examsById[row.idExamen]?.titulo ||
+                              row.idExamen}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {typeof row.nota === "number" ? row.nota : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                row.aprobado
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {row.aprobado ? "Aprobado" : "No aprobado"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {formatTimestamp(row.fechaRealizacion)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => goToDetalle(row.id)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Ver detalle
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            ) : null}
+          </section>
         </>
       ) : (
         <div className="text-center py-12 text-gray-600">
