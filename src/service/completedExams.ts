@@ -87,6 +87,16 @@ export type CompletedExamsListQuery = {
   idExamen?: string;
   idAlumno?: string;
   search?: string;
+  estado?: "completado" | "pendiente_correccion";
+  limit?: string;
+};
+
+export type CorregirExamenPayload = {
+  correcciones: Array<{
+    idPregunta: string;
+    puntosObtenidos: number;
+    comentario?: string;
+  }>;
 };
 
 export const CompletedExamsAPI = {
@@ -97,6 +107,8 @@ export const CompletedExamsAPI = {
         idExamen: params?.idExamen,
         idAlumno: params?.idAlumno,
         search: params?.search?.trim(),
+        estado: params?.estado,
+        limit: params?.limit ?? "1000",
       });
       const res = await api.get<unknown>("/examenes-realizados", { params: query });
       const data = res.data;
@@ -183,6 +195,8 @@ export const CompletedExamsAPI = {
                 typeof pr.respuestaDesarrollo === "string"
                   ? pr.respuestaDesarrollo
                   : undefined,
+              comentario:
+                typeof pr.comentario === "string" ? pr.comentario : undefined,
             };
           })
         : undefined;
@@ -204,6 +218,24 @@ export const CompletedExamsAPI = {
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al obtener detalle del examen realizado")
+      );
+    }
+  },
+
+  corregir: async (
+    id: string,
+    payload: CorregirExamenPayload
+  ): Promise<ExamenRealizadoDetalle> => {
+    try {
+      const res = await api.post<{
+        message?: string;
+        resultado?: ExamenRealizadoDetalle;
+      }>(`/examenes-realizados/${encodeURIComponent(id)}/corregir`, payload);
+      if (res.data?.resultado) return res.data.resultado;
+      throw new Error("Respuesta inválida al corregir el examen");
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al corregir el examen")
       );
     }
   },

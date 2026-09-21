@@ -209,6 +209,8 @@ function normalizeQuestionFromRaw(
       typeof pr.respuestaDesarrollo === "string"
         ? pr.respuestaDesarrollo
         : undefined,
+    comentario:
+      typeof pr.comentario === "string" ? pr.comentario : undefined,
   };
 }
 
