@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Control } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -230,21 +231,19 @@ const GeneralInfoForm = ({
         )}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
         <FormField
           control={control}
           name="fechaInicioDictado"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="min-w-0 max-w-full">
               <FormLabel>Fecha de Inicio del Dictado <span className="text-red-500">*</span></FormLabel>
-              <FormControl>
-                <Input
-                  type="date"
-                  {...field}
-                  value={field.value || ""}
-                  required
-                />
-              </FormControl>
+              <DatePicker
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                required
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -254,16 +253,14 @@ const GeneralInfoForm = ({
           control={control}
           name="fechaFinDictado"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="min-w-0 max-w-full">
               <FormLabel>Fecha de Fin del Dictado <span className="text-red-500">*</span></FormLabel>
-              <FormControl>
-                <Input
-                  type="date"
-                  {...field}
-                  value={field.value || ""}
-                  required
-                />
-              </FormControl>
+              <DatePicker
+                value={field.value || ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                required
+              />
               <FormMessage />
             </FormItem>
           )}

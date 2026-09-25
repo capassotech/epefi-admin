@@ -312,6 +312,8 @@ export interface ExamenRealizadoPreguntaDetalle {
   respuestasSeleccionadas?: string[];
   idsRespuestasSeleccionadas?: string[];
   respuestaDesarrollo?: string;
+  /** Comentario/observación del corrector (solo desarrollo). */
+  comentario?: string;
 }
 
 export interface ExamenRealizadoDetalle extends ExamenRealizado {

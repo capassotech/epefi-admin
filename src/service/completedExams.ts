@@ -1,6 +1,11 @@
 import { auth } from "@/firebase";
-import type { ExamenRealizado, ExamenRealizadoDetalle } from "@/types/types";
+import type {
+  ExamenRealizado,
+  ExamenRealizadoDetalle,
+  PaginatedResponse,
+} from "@/types/types";
 import { normalizeAnswerIds } from "@/utils/completedExamDetail";
+import { normalizePaginatedResponse } from "@/utils/pagination";
 import axios from "axios";
 
 const API_URL =
@@ -87,27 +92,45 @@ export type CompletedExamsListQuery = {
   idExamen?: string;
   idAlumno?: string;
   search?: string;
+  estado?: "completado" | "pendiente_correccion";
+  page?: number;
+  limit?: number;
+};
+
+export type CorregirExamenPayload = {
+  correcciones: Array<{
+    idPregunta: string;
+    puntosObtenidos: number;
+    comentario?: string;
+  }>;
 };
 
 export const CompletedExamsAPI = {
-  getAll: async (params?: CompletedExamsListQuery): Promise<ExamenRealizado[]> => {
+  getAll: async (
+    params?: CompletedExamsListQuery
+  ): Promise<PaginatedResponse<ExamenRealizado>> => {
     try {
+      const page = params?.page ?? 1;
+      const limit = params?.limit ?? 20;
       const query = cleanQueryParams({
         idFormacion: params?.idFormacion,
         idExamen: params?.idExamen,
         idAlumno: params?.idAlumno,
         search: params?.search?.trim(),
+        estado: params?.estado,
+        page: String(page),
+        limit: String(limit),
       });
       const res = await api.get<unknown>("/examenes-realizados", { params: query });
-      const data = res.data;
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray((data as { data?: unknown })?.data)
-          ? (data as { data: unknown[] }).data
-          : [];
-      return list.map((item) =>
-        normalizeListItem(item as Record<string, unknown>)
+      const paginated = normalizePaginatedResponse<Record<string, unknown>>(
+        res.data,
+        page,
+        limit
       );
+      return {
+        data: paginated.data.map((item) => normalizeListItem(item)),
+        pagination: paginated.pagination,
+      };
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al obtener exámenes realizados")
@@ -183,6 +206,8 @@ export const CompletedExamsAPI = {
                 typeof pr.respuestaDesarrollo === "string"
                   ? pr.respuestaDesarrollo
                   : undefined,
+              comentario:
+                typeof pr.comentario === "string" ? pr.comentario : undefined,
             };
           })
         : undefined;
@@ -204,6 +229,24 @@ export const CompletedExamsAPI = {
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al obtener detalle del examen realizado")
+      );
+    }
+  },
+
+  corregir: async (
+    id: string,
+    payload: CorregirExamenPayload
+  ): Promise<ExamenRealizadoDetalle> => {
+    try {
+      const res = await api.post<{
+        message?: string;
+        resultado?: ExamenRealizadoDetalle;
+      }>(`/examenes-realizados/${encodeURIComponent(id)}/corregir`, payload);
+      if (res.data?.resultado) return res.data.resultado;
+      throw new Error("Respuesta inválida al corregir el examen");
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al corregir el examen")
       );
     }
   },

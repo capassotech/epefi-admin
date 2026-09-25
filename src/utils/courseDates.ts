@@ -33,6 +33,25 @@ export function parseDictadoDateForInput(dateValue: string | undefined | null): 
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
+/** Formatea YYYY-MM-DD a dd/mm/aaaa para inputs de fecha. */
+export function formatDictadoDateDdMmYyyy(yyyyMmDd: string): string {
+  if (!YMD.test(yyyyMmDd.trim())) return "";
+  const [y, m, d] = yyyyMmDd.trim().split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/** Convierte YYYY-MM-DD a Date local (mediodía civil, sin sesgo UTC). */
+export function ymdToLocalDate(yyyyMmDd: string): Date | undefined {
+  if (!YMD.test(yyyyMmDd.trim())) return undefined;
+  const [y, m, d] = yyyyMmDd.trim().split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Convierte Date local a YYYY-MM-DD. */
+export function localDateToYmd(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 /** Texto legible en español usando el día civil en UTC (alineado con cómo guardamos). */
 export function formatDictadoDateForDisplay(value: string | undefined): string {
   if (!value) return "";
