@@ -1,6 +1,11 @@
 import { auth } from "@/firebase";
-import type { ExamenRealizado, ExamenRealizadoDetalle } from "@/types/types";
+import type {
+  ExamenRealizado,
+  ExamenRealizadoDetalle,
+  PaginatedResponse,
+} from "@/types/types";
 import { normalizeAnswerIds } from "@/utils/completedExamDetail";
+import { normalizePaginatedResponse } from "@/utils/pagination";
 import axios from "axios";
 
 const API_URL =
@@ -88,7 +93,8 @@ export type CompletedExamsListQuery = {
   idAlumno?: string;
   search?: string;
   estado?: "completado" | "pendiente_correccion";
-  limit?: string;
+  page?: number;
+  limit?: number;
 };
 
 export type CorregirExamenPayload = {
@@ -100,26 +106,31 @@ export type CorregirExamenPayload = {
 };
 
 export const CompletedExamsAPI = {
-  getAll: async (params?: CompletedExamsListQuery): Promise<ExamenRealizado[]> => {
+  getAll: async (
+    params?: CompletedExamsListQuery
+  ): Promise<PaginatedResponse<ExamenRealizado>> => {
     try {
+      const page = params?.page ?? 1;
+      const limit = params?.limit ?? 20;
       const query = cleanQueryParams({
         idFormacion: params?.idFormacion,
         idExamen: params?.idExamen,
         idAlumno: params?.idAlumno,
         search: params?.search?.trim(),
         estado: params?.estado,
-        limit: params?.limit ?? "1000",
+        page: String(page),
+        limit: String(limit),
       });
       const res = await api.get<unknown>("/examenes-realizados", { params: query });
-      const data = res.data;
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray((data as { data?: unknown })?.data)
-          ? (data as { data: unknown[] }).data
-          : [];
-      return list.map((item) =>
-        normalizeListItem(item as Record<string, unknown>)
+      const paginated = normalizePaginatedResponse<Record<string, unknown>>(
+        res.data,
+        page,
+        limit
       );
+      return {
+        data: paginated.data.map((item) => normalizeListItem(item)),
+        pagination: paginated.pagination,
+      };
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al obtener exámenes realizados")

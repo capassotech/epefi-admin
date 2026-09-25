@@ -18,6 +18,8 @@ interface PaginationControlsProps {
   onLimitChange: (limit: number) => void;
   limitOptions?: number[];
   scrollTargetRef?: RefObject<HTMLElement | null>;
+  /** Evita ids duplicados cuando hay más de un paginador en la misma pantalla. */
+  idPrefix?: string;
 }
 
 const getVisiblePages = (currentPage: number, totalPages: number): number[] => {
@@ -39,6 +41,7 @@ export const PaginationControls = ({
   onLimitChange,
   limitOptions = [10, 20, 50],
   scrollTargetRef,
+  idPrefix = "pagination-limit",
 }: PaginationControlsProps) => {
   const currentPage = Math.max(1, pagination.page);
   const totalPages = Math.max(1, pagination.totalPages);
@@ -67,11 +70,11 @@ export const PaginationControls = ({
           Mostrando {firstItem}-{lastItem} de {pagination.total}
         </p>
         <div className="flex items-center gap-2 shrink-0">
-          <label htmlFor="pagination-limit-desktop" className="text-sm text-gray-600">
+          <label htmlFor={`${idPrefix}-desktop`} className="text-sm text-gray-600">
             Por página
           </label>
           <select
-            id="pagination-limit-desktop"
+            id={`${idPrefix}-desktop`}
             className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
             value={pagination.limit}
             onChange={(e) => {
@@ -95,11 +98,11 @@ export const PaginationControls = ({
             {firstItem}–{lastItem} de {pagination.total}
           </p>
           <div className="flex items-center gap-1.5">
-            <label htmlFor="pagination-limit-mobile" className="text-xs text-gray-500">
+            <label htmlFor={`${idPrefix}-mobile`} className="text-xs text-gray-500">
               Por pág.
             </label>
             <select
-              id="pagination-limit-mobile"
+              id={`${idPrefix}-mobile`}
               className="h-7 rounded border border-gray-200 bg-white px-1.5 text-xs text-gray-700"
               value={pagination.limit}
               onChange={(e) => {
