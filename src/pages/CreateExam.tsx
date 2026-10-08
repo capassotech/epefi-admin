@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,12 @@ type QuestionForm = {
   texto: string;
   puntos: number;
   tipoPregunta: TipoPregunta;
+  imagenUrl?: string;
+  imagenPath?: string;
+  /** Archivo pendiente de subir al guardar. */
+  imagenFile?: File | null;
+  /** Preview local (object URL) o URL remota. */
+  imagenPreview?: string;
   respuestas: OptionForm[];
 };
 
@@ -102,6 +108,10 @@ function examToFormState(exam: Examen): {
             q.tipoPregunta === "desarrollo"
               ? ("desarrollo" as const)
               : ("opcion_multiple" as const),
+          imagenUrl: q.imagenUrl || undefined,
+          imagenPath: q.imagenPath || undefined,
+          imagenFile: null,
+          imagenPreview: q.imagenUrl || undefined,
           respuestas:
             q.tipoPregunta === "desarrollo"
               ? []
@@ -335,6 +345,76 @@ export default function CreateExam() {
     clearQuestionError(questionId, "respuestas");
   };
 
+  const setQuestionImage = (questionId: string, file: File | null) => {
+    updateQuestion(questionId, (q) => {
+      if (q.imagenPreview && q.imagenPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(q.imagenPreview);
+      }
+      if (!file) {
+        return {
+          ...q,
+          imagenFile: null,
+          imagenPreview: undefined,
+          imagenUrl: undefined,
+          imagenPath: undefined,
+        };
+      }
+      return {
+        ...q,
+        imagenFile: file,
+        imagenPreview: URL.createObjectURL(file),
+      };
+    });
+  };
+
+  const buildPreguntasPayload = (
+    source: QuestionForm[]
+  ): ExamenCreatePayload["preguntas"] =>
+    source.map((q) => ({
+      id: q.id,
+      texto: q.texto.trim(),
+      puntos: roundPuntos(q.puntos),
+      tipoPregunta: q.tipoPregunta,
+      ...(q.imagenUrl
+        ? { imagenUrl: q.imagenUrl, ...(q.imagenPath ? { imagenPath: q.imagenPath } : {}) }
+        : {}),
+      respuestas:
+        q.tipoPregunta === "desarrollo"
+          ? []
+          : q.respuestas.map((r) => ({
+              id: r.id,
+              texto: r.texto.trim(),
+              esCorrecta: r.esCorrecta,
+            })),
+    }));
+
+  const uploadPendingImages = async (
+    examenId: string,
+    source: QuestionForm[]
+  ): Promise<QuestionForm[]> => {
+    const next = [...source];
+    for (let i = 0; i < next.length; i += 1) {
+      const q = next[i];
+      if (!q.imagenFile) continue;
+      const uploaded = await ExamsAPI.uploadQuestionImage(
+        examenId,
+        q.id,
+        q.imagenFile
+      );
+      if (q.imagenPreview && q.imagenPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(q.imagenPreview);
+      }
+      next[i] = {
+        ...q,
+        imagenFile: null,
+        imagenUrl: uploaded.url,
+        imagenPath: uploaded.path,
+        imagenPreview: uploaded.url,
+      };
+    }
+    return next;
+  };
+
   const removeOption = (questionId: string, optionId: string) => {
     updateQuestion(questionId, (q) => ({
       ...q,
@@ -478,33 +558,41 @@ export default function CreateExam() {
       return;
     }
 
-    const payload: ExamenCreatePayload = {
+    const basePayload: ExamenCreatePayload = {
       titulo: title.trim(),
       idFormacion,
       duracionMinutos,
-      preguntas: questions.map((q) => ({
-        id: q.id,
-        texto: q.texto.trim(),
-        puntos: roundPuntos(q.puntos),
-        tipoPregunta: q.tipoPregunta,
-        respuestas:
-          q.tipoPregunta === "desarrollo"
-            ? []
-            : q.respuestas.map((r) => ({
-                id: r.id,
-                texto: r.texto.trim(),
-                esCorrecta: r.esCorrecta,
-              })),
-      })),
+      preguntas: buildPreguntasPayload(questions),
     };
 
     try {
       setSaving(true);
+      let savedId = examId || "";
+      let workingQuestions = questions;
+
       if (isEditing && examId) {
-        await ExamsAPI.update(examId, payload);
+        workingQuestions = await uploadPendingImages(examId, questions);
+        setQuestions(workingQuestions);
+        await ExamsAPI.update(examId, {
+          ...basePayload,
+          preguntas: buildPreguntasPayload(workingQuestions),
+        });
         toast.success("Examen actualizado exitosamente");
       } else {
-        await ExamsAPI.create(payload);
+        const created = await ExamsAPI.create(basePayload);
+        savedId = String(created?.id ?? "").trim();
+        if (!savedId) {
+          throw new Error("No se pudo obtener el ID del examen creado");
+        }
+        const hasPendingImages = questions.some((q) => Boolean(q.imagenFile));
+        if (hasPendingImages) {
+          workingQuestions = await uploadPendingImages(savedId, questions);
+          setQuestions(workingQuestions);
+          await ExamsAPI.update(savedId, {
+            ...basePayload,
+            preguntas: buildPreguntasPayload(workingQuestions),
+          });
+        }
         toast.success("Examen creado exitosamente");
       }
       navigate("/exams");
@@ -737,6 +825,54 @@ export default function CreateExam() {
                       />
                       {questionErrors[question.id]?.texto && (
                         <p className="text-sm text-red-600">{questionErrors[question.id]?.texto}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Imagen de la pregunta (opcional)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        El alumno verá esta imagen al rendir. JPG, PNG, WEBP o GIF · máx. 5 MB.
+                      </p>
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (file && file.size > 5 * 1024 * 1024) {
+                            toast.error("La imagen no puede superar 5 MB");
+                            e.target.value = "";
+                            return;
+                          }
+                          setQuestionImage(question.id, file);
+                          e.target.value = "";
+                        }}
+                      />
+                      {question.imagenPreview && (
+                        <div className="flex flex-wrap items-start gap-3 pt-1">
+                          <img
+                            src={question.imagenPreview}
+                            alt={`Vista previa pregunta ${index + 1}`}
+                            className="h-28 max-w-full rounded-md border object-contain bg-muted/20"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuestionImage(question.id, null)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Quitar imagen
+                            </Button>
+                            {question.imagenFile && (
+                              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                                <ImagePlus className="w-3.5 h-3.5" />
+                                Se subirá al guardar
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
 

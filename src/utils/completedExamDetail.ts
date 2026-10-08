@@ -203,6 +203,10 @@ function normalizeQuestionFromRaw(
         : pr.tipoPregunta === "opcion_multiple"
           ? "opcion_multiple"
           : undefined,
+    imagenUrl:
+      typeof pr.imagenUrl === "string" && pr.imagenUrl.trim()
+        ? pr.imagenUrl.trim()
+        : undefined,
     respuestas,
     respuestasSeleccionadas,
     respuestaDesarrollo:
@@ -289,6 +293,7 @@ function enrichSnapshotFromTemplate(
       {
         ...q,
         texto: q.texto || template.texto,
+        imagenUrl: q.imagenUrl || template.imagenUrl,
         puntos:
           typeof q.puntos === "number"
             ? q.puntos
@@ -329,6 +334,7 @@ function buildQuestionsFromLiveTemplate(
       {
         id: q.id,
         texto: q.texto,
+        imagenUrl: fromQuestion?.imagenUrl || q.imagenUrl,
         puntos,
         puntosObtenidos: fromQuestion?.puntosObtenidos,
         acertada: fromQuestion?.acertada,

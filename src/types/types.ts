@@ -266,6 +266,10 @@ export interface ExamenPregunta {
   puntos?: number;
   /** Por defecto opcion_multiple (exámenes legacy). */
   tipoPregunta?: TipoPregunta;
+  /** URL pública de la imagen asociada (Firebase Storage). */
+  imagenUrl?: string;
+  /** Path en Storage para referencia/borrado. */
+  imagenPath?: string;
   respuestas: ExamenRespuesta[];
 }
 
@@ -308,6 +312,7 @@ export interface ExamenRealizadoPreguntaDetalle {
   puntosObtenidos?: number;
   acertada?: boolean;
   tipoPregunta?: TipoPregunta;
+  imagenUrl?: string;
   respuestas: ExamenRespuesta[];
   respuestasSeleccionadas?: string[];
   idsRespuestasSeleccionadas?: string[];
