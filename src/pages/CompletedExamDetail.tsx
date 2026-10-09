@@ -562,6 +562,16 @@ export default function CompletedExamDetail() {
                     )}
                   </div>
                   <p className="text-sm font-normal text-foreground">{q.texto}</p>
+                  {q.imagenUrl ? (
+                    <div className="rounded-md border bg-muted/20 p-2">
+                      <img
+                        src={q.imagenUrl}
+                        alt={`Imagen de la pregunta ${index + 1}`}
+                        className="max-h-64 w-full object-contain rounded"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
                   {esDesarrollo ? (

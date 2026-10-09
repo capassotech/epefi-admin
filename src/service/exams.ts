@@ -1,6 +1,8 @@
 import { auth } from "@/firebase";
 import type { Examen, ExamenCreatePayload } from "@/types/types";
 import axios from "axios";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../../config/firebase-client";
 
 const API_URL =
   (import.meta.env.VITE_API_BASE_URL || "https://epefi-backend.onrender.com").trim();
@@ -62,6 +64,24 @@ function cleanQueryParams(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+const MAX_QUESTION_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+function extensionFromFile(file: File): string {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/gif") return "gif";
+  return "jpg";
+}
+
 export const ExamsAPI = {
   getAll: async (params?: ExamsListQuery) => {
     try {
@@ -116,5 +136,44 @@ export const ExamsAPI = {
     } catch (error: unknown) {
       throw new Error(getAxiosErrorMessage(error, "Error al eliminar examen"));
     }
+  },
+
+  /**
+   * Sube la imagen de una pregunta a Storage bajo
+   * Imagenes/Examenes/{examenId}/{preguntaId}.ext
+   */
+  uploadQuestionImage: async (
+    examenId: string,
+    preguntaId: string,
+    image: File
+  ): Promise<{ url: string; path: string }> => {
+    if (!examenId?.trim() || !preguntaId?.trim()) {
+      throw new Error("Examen y pregunta son obligatorios para subir la imagen");
+    }
+    if (!image || !(image instanceof File)) {
+      throw new Error("El archivo de imagen es requerido");
+    }
+    if (image.type && !ALLOWED_IMAGE_TYPES.has(image.type)) {
+      throw new Error("Formato de imagen no permitido (JPG, PNG, WEBP o GIF)");
+    }
+    if (image.size > MAX_QUESTION_IMAGE_BYTES) {
+      throw new Error("La imagen no puede superar 5 MB");
+    }
+
+    const safeExamen = examenId.replace(/[^\w-]/g, "_");
+    const safePregunta = preguntaId.replace(/[^\w-]/g, "_");
+    const ext = extensionFromFile(image);
+    const objectPath = `Imagenes/Examenes/${safeExamen}/${safePregunta}.${ext}`;
+    const storageRef = ref(storage, objectPath);
+    await uploadBytes(storageRef, image, {
+      contentType: image.type || "image/jpeg",
+      customMetadata: {
+        examenId,
+        preguntaId,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+    const url = await getDownloadURL(storageRef);
+    return { url, path: objectPath };
   },
 };
