@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,7 @@ function examToFormState(exam: Examen): {
   title: string;
   idFormacion: string;
   duracionMinutos: number;
+  requiereCompletarCurso: boolean;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -134,6 +136,7 @@ function examToFormState(exam: Examen): {
     title: exam.titulo || "",
     idFormacion: exam.idFormacion || "",
     duracionMinutos: duracion,
+    requiereCompletarCurso: exam.requiereCompletarCurso !== false,
     questions,
   };
 }
@@ -147,6 +150,7 @@ export default function CreateExam() {
   const [idFormacion, setIdFormacion] = useState("");
   const [duracionMinutos, setDuracionMinutos] = useState(90);
   const [duracionError, setDuracionError] = useState("");
+  const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -222,6 +226,7 @@ export default function CreateExam() {
         setTitle(form.title);
         setIdFormacion(form.idFormacion);
         setDuracionMinutos(form.duracionMinutos);
+        setRequiereCompletarCurso(form.requiereCompletarCurso);
         setQuestions(form.questions);
       } catch (error) {
         console.error("Error al cargar examen:", error);
@@ -562,6 +567,7 @@ export default function CreateExam() {
       titulo: title.trim(),
       idFormacion,
       duracionMinutos,
+      requiereCompletarCurso,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -712,6 +718,22 @@ export default function CreateExam() {
                 Valor base: 90 minutos. Podés modificarlo según la evaluación.
               </p>
               {duracionError && <p className="text-sm text-red-600">{duracionError}</p>}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="requiere-completar-curso" className="text-base">
+                  Requiere completar el curso
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Si está desactivado, el alumno puede rendir el examen sin haber completado todos los módulos.
+                </p>
+              </div>
+              <Switch
+                id="requiere-completar-curso"
+                checked={requiereCompletarCurso}
+                onCheckedChange={setRequiereCompletarCurso}
+              />
             </div>
 
             <div className="space-y-4" ref={setFieldRef("questions")}>

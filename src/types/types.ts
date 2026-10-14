@@ -264,11 +264,8 @@ export interface ExamenPregunta {
   id: string;
   texto: string;
   puntos?: number;
-  /** Por defecto opcion_multiple (exámenes legacy). */
   tipoPregunta?: TipoPregunta;
-  /** URL pública de la imagen asociada (Firebase Storage). */
   imagenUrl?: string;
-  /** Path en Storage para referencia/borrado. */
   imagenPath?: string;
   respuestas: ExamenRespuesta[];
 }
@@ -276,8 +273,8 @@ export interface ExamenPregunta {
 export interface ExamenCreatePayload {
   titulo: string;
   idFormacion: string;
-  /** Duración del examen en minutos. Por defecto 90. */
   duracionMinutos: number;
+  requiereCompletarCurso: boolean;
   preguntas: ExamenPregunta[];
 }
 
@@ -285,7 +282,6 @@ export interface Examen extends ExamenCreatePayload {
   id: string;
 }
 
-/** Registro en colección examenes_realizados (listado admin). */
 export interface ExamenRealizado {
   id: string;
   idUsuario?: string;
@@ -294,7 +290,6 @@ export interface ExamenRealizado {
   idFormacion: string;
   nota: number;
   aprobado: boolean;
-  /** completado = solo opción múltiple / ya corregido; pendiente_correccion = tiene desarrollo. */
   estado?: EstadoExamenRealizado;
   fechaRealizacion?: FirestoreTimestamp | string | number;
   nombreAlumno?: string;
