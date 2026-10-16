@@ -53,6 +53,27 @@ export type ExamsListQuery = {
   limit?: number;
 };
 
+export type AlumnoIntentosRow = {
+  idAlumno: string;
+  nombreAlumno: string;
+  emailAlumno: string;
+  intentosUsados: number;
+  intentosMaximos: number;
+  esOverride: boolean;
+  intentosDefault: number;
+};
+
+export type ExamenIntentosResponse = {
+  examen: {
+    id: string;
+    titulo: string;
+    idFormacion: string;
+    tituloFormacion?: string;
+  };
+  intentosDefault: number;
+  alumnos: AlumnoIntentosRow[];
+};
+
 function cleanQueryParams(
   input?: Record<string, string | number | undefined>
 ): Record<string, string | number> | undefined {
@@ -135,6 +156,59 @@ export const ExamsAPI = {
       await api.delete(`/examenes/${encodeURIComponent(id)}`);
     } catch (error: unknown) {
       throw new Error(getAxiosErrorMessage(error, "Error al eliminar examen"));
+    }
+  },
+
+  getAlumnosIntentos: async (
+    examenId: string,
+    search?: string
+  ): Promise<ExamenIntentosResponse> => {
+    try {
+      const res = await api.get<ExamenIntentosResponse>(
+        `/examenes/${encodeURIComponent(examenId)}/intentos-alumnos`,
+        {
+          params: cleanQueryParams({
+            search: search?.trim() || undefined,
+          }),
+        }
+      );
+      return res.data;
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al obtener intentos de alumnos")
+      );
+    }
+  },
+
+  upsertIntentosAlumno: async (
+    examenId: string,
+    idAlumno: string,
+    intentosMaximos: number
+  ): Promise<void> => {
+    try {
+      await api.put(
+        `/examenes/${encodeURIComponent(examenId)}/intentos-alumnos/${encodeURIComponent(idAlumno)}`,
+        { intentosMaximos }
+      );
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al actualizar intentos del alumno")
+      );
+    }
+  },
+
+  resetIntentosAlumno: async (
+    examenId: string,
+    idAlumno: string
+  ): Promise<void> => {
+    try {
+      await api.delete(
+        `/examenes/${encodeURIComponent(examenId)}/intentos-alumnos/${encodeURIComponent(idAlumno)}`
+      );
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al restablecer intentos del alumno")
+      );
     }
   },
 
