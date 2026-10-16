@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Edit2, Loader, Trash2 } from "lucide-react";
+import { ClipboardList, Edit2, Loader, Trash2, Users } from "lucide-react";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
@@ -235,6 +235,20 @@ export default function Exams() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="cursor-pointer flex-1 min-w-[7rem] justify-center"
+                      onClick={() =>
+                        navigate(
+                          `/exams/${encodeURIComponent(exam.id)}/intentos`
+                        )
+                      }
+                    >
+                      <Users className="w-4 h-4 mr-1" />
+                      Intentos
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="cursor-pointer flex-1 min-w-[7rem] justify-center text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                       onClick={() => handleDeleteClick(exam.id)}
                     >
@@ -280,6 +294,20 @@ export default function Exams() {
                           >
                             <Edit2 className="w-4 h-4 mr-1" />
                             Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() =>
+                              navigate(
+                                `/exams/${encodeURIComponent(exam.id)}/intentos`
+                              )
+                            }
+                          >
+                            <Users className="w-4 h-4 mr-1" />
+                            Intentos
                           </Button>
                           <Button
                             type="button"
