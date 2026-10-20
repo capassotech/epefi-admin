@@ -93,6 +93,7 @@ function examToFormState(exam: Examen): {
   idFormacion: string;
   duracionMinutos: number;
   requiereCompletarCurso: boolean;
+  notaMinima: number;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -137,6 +138,10 @@ function examToFormState(exam: Examen): {
     idFormacion: exam.idFormacion || "",
     duracionMinutos: duracion,
     requiereCompletarCurso: exam.requiereCompletarCurso !== false,
+    notaMinima:
+      typeof exam.notaMinima === "number" && exam.notaMinima > 0
+        ? exam.notaMinima
+        : 70,
     questions,
   };
 }
@@ -150,6 +155,8 @@ export default function CreateExam() {
   const [idFormacion, setIdFormacion] = useState("");
   const [duracionMinutos, setDuracionMinutos] = useState(90);
   const [duracionError, setDuracionError] = useState("");
+  const [notaMinima, setNotaMinima] = useState(70);
+  const [notaMinimaError, setNotaMinimaError] = useState("");
   const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -226,6 +233,7 @@ export default function CreateExam() {
         setTitle(form.title);
         setIdFormacion(form.idFormacion);
         setDuracionMinutos(form.duracionMinutos);
+        setNotaMinima(form.notaMinima);
         setRequiereCompletarCurso(form.requiereCompletarCurso);
         setQuestions(form.questions);
       } catch (error) {
@@ -497,6 +505,16 @@ export default function CreateExam() {
       markInvalid("duration");
     }
 
+    if (
+      !Number.isFinite(notaMinima) ||
+      !Number.isInteger(notaMinima) ||
+      notaMinima < 1 ||
+      notaMinima > 100
+    ) {
+      setNotaMinimaError("La nota mínima debe ser un número entero entre 1 y 100");
+      markInvalid("notaMinima");
+    }
+
     if (questions.length === 0) {
       setQuestionsError("Debes agregar al menos una pregunta");
       markInvalid("questions");
@@ -568,6 +586,7 @@ export default function CreateExam() {
       idFormacion,
       duracionMinutos,
       requiereCompletarCurso,
+      notaMinima,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -718,6 +737,35 @@ export default function CreateExam() {
                 Valor base: 90 minutos. Podés modificarlo según la evaluación.
               </p>
               {duracionError && <p className="text-sm text-red-600">{duracionError}</p>}
+            </div>
+
+            <div className="space-y-2" ref={setFieldRef("notaMinima")}>
+              <Label htmlFor="nota-minima">Nota de aprobación (%)</Label>
+              <Input
+                id="nota-minima"
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={notaMinima === 0 ? "" : notaMinima}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setNotaMinima(0);
+                    if (notaMinimaError) setNotaMinimaError("");
+                    return;
+                  }
+                  const value = Number.parseInt(raw, 10);
+                  if (!Number.isNaN(value)) {
+                    setNotaMinima(value);
+                    if (notaMinimaError) setNotaMinimaError("");
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Porcentaje mínimo de aciertos para aprobar. Valor base: 70%.
+              </p>
+              {notaMinimaError && <p className="text-sm text-red-600">{notaMinimaError}</p>}
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-4">

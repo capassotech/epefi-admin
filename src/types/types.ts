@@ -275,6 +275,8 @@ export interface ExamenCreatePayload {
   idFormacion: string;
   duracionMinutos: number;
   requiereCompletarCurso: boolean;
+  /** Porcentaje mínimo de aciertos para aprobar (1-100). Por defecto 70. */
+  notaMinima?: number;
   preguntas: ExamenPregunta[];
 }
 
