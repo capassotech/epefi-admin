@@ -282,6 +282,8 @@ export interface ExamenCreatePayload {
 
 export interface Examen extends ExamenCreatePayload {
   id: string;
+  /** Si falta, se considera habilitado (compatibilidad con exámenes viejos). */
+  habilitado?: boolean;
 }
 
 export interface ExamenRealizado {

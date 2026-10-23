@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Edit2, Loader, Trash2, Users } from "lucide-react";
+import { ClipboardList, Edit2, Loader, Loader2, Trash2, Users } from "lucide-react";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -19,6 +20,8 @@ import { CoursesAPI } from "@/service/courses";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { Course, Examen, PaginationMeta } from "@/types/types";
 import { toast } from "sonner";
+
+const isExamEnabled = (exam: Examen) => exam.habilitado !== false;
 
 export default function Exams() {
   const navigate = useNavigate();
@@ -42,6 +45,7 @@ export default function Exams() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchExams = useCallback(async () => {
     try {
@@ -135,6 +139,32 @@ export default function Exams() {
       toast.error(message);
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleToggleHabilitado = async (exam: Examen, habilitado: boolean) => {
+    setTogglingId(exam.id);
+    try {
+      const updated = await ExamsAPI.setHabilitado(exam.id, habilitado);
+      setExams((prev) =>
+        prev.map((item) =>
+          item.id === exam.id
+            ? { ...item, habilitado: updated.habilitado ?? habilitado }
+            : item
+        )
+      );
+      toast.success(
+        `Examen ${habilitado ? "habilitado" : "deshabilitado"} exitosamente`
+      );
+    } catch (err) {
+      console.error("Error al actualizar habilitación del examen:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Error al actualizar el estado del examen"
+      );
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -255,6 +285,38 @@ export default function Exams() {
                       <Trash2 className="w-4 h-4 mr-1" />
                       Eliminar
                     </Button>
+                    <div
+                      className={`flex items-center justify-between gap-2 px-3 py-2 border rounded-lg w-full ${
+                        isExamEnabled(exam)
+                          ? "bg-green-50 border-green-200"
+                          : "bg-red-50 border-red-200"
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span
+                        className={`text-sm font-medium ${
+                          isExamEnabled(exam) ? "text-green-700" : "text-red-700"
+                        }`}
+                      >
+                        {togglingId === exam.id
+                          ? "Actualizando..."
+                          : isExamEnabled(exam)
+                            ? "Habilitado"
+                            : "Deshabilitado"}
+                      </span>
+                      {togglingId === exam.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                      ) : (
+                        <Switch
+                          checked={isExamEnabled(exam)}
+                          onCheckedChange={(checked) =>
+                            handleToggleHabilitado(exam, checked)
+                          }
+                          disabled={togglingId !== null}
+                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -266,6 +328,7 @@ export default function Exams() {
                     <TableHead>Título</TableHead>
                     <TableHead>Formación</TableHead>
                     <TableHead className="text-right">Preguntas</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -280,6 +343,42 @@ export default function Exams() {
                       </TableCell>
                       <TableCell className="text-right">
                         {exam.preguntas?.length ?? 0}
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className={`inline-flex items-center justify-between gap-2 px-3 py-2 border rounded-lg min-w-[10.5rem] ${
+                            isExamEnabled(exam)
+                              ? "bg-green-50 border-green-200"
+                              : "bg-red-50 border-red-200"
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span
+                            className={`text-sm font-medium ${
+                              isExamEnabled(exam)
+                                ? "text-green-700"
+                                : "text-red-700"
+                            }`}
+                          >
+                            {togglingId === exam.id
+                              ? "Actualizando..."
+                              : isExamEnabled(exam)
+                                ? "Habilitado"
+                                : "Deshabilitado"}
+                          </span>
+                          {togglingId === exam.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                          ) : (
+                            <Switch
+                              checked={isExamEnabled(exam)}
+                              onCheckedChange={(checked) =>
+                                handleToggleHabilitado(exam, checked)
+                              }
+                              disabled={togglingId !== null}
+                              className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
+                            />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
