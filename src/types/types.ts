@@ -277,6 +277,7 @@ export interface ExamenCreatePayload {
   requiereCompletarCurso: boolean;
   /** Porcentaje mínimo de aciertos para aprobar (1-100). Por defecto 70. */
   notaMinima?: number;
+  publicacionManualDeNota?: boolean;
   preguntas: ExamenPregunta[];
 }
 
