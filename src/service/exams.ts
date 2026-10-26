@@ -159,6 +159,26 @@ export const ExamsAPI = {
     }
   },
 
+  setHabilitado: async (
+    id: string,
+    habilitado: boolean
+  ): Promise<Examen> => {
+    try {
+      const res = await api.patch<Examen>(
+        `/examenes/${encodeURIComponent(id)}/habilitado`,
+        { habilitado }
+      );
+      return res.data;
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(
+          error,
+          `Error al ${habilitado ? "habilitar" : "deshabilitar"} examen`
+        )
+      );
+    }
+  },
+
   getAlumnosIntentos: async (
     examenId: string,
     search?: string
