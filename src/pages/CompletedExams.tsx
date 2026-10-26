@@ -412,7 +412,7 @@ export default function CompletedExams() {
       </div>
 
       <p className="text-sm text-gray-600">
-        Pendientes de corrección: {pendingPagination.total}
+        Pendientes de revisión: {pendingPagination.total}
         {" · "}
         Exámenes realizados: {generalPagination.total}
         {loading ? " (actualizando…)" : ""}
@@ -426,7 +426,7 @@ export default function CompletedExams() {
             <section ref={pendingListRef} className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold text-amber-900">
-                  Pendientes de corrección
+                  Pendientes de revisión
                 </h2>
                 <span className="text-xs font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
                   {pendingPagination.total}

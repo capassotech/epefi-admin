@@ -94,6 +94,7 @@ function examToFormState(exam: Examen): {
   duracionMinutos: number;
   requiereCompletarCurso: boolean;
   notaMinima: number;
+  publicacionManualDeNota: boolean;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -142,6 +143,7 @@ function examToFormState(exam: Examen): {
       typeof exam.notaMinima === "number" && exam.notaMinima > 0
         ? exam.notaMinima
         : 70,
+    publicacionManualDeNota: exam.publicacionManualDeNota === true,
     questions,
   };
 }
@@ -158,6 +160,7 @@ export default function CreateExam() {
   const [notaMinima, setNotaMinima] = useState(70);
   const [notaMinimaError, setNotaMinimaError] = useState("");
   const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
+  const [publicacionManualDeNota, setPublicacionManualDeNota] = useState(false);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -235,6 +238,7 @@ export default function CreateExam() {
         setDuracionMinutos(form.duracionMinutos);
         setNotaMinima(form.notaMinima);
         setRequiereCompletarCurso(form.requiereCompletarCurso);
+        setPublicacionManualDeNota(form.publicacionManualDeNota);
         setQuestions(form.questions);
       } catch (error) {
         console.error("Error al cargar examen:", error);
@@ -254,6 +258,15 @@ export default function CreateExam() {
     () => !saving && !loadingCourses && !loadingExam,
     [saving, loadingCourses, loadingExam]
   );
+
+  const tieneDesarrollo = useMemo(
+    () => questions.some((q) => q.tipoPregunta === "desarrollo"),
+    [questions]
+  );
+
+  useEffect(() => {
+    if (tieneDesarrollo) setPublicacionManualDeNota(false);
+  }, [tieneDesarrollo]);
 
   const totalPuntos = useMemo(() => sumPreguntasPuntos(questions), [questions]);
   const puntosValidos = puntosSumEqualsTotal(totalPuntos);
@@ -587,6 +600,7 @@ export default function CreateExam() {
       duracionMinutos,
       requiereCompletarCurso,
       notaMinima,
+      publicacionManualDeNota: publicacionManualDeNota,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -781,6 +795,25 @@ export default function CreateExam() {
                 id="requiere-completar-curso"
                 checked={requiereCompletarCurso}
                 onCheckedChange={setRequiereCompletarCurso}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="publicacion-manual" className="text-base">
+                  Publicación manual de nota
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {tieneDesarrollo
+                    ? "No disponible para exámenes con preguntas de desarrollo."
+                    : "Si está activado, el alumno no verá su nota hasta que el administrador la publique manualmente."}
+                </p>
+              </div>
+              <Switch
+                id="publicacion-manual"
+                checked={publicacionManualDeNota}
+                onCheckedChange={setPublicacionManualDeNota}
+                disabled={tieneDesarrollo}
               />
             </div>
 
