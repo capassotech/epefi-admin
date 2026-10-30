@@ -18,6 +18,19 @@ function isQuestionCorrectLocally(
   return correctIds.every((id, index) => id === selected[index]);
 }
 
+function getQuestionFractionalScoreLocally(
+  respuestas: Array<{ id: string; esCorrecta: boolean }>,
+  selectedIds: string[],
+  puntos: number
+): number {
+  const correctIds = new Set(respuestas.filter((r) => r.esCorrecta).map((r) => r.id));
+  const totalCorrectas = correctIds.size;
+  if (totalCorrectas === 0) return 0;
+  const acertadas = selectedIds.filter((id) => correctIds.has(id)).length;
+  if (acertadas === 0) return 0;
+  return Math.round((acertadas / totalCorrectas) * puntos * 100) / 100;
+}
+
 function resolveQuestionScore(
   pregunta: ExamenRealizadoPreguntaDetalle,
   selectedIds: string[]
@@ -40,8 +53,8 @@ function resolveQuestionScore(
   const puntosObtenidos =
     typeof pregunta.puntosObtenidos === "number"
       ? pregunta.puntosObtenidos
-      : acertada && typeof pregunta.puntos === "number"
-        ? pregunta.puntos
+      : typeof pregunta.puntos === "number"
+        ? getQuestionFractionalScoreLocally(pregunta.respuestas, selectedIds, pregunta.puntos)
         : 0;
 
   return { acertada, puntosObtenidos };
@@ -203,6 +216,10 @@ function normalizeQuestionFromRaw(
         : pr.tipoPregunta === "opcion_multiple"
           ? "opcion_multiple"
           : undefined,
+    imagenUrl:
+      typeof pr.imagenUrl === "string" && pr.imagenUrl.trim()
+        ? pr.imagenUrl.trim()
+        : undefined,
     respuestas,
     respuestasSeleccionadas,
     respuestaDesarrollo:
@@ -289,6 +306,7 @@ function enrichSnapshotFromTemplate(
       {
         ...q,
         texto: q.texto || template.texto,
+        imagenUrl: q.imagenUrl || template.imagenUrl,
         puntos:
           typeof q.puntos === "number"
             ? q.puntos
@@ -329,6 +347,7 @@ function buildQuestionsFromLiveTemplate(
       {
         id: q.id,
         texto: q.texto,
+        imagenUrl: fromQuestion?.imagenUrl || q.imagenUrl,
         puntos,
         puntosObtenidos: fromQuestion?.puntosObtenidos,
         acertada: fromQuestion?.acertada,

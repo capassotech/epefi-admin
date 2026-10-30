@@ -181,6 +181,10 @@ export const CompletedExamsAPI = {
                   : pr.tipoPregunta === "opcion_multiple"
                     ? ("opcion_multiple" as const)
                     : undefined,
+              imagenUrl:
+                typeof pr.imagenUrl === "string" && pr.imagenUrl.trim()
+                  ? pr.imagenUrl.trim()
+                  : undefined,
               respuestas: Array.isArray(respuestasRaw)
                 ? respuestasRaw.map((r) => {
                     const rr = r as Record<string, unknown>;

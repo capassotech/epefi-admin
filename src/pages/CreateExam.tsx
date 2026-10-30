@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,12 @@ type QuestionForm = {
   texto: string;
   puntos: number;
   tipoPregunta: TipoPregunta;
+  imagenUrl?: string;
+  imagenPath?: string;
+  /** Archivo pendiente de subir al guardar. */
+  imagenFile?: File | null;
+  /** Preview local (object URL) o URL remota. */
+  imagenPreview?: string;
   respuestas: OptionForm[];
 };
 
@@ -85,6 +92,9 @@ function examToFormState(exam: Examen): {
   title: string;
   idFormacion: string;
   duracionMinutos: number;
+  requiereCompletarCurso: boolean;
+  notaMinima: number;
+  publicacionManualDeNota: boolean;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -102,6 +112,10 @@ function examToFormState(exam: Examen): {
             q.tipoPregunta === "desarrollo"
               ? ("desarrollo" as const)
               : ("opcion_multiple" as const),
+          imagenUrl: q.imagenUrl || undefined,
+          imagenPath: q.imagenPath || undefined,
+          imagenFile: null,
+          imagenPreview: q.imagenUrl || undefined,
           respuestas:
             q.tipoPregunta === "desarrollo"
               ? []
@@ -124,6 +138,12 @@ function examToFormState(exam: Examen): {
     title: exam.titulo || "",
     idFormacion: exam.idFormacion || "",
     duracionMinutos: duracion,
+    requiereCompletarCurso: exam.requiereCompletarCurso !== false,
+    notaMinima:
+      typeof exam.notaMinima === "number" && exam.notaMinima > 0
+        ? exam.notaMinima
+        : 70,
+    publicacionManualDeNota: exam.publicacionManualDeNota === true,
     questions,
   };
 }
@@ -137,6 +157,10 @@ export default function CreateExam() {
   const [idFormacion, setIdFormacion] = useState("");
   const [duracionMinutos, setDuracionMinutos] = useState(90);
   const [duracionError, setDuracionError] = useState("");
+  const [notaMinima, setNotaMinima] = useState(70);
+  const [notaMinimaError, setNotaMinimaError] = useState("");
+  const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
+  const [publicacionManualDeNota, setPublicacionManualDeNota] = useState(false);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -212,6 +236,9 @@ export default function CreateExam() {
         setTitle(form.title);
         setIdFormacion(form.idFormacion);
         setDuracionMinutos(form.duracionMinutos);
+        setNotaMinima(form.notaMinima);
+        setRequiereCompletarCurso(form.requiereCompletarCurso);
+        setPublicacionManualDeNota(form.publicacionManualDeNota);
         setQuestions(form.questions);
       } catch (error) {
         console.error("Error al cargar examen:", error);
@@ -231,6 +258,15 @@ export default function CreateExam() {
     () => !saving && !loadingCourses && !loadingExam,
     [saving, loadingCourses, loadingExam]
   );
+
+  const tieneDesarrollo = useMemo(
+    () => questions.some((q) => q.tipoPregunta === "desarrollo"),
+    [questions]
+  );
+
+  useEffect(() => {
+    if (tieneDesarrollo) setPublicacionManualDeNota(false);
+  }, [tieneDesarrollo]);
 
   const totalPuntos = useMemo(() => sumPreguntasPuntos(questions), [questions]);
   const puntosValidos = puntosSumEqualsTotal(totalPuntos);
@@ -335,6 +371,76 @@ export default function CreateExam() {
     clearQuestionError(questionId, "respuestas");
   };
 
+  const setQuestionImage = (questionId: string, file: File | null) => {
+    updateQuestion(questionId, (q) => {
+      if (q.imagenPreview && q.imagenPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(q.imagenPreview);
+      }
+      if (!file) {
+        return {
+          ...q,
+          imagenFile: null,
+          imagenPreview: undefined,
+          imagenUrl: undefined,
+          imagenPath: undefined,
+        };
+      }
+      return {
+        ...q,
+        imagenFile: file,
+        imagenPreview: URL.createObjectURL(file),
+      };
+    });
+  };
+
+  const buildPreguntasPayload = (
+    source: QuestionForm[]
+  ): ExamenCreatePayload["preguntas"] =>
+    source.map((q) => ({
+      id: q.id,
+      texto: q.texto.trim(),
+      puntos: roundPuntos(q.puntos),
+      tipoPregunta: q.tipoPregunta,
+      ...(q.imagenUrl
+        ? { imagenUrl: q.imagenUrl, ...(q.imagenPath ? { imagenPath: q.imagenPath } : {}) }
+        : {}),
+      respuestas:
+        q.tipoPregunta === "desarrollo"
+          ? []
+          : q.respuestas.map((r) => ({
+              id: r.id,
+              texto: r.texto.trim(),
+              esCorrecta: r.esCorrecta,
+            })),
+    }));
+
+  const uploadPendingImages = async (
+    examenId: string,
+    source: QuestionForm[]
+  ): Promise<QuestionForm[]> => {
+    const next = [...source];
+    for (let i = 0; i < next.length; i += 1) {
+      const q = next[i];
+      if (!q.imagenFile) continue;
+      const uploaded = await ExamsAPI.uploadQuestionImage(
+        examenId,
+        q.id,
+        q.imagenFile
+      );
+      if (q.imagenPreview && q.imagenPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(q.imagenPreview);
+      }
+      next[i] = {
+        ...q,
+        imagenFile: null,
+        imagenUrl: uploaded.url,
+        imagenPath: uploaded.path,
+        imagenPreview: uploaded.url,
+      };
+    }
+    return next;
+  };
+
   const removeOption = (questionId: string, optionId: string) => {
     updateQuestion(questionId, (q) => ({
       ...q,
@@ -412,6 +518,16 @@ export default function CreateExam() {
       markInvalid("duration");
     }
 
+    if (
+      !Number.isFinite(notaMinima) ||
+      !Number.isInteger(notaMinima) ||
+      notaMinima < 1 ||
+      notaMinima > 100
+    ) {
+      setNotaMinimaError("La nota mínima debe ser un número entero entre 1 y 100");
+      markInvalid("notaMinima");
+    }
+
     if (questions.length === 0) {
       setQuestionsError("Debes agregar al menos una pregunta");
       markInvalid("questions");
@@ -478,33 +594,44 @@ export default function CreateExam() {
       return;
     }
 
-    const payload: ExamenCreatePayload = {
+    const basePayload: ExamenCreatePayload = {
       titulo: title.trim(),
       idFormacion,
       duracionMinutos,
-      preguntas: questions.map((q) => ({
-        id: q.id,
-        texto: q.texto.trim(),
-        puntos: roundPuntos(q.puntos),
-        tipoPregunta: q.tipoPregunta,
-        respuestas:
-          q.tipoPregunta === "desarrollo"
-            ? []
-            : q.respuestas.map((r) => ({
-                id: r.id,
-                texto: r.texto.trim(),
-                esCorrecta: r.esCorrecta,
-              })),
-      })),
+      requiereCompletarCurso,
+      notaMinima,
+      publicacionManualDeNota: publicacionManualDeNota,
+      preguntas: buildPreguntasPayload(questions),
     };
 
     try {
       setSaving(true);
+      let savedId = examId || "";
+      let workingQuestions = questions;
+
       if (isEditing && examId) {
-        await ExamsAPI.update(examId, payload);
+        workingQuestions = await uploadPendingImages(examId, questions);
+        setQuestions(workingQuestions);
+        await ExamsAPI.update(examId, {
+          ...basePayload,
+          preguntas: buildPreguntasPayload(workingQuestions),
+        });
         toast.success("Examen actualizado exitosamente");
       } else {
-        await ExamsAPI.create(payload);
+        const created = await ExamsAPI.create(basePayload);
+        savedId = String(created?.id ?? "").trim();
+        if (!savedId) {
+          throw new Error("No se pudo obtener el ID del examen creado");
+        }
+        const hasPendingImages = questions.some((q) => Boolean(q.imagenFile));
+        if (hasPendingImages) {
+          workingQuestions = await uploadPendingImages(savedId, questions);
+          setQuestions(workingQuestions);
+          await ExamsAPI.update(savedId, {
+            ...basePayload,
+            preguntas: buildPreguntasPayload(workingQuestions),
+          });
+        }
         toast.success("Examen creado exitosamente");
       }
       navigate("/exams");
@@ -626,6 +753,70 @@ export default function CreateExam() {
               {duracionError && <p className="text-sm text-red-600">{duracionError}</p>}
             </div>
 
+            <div className="space-y-2" ref={setFieldRef("notaMinima")}>
+              <Label htmlFor="nota-minima">Nota de aprobación (%)</Label>
+              <Input
+                id="nota-minima"
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={notaMinima === 0 ? "" : notaMinima}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setNotaMinima(0);
+                    if (notaMinimaError) setNotaMinimaError("");
+                    return;
+                  }
+                  const value = Number.parseInt(raw, 10);
+                  if (!Number.isNaN(value)) {
+                    setNotaMinima(value);
+                    if (notaMinimaError) setNotaMinimaError("");
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Porcentaje mínimo de aciertos para aprobar. Valor base: 70%.
+              </p>
+              {notaMinimaError && <p className="text-sm text-red-600">{notaMinimaError}</p>}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="requiere-completar-curso" className="text-base">
+                  Requiere completar el curso
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Si está desactivado, el alumno puede rendir el examen sin haber completado todos los módulos.
+                </p>
+              </div>
+              <Switch
+                id="requiere-completar-curso"
+                checked={requiereCompletarCurso}
+                onCheckedChange={setRequiereCompletarCurso}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="publicacion-manual" className="text-base">
+                  Publicación manual de nota
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {tieneDesarrollo
+                    ? "No disponible para exámenes con preguntas de desarrollo."
+                    : "Si está activado, el alumno no verá su nota hasta que el administrador la publique manualmente."}
+                </p>
+              </div>
+              <Switch
+                id="publicacion-manual"
+                checked={publicacionManualDeNota}
+                onCheckedChange={setPublicacionManualDeNota}
+                disabled={tieneDesarrollo}
+              />
+            </div>
+
             <div className="space-y-4" ref={setFieldRef("questions")}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Label className="text-base">Preguntas</Label>
@@ -737,6 +928,54 @@ export default function CreateExam() {
                       />
                       {questionErrors[question.id]?.texto && (
                         <p className="text-sm text-red-600">{questionErrors[question.id]?.texto}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Imagen de la pregunta (opcional)</Label>
+                      <p className="text-xs text-muted-foreground">
+                        El alumno verá esta imagen al rendir. JPG, PNG, WEBP o GIF · máx. 5 MB.
+                      </p>
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (file && file.size > 5 * 1024 * 1024) {
+                            toast.error("La imagen no puede superar 5 MB");
+                            e.target.value = "";
+                            return;
+                          }
+                          setQuestionImage(question.id, file);
+                          e.target.value = "";
+                        }}
+                      />
+                      {question.imagenPreview && (
+                        <div className="flex flex-wrap items-start gap-3 pt-1">
+                          <img
+                            src={question.imagenPreview}
+                            alt={`Vista previa pregunta ${index + 1}`}
+                            className="h-28 max-w-full rounded-md border object-contain bg-muted/20"
+                          />
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQuestionImage(question.id, null)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Quitar imagen
+                            </Button>
+                            {question.imagenFile && (
+                              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                                <ImagePlus className="w-3.5 h-3.5" />
+                                Se subirá al guardar
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
 

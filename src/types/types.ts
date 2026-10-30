@@ -264,24 +264,29 @@ export interface ExamenPregunta {
   id: string;
   texto: string;
   puntos?: number;
-  /** Por defecto opcion_multiple (exámenes legacy). */
   tipoPregunta?: TipoPregunta;
+  imagenUrl?: string;
+  imagenPath?: string;
   respuestas: ExamenRespuesta[];
 }
 
 export interface ExamenCreatePayload {
   titulo: string;
   idFormacion: string;
-  /** Duración del examen en minutos. Por defecto 90. */
   duracionMinutos: number;
+  requiereCompletarCurso: boolean;
+  /** Porcentaje mínimo de aciertos para aprobar (1-100). Por defecto 70. */
+  notaMinima?: number;
+  publicacionManualDeNota?: boolean;
   preguntas: ExamenPregunta[];
 }
 
 export interface Examen extends ExamenCreatePayload {
   id: string;
+  /** Si falta, se considera habilitado (compatibilidad con exámenes viejos). */
+  habilitado?: boolean;
 }
 
-/** Registro en colección examenes_realizados (listado admin). */
 export interface ExamenRealizado {
   id: string;
   idUsuario?: string;
@@ -290,7 +295,6 @@ export interface ExamenRealizado {
   idFormacion: string;
   nota: number;
   aprobado: boolean;
-  /** completado = solo opción múltiple / ya corregido; pendiente_correccion = tiene desarrollo. */
   estado?: EstadoExamenRealizado;
   fechaRealizacion?: FirestoreTimestamp | string | number;
   nombreAlumno?: string;
@@ -308,6 +312,7 @@ export interface ExamenRealizadoPreguntaDetalle {
   puntosObtenidos?: number;
   acertada?: boolean;
   tipoPregunta?: TipoPregunta;
+  imagenUrl?: string;
   respuestas: ExamenRespuesta[];
   respuestasSeleccionadas?: string[];
   idsRespuestasSeleccionadas?: string[];
