@@ -33,6 +33,8 @@ export default function ExamAttempts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [saving, setSaving] = useState<SavingMap>({});
+  const [defaultDraft, setDefaultDraft] = useState("");
+  const [savingDefault, setSavingDefault] = useState(false);
 
   const examenId = id ? decodeURIComponent(id) : "";
 
@@ -54,6 +56,7 @@ export default function ExamAttempts() {
         nextDrafts[row.idAlumno] = String(row.intentosMaximos);
       }
       setDrafts(nextDrafts);
+      setDefaultDraft(String(res.intentosDefault));
       setError("");
     } catch (err) {
       console.error("Error al cargar intentos:", err);
@@ -79,6 +82,31 @@ export default function ExamAttempts() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(searchInput.trim());
+  };
+
+  const handleSaveDefault = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = Number(defaultDraft);
+    if (!Number.isInteger(value) || value < 1) {
+      toast.error("Ingresá un entero mayor o igual a 1");
+      return;
+    }
+    if (value === intentosDefault) {
+      toast.message("Sin cambios");
+      return;
+    }
+    try {
+      setSavingDefault(true);
+      await ExamsAPI.setIntentosDefault(examenId, value);
+      toast.success("Límite general de intentos actualizado");
+      await fetchData();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Error al guardar el límite general"
+      );
+    } finally {
+      setSavingDefault(false);
+    }
   };
 
   const setRowSaving = (idAlumno: string, value: boolean) => {
@@ -207,6 +235,41 @@ export default function ExamAttempts() {
           </p>
         </div>
       </div>
+
+      <form
+        onSubmit={handleSaveDefault}
+        className="flex flex-col gap-3 rounded-md border bg-white p-4 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="space-y-1 min-w-0">
+          <p className="font-semibold text-gray-900">
+            Intentos para todos los alumnos
+          </p>
+          <p className="text-sm text-gray-600">
+            Se aplica a todos los alumnos que no tengan un límite personalizado.
+          </p>
+        </div>
+        <div className="flex items-end gap-2 shrink-0">
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            className="w-24"
+            value={defaultDraft}
+            disabled={savingDefault}
+            onChange={(e) => setDefaultDraft(e.target.value)}
+          />
+          <Button type="submit" className="cursor-pointer" disabled={savingDefault}>
+            {savingDefault ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-1" />
+                Guardar
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
 
       <form
         onSubmit={handleSearch}

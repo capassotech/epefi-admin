@@ -95,6 +95,7 @@ function examToFormState(exam: Examen): {
   requiereCompletarCurso: boolean;
   notaMinima: number;
   publicacionManualDeNota: boolean;
+  intentosMaximos: number;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -144,6 +145,11 @@ function examToFormState(exam: Examen): {
         ? exam.notaMinima
         : 70,
     publicacionManualDeNota: exam.publicacionManualDeNota === true,
+    // Exámenes creados antes de este campo usaban 3 intentos fijos
+    intentosMaximos:
+      typeof exam.intentosMaximos === "number" && exam.intentosMaximos > 0
+        ? exam.intentosMaximos
+        : 3,
     questions,
   };
 }
@@ -159,6 +165,8 @@ export default function CreateExam() {
   const [duracionError, setDuracionError] = useState("");
   const [notaMinima, setNotaMinima] = useState(70);
   const [notaMinimaError, setNotaMinimaError] = useState("");
+  const [intentosMaximos, setIntentosMaximos] = useState(1);
+  const [intentosError, setIntentosError] = useState("");
   const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
   const [publicacionManualDeNota, setPublicacionManualDeNota] = useState(false);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
@@ -237,6 +245,7 @@ export default function CreateExam() {
         setIdFormacion(form.idFormacion);
         setDuracionMinutos(form.duracionMinutos);
         setNotaMinima(form.notaMinima);
+        setIntentosMaximos(form.intentosMaximos);
         setRequiereCompletarCurso(form.requiereCompletarCurso);
         setPublicacionManualDeNota(form.publicacionManualDeNota);
         setQuestions(form.questions);
@@ -528,6 +537,15 @@ export default function CreateExam() {
       markInvalid("notaMinima");
     }
 
+    if (
+      !Number.isInteger(intentosMaximos) ||
+      intentosMaximos < 1 ||
+      intentosMaximos > 100
+    ) {
+      setIntentosError("Los intentos deben ser un número entero entre 1 y 100");
+      markInvalid("intentos");
+    }
+
     if (questions.length === 0) {
       setQuestionsError("Debes agregar al menos una pregunta");
       markInvalid("questions");
@@ -601,6 +619,7 @@ export default function CreateExam() {
       requiereCompletarCurso,
       notaMinima,
       publicacionManualDeNota: publicacionManualDeNota,
+      intentosMaximos,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -780,6 +799,35 @@ export default function CreateExam() {
                 Porcentaje mínimo de aciertos para aprobar. Valor base: 70%.
               </p>
               {notaMinimaError && <p className="text-sm text-red-600">{notaMinimaError}</p>}
+            </div>
+
+            <div className="space-y-2" ref={setFieldRef("intentos")}>
+              <Label htmlFor="intentos-maximos">Intentos por alumno</Label>
+              <Input
+                id="intentos-maximos"
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={intentosMaximos === 0 ? "" : intentosMaximos}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setIntentosMaximos(0);
+                    if (intentosError) setIntentosError("");
+                    return;
+                  }
+                  const value = Number.parseInt(raw, 10);
+                  if (!Number.isNaN(value)) {
+                    setIntentosMaximos(value);
+                    if (intentosError) setIntentosError("");
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Aplica a todos los alumnos. Valor base: 1 intento. Podés personalizarlo por alumno desde "Intentos".
+              </p>
+              {intentosError && <p className="text-sm text-red-600">{intentosError}</p>}
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-4">

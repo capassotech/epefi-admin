@@ -200,6 +200,22 @@ export const ExamsAPI = {
     }
   },
 
+  setIntentosDefault: async (
+    examenId: string,
+    intentosMaximos: number
+  ): Promise<void> => {
+    try {
+      await api.patch(
+        `/examenes/${encodeURIComponent(examenId)}/intentos-default`,
+        { intentosMaximos }
+      );
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al actualizar el límite general de intentos")
+      );
+    }
+  },
+
   upsertIntentosAlumno: async (
     examenId: string,
     idAlumno: string,
