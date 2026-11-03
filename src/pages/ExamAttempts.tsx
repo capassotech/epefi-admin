@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { examAttemptsTourSteps } from "@/config/tourSteps";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -225,6 +226,7 @@ export default function ExamAttempts() {
 
   usePageHeader({
     title: "Intentos",
+    tourSteps: examAttemptsTourSteps,
     breadcrumbs: [
       { label: "Exámenes", to: "/exams" },
       ...(data?.examen.titulo && id

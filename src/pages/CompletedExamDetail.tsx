@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { completedExamDetailTourSteps } from "@/config/tourSteps";
 import {
   CalendarDays,
   Check,
@@ -421,6 +422,7 @@ export default function CompletedExamDetail() {
 
   usePageHeader({
     title: `${modoCorreccion ? "Corregir" : "Detalle"}${meta?.nombreAlumno ? ` · ${meta.nombreAlumno}` : ""}`,
+    tourSteps: completedExamDetailTourSteps,
     // Si se llegó desde el panel general, la ruta lo refleja; si no, cuelga de Exámenes › Realizados
     breadcrumbs: returnTo.startsWith(COMPLETED_EXAMS_LIST_PATH)
       ? [

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { examFormTourSteps } from "@/config/tourSteps";
 import { CheckCircle2, Circle, ClipboardCheck, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -672,6 +673,7 @@ export default function CreateExam() {
 
   usePageHeader({
     title: isEditing ? "Editar examen" : "Crear examen",
+    tourSteps: examFormTourSteps,
     breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
   });
 
@@ -776,7 +778,7 @@ export default function CreateExam() {
   return (
     <DetailLayout aside={aside}>
       <form id="exam-form" className="space-y-6" onSubmit={handleSave}>
-        <SectionCard title="Configuración" description="Datos generales y reglas del examen">
+        <SectionCard tourId="exam-config" title="Configuración" description="Datos generales y reglas del examen">
           <div className="grid gap-4 px-5 py-5 sm:grid-cols-3">
             <div ref={setFieldRef("title")} className="sm:col-span-3">
               <FormField id="exam-title" label="Título del examen" error={titleError}>
@@ -932,6 +934,7 @@ export default function CreateExam() {
 
         <div ref={setFieldRef("questions")}>
           <SectionCard
+            tourId="exam-questions"
             title="Preguntas"
             description={`${questions.length} pregunta${questions.length !== 1 ? "s" : ""}`}
             action={

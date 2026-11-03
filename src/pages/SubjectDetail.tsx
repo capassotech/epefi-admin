@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
+import { subjectDetailTourSteps } from '@/config/tourSteps';
 import { Button } from '@/components/ui/button';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { BookOpen, GraduationCap, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -143,7 +144,11 @@ export const SubjectDetail = () => {
         }
       };
 
-    usePageHeader({ title: materia?.nombre, breadcrumbs: [{ label: "Materias", to: "/subjects" }] });
+    usePageHeader({
+        title: materia?.nombre,
+        tourSteps: subjectDetailTourSteps,
+        breadcrumbs: [{ label: "Materias", to: "/subjects" }],
+    });
 
     if (loading) return (
         <InteractiveLoader

@@ -12,16 +12,7 @@ export function TourButton({ steps, className }: TourButtonProps) {
   const { startTour } = useTour(steps);
 
   const handleClick = () => {
-    // Verificar que todos los elementos del tour existan en el DOM
-    const allElementsExist = steps.every(step => {
-      const element = document.querySelector(step.element);
-      return element !== null;
-    });
-
-    if (!allElementsExist) {
-      console.warn('Algunos elementos del tour no se encontraron en el DOM');
-    }
-
+    // Los pasos sin elemento visible se saltean en startTour.
     // Pequeño delay para asegurar que los elementos estén renderizados
     setTimeout(() => {
       startTour();

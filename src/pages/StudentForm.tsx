@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { studentFormTourSteps } from "@/config/tourSteps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -103,6 +104,7 @@ export default function StudentForm() {
 
   usePageHeader({
     title: isEditing ? "Editar" : "Nuevo usuario",
+    tourSteps: studentFormTourSteps,
     breadcrumbs: [
       { label: "Usuarios", to: "/students" },
       ...(isEditing && student ? [{ label: `${student.nombre} ${student.apellido}`, to: detailPath }] : []),

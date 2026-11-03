@@ -13,7 +13,9 @@ export function DetailLayout({ aside, children }: { aside: ReactNode; children: 
       >
         {aside}
       </aside>
-      <div className="min-w-0 space-y-6">{children}</div>
+      <div data-tour="detail-main" className="min-w-0 space-y-6">
+        {children}
+      </div>
     </div>
   );
 }
@@ -53,7 +55,11 @@ export function ProfileCard({
       </div>
       {children}
       {/* Acciones apiladas a todo el ancho: la principal primero, las secundarias debajo */}
-      {footer && <div className="flex flex-col gap-1.5 px-5 py-3">{footer}</div>}
+      {footer && (
+        <div data-tour="detail-actions" className="flex flex-col gap-1.5 px-5 py-3">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
@@ -120,15 +126,18 @@ export function SectionCard({
   action,
   children,
   className,
+  tourId,
 }: {
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Identificador para que el tutorial de la página pueda señalar esta sección */
+  tourId?: string;
 }) {
   return (
-    <section className={cn("admin-card overflow-hidden min-w-0", className)}>
+    <section data-tour={tourId} className={cn("admin-card overflow-hidden min-w-0", className)}>
       <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-gray-900">{title}</h2>

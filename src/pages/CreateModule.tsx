@@ -17,6 +17,7 @@ import ModulesModal from "@/components/subject/ModulesModal";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { safeGetItem, safeRemoveItem } from "@/utils/storage";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { createModuleTourSteps } from "@/config/tourSteps";
 
 interface PendingSubjectData {
     id: string;
@@ -43,6 +44,7 @@ export default function CreateModule() {
     const currentSubject = subjectFromQuery ?? pendingSubject;
     usePageHeader({
         title: "Módulos",
+        tourSteps: createModuleTourSteps,
         breadcrumbs: [
             { label: "Materias", to: "/subjects" },
             ...(currentSubject?.nombre && subjectFromQuery

@@ -1,5 +1,131 @@
 import type { TourStep } from '@/hooks/useTour';
 
+// Pantallas de detalle y formularios: comparten ficha lateral, contenido y pie de acciones
+const asideStep = (title: string, description: string): TourStep => ({
+  element: '[data-tour="detail-aside"]',
+  popover: { title, description, side: 'right', align: 'start' },
+});
+const mainStep = (title: string, description: string): TourStep => ({
+  element: '[data-tour="detail-main"]',
+  popover: { title, description, side: 'left', align: 'start' },
+});
+const actionsStep = (title: string, description: string): TourStep => ({
+  element: '[data-tour="detail-actions"]',
+  popover: { title, description, side: 'right', align: 'end' },
+});
+
+export const productDetailTourSteps: TourStep[] = [
+  asideStep(
+    'Ficha del curso',
+    'Portada, estado, precio, período de dictado y los documentos del curso (plan de estudios y fechas de exámenes). Tocá la portada para verla grande.'
+  ),
+  mainStep(
+    'Descripción y materias',
+    'Desplegá una materia para ver sus módulos. Desde ahí podés editarlos, eliminarlos y decidir si están habilitados por defecto para los alumnos.'
+  ),
+  actionsStep('Editar curso', 'Cambiá los datos del curso, su portada, fechas, documentos o las materias que lo componen.'),
+];
+
+export const subjectDetailTourSteps: TourStep[] = [
+  asideStep('Ficha de la materia', 'Su estado, los cursos a los que pertenece y cuántos módulos tiene.'),
+  mainStep(
+    'Módulos',
+    'Creá, editá o eliminá módulos. El interruptor define si cada módulo está habilitado por defecto; si algunos alumnos lo tienen deshabilitado, lo vas a ver indicado.'
+  ),
+  actionsStep('Editar o eliminar', 'Cambiá el nombre de la materia o eliminala junto con sus módulos.'),
+];
+
+export const examAttemptsTourSteps: TourStep[] = [
+  asideStep(
+    'Intentos para todos',
+    'Definí cuántas veces puede rendir este examen cada alumno. Se aplica a todos los que no tengan un límite propio.'
+  ),
+  mainStep(
+    'Intentos por alumno',
+    'Mirá cuántos intentos usó cada alumno. Podés darle un máximo distinto a uno en particular y guardarlo, o volverlo al límite general.'
+  ),
+  actionsStep('Editar examen', 'Volvé a la configuración y las preguntas del examen.'),
+];
+
+export const completedExamDetailTourSteps: TourStep[] = [
+  asideStep('Resultado', 'El alumno, el examen, la fecha, el intento y el resultado: nota, puntos y porcentaje de aciertos.'),
+  mainStep(
+    'Preguntas y respuestas',
+    'Cada pregunta con la respuesta del alumno y la correcta. En las de desarrollo, asignás el puntaje y podés dejar un comentario.'
+  ),
+  actionsStep('Guardar corrección', 'Cuando termines de corregir, guardá para calcular la nota final o publicala para que el alumno la vea.'),
+];
+
+const courseFormSteps = (isNew: boolean): TourStep[] => [
+  asideStep(
+    'Vista previa y pasos',
+    'Mirá cómo va quedando el curso, habilitalo u ocultalo para los alumnos y movete entre los pasos: información general y materias.'
+  ),
+  mainStep(
+    isNew ? 'Datos del curso' : 'Editar los datos',
+    'Completá título, descripción, precio, portada, fechas de dictado y los documentos. En el paso "Materias" asociás o creás las materias del curso.'
+  ),
+  actionsStep(
+    isNew ? 'Crear y continuar' : 'Guardar',
+    isNew
+      ? 'Primero se crea el curso y después podés agregarle materias. Al terminar, finalizá el curso.'
+      : 'Guardá los cambios de cada paso. También podés eliminar el curso desde acá.'
+  ),
+];
+export const createProductTourSteps = courseFormSteps(true);
+export const editProductTourSteps = courseFormSteps(false);
+
+export const examFormTourSteps: TourStep[] = [
+  {
+    element: '[data-tour="exam-config"]',
+    popover: {
+      title: 'Configuración',
+      description: 'Título, formación, duración, nota de aprobación e intentos. También si exige completar el curso y si la nota se publica a mano.',
+      side: 'left',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="exam-questions"]',
+    popover: {
+      title: 'Preguntas',
+      description:
+        'Elegí el tipo de cada pregunta (opción múltiple o desarrollo), marcá la respuesta correcta con el círculo y asigná puntos. Entre todas deben sumar 100; "Distribuir equitativamente" los reparte por vos.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  asideStep('Resumen', 'Cantidad de preguntas, puntos totales (en rojo si no suman 100) y cuántas son de desarrollo.'),
+  actionsStep('Guardar', 'Guardá el examen o agregá más preguntas. Si algo falta, te llevamos directo al campo a completar.'),
+];
+
+export const studentFormTourSteps: TourStep[] = [
+  mainStep(
+    'Datos del usuario',
+    'Nombre, apellido, DNI y rol. Al crear un usuario también definís su email (con confirmación) y una contraseña inicial que cumpla los requisitos.'
+  ),
+  actionsStep('Guardar', 'Guardá los cambios. Al crear un usuario se abre su detalle para que le asignes cursos.'),
+];
+
+export const subjectFormTourSteps: TourStep[] = [
+  mainStep('Nombre de la materia', 'Las materias se asocian a los cursos desde la edición de cada curso.'),
+  actionsStep('Guardar', 'Al crear la materia se abre su detalle para que le agregues módulos.'),
+];
+
+export const moduleFormTourSteps: TourStep[] = [
+  mainStep(
+    'Contenido del módulo',
+    'Título, descripción, bibliografía, documentos y videos. Podés ponerle nombre a cada archivo y reordenarlos arrastrándolos.'
+  ),
+  actionsStep('Guardar', 'Los archivos se suben al guardar; esperá a que termine antes de salir.'),
+];
+
+export const createModuleTourSteps: TourStep[] = [
+  asideStep('Materia', 'La materia a la que le estás cargando módulos y cuántos tiene.'),
+  mainStep('Módulos', 'Los módulos de la materia: editalos, eliminalos o elegí si están habilitados por defecto.'),
+  actionsStep('Acciones', 'Creá un módulo nuevo. Si la materia es nueva, finalizá para guardarla con sus módulos.'),
+];
+
 export const dashboardTourSteps: TourStep[] = [
   {
     element: '[data-tour="sidebar"]',

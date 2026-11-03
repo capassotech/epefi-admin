@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { BookOpen, GraduationCap, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { subjectFormTourSteps } from "@/config/tourSteps";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -62,6 +63,7 @@ export default function SubjectForm() {
 
   usePageHeader({
     title: isEditing ? "Editar" : "Nueva materia",
+    tourSteps: subjectFormTourSteps,
     breadcrumbs: [
       { label: "Materias", to: "/subjects" },
       ...(isEditing && materia ? [{ label: materia.nombre, to: detailPath }] : []),

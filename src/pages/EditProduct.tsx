@@ -9,6 +9,7 @@ import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/Deta
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { editProductTourSteps } from "@/config/tourSteps";
 import {
   ArrowLeft,
   ArrowRight,
@@ -50,7 +51,11 @@ import {
 export default function EditProduct() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  usePageHeader({ title: "Editar curso", breadcrumbs: [{ label: "Cursos", to: "/products" }] });
+  usePageHeader({
+    title: "Editar curso",
+    tourSteps: editProductTourSteps,
+    breadcrumbs: [{ label: "Cursos", to: "/products" }],
+  });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 

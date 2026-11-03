@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FileText, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { moduleFormTourSteps } from "@/config/tourSteps";
 import { Button } from "@/components/ui/button";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/DetailLayout";
@@ -57,6 +58,7 @@ export default function ModuleForm() {
 
   usePageHeader({
     title: isEditing ? module?.titulo || "Editar módulo" : "Nuevo módulo",
+    tourSteps: moduleFormTourSteps,
     breadcrumbs: [
       { label: "Materias", to: "/subjects" },
       ...(materia ? [{ label: materia.nombre, to: subjectPath }] : []),

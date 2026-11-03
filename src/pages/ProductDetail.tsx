@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
+import { productDetailTourSteps } from '@/config/tourSteps';
 import { Button } from '@/components/ui/button';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { IconAction } from '@/components/ui/icon-action';
@@ -201,7 +202,11 @@ const ProductDetail = () => {
     }
   };
 
-  usePageHeader({ title: curso?.titulo, breadcrumbs: [{ label: "Cursos", to: "/products" }] });
+  usePageHeader({
+    title: curso?.titulo,
+    tourSteps: productDetailTourSteps,
+    breadcrumbs: [{ label: "Cursos", to: "/products" }],
+  });
 
   if (loading) return (
     <InteractiveLoader

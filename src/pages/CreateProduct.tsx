@@ -8,6 +8,7 @@ import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/Deta
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useNavigate } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { createProductTourSteps } from "@/config/tourSteps";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,7 +32,11 @@ import SubjectCreation from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
-  usePageHeader({ title: "Crear curso", breadcrumbs: [{ label: "Cursos", to: "/products" }] });
+  usePageHeader({
+    title: "Crear curso",
+    tourSteps: createProductTourSteps,
+    breadcrumbs: [{ label: "Cursos", to: "/products" }],
+  });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
