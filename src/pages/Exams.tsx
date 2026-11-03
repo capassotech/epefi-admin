@@ -274,12 +274,6 @@ export default function Exams() {
         }
       />
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {exams.length} de {pagination.total} exámenes
-        </p>
-      </div>
-
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando exámenes…" />
         {paginationLoading && exams.length === 0 ? (

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SubjectCard } from '../components/subject/SubjectCard';
 import { SubjectList } from '../components/subject/SubjectList';
 import SubjectModal from '../components/subject/SubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
@@ -22,7 +21,6 @@ export default function Subjects() {
     const [materias, setMaterias] = useState<Subject[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<FilterOptions>({});
-    const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
@@ -222,49 +220,11 @@ export default function Subjects() {
                 />
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-600">
-                    Mostrando {materias.length} de {pagination.total} materias
-                </p>
-                <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
-                    <span>Vista:</span>
-                    <button
-                        onClick={() => setViewMode('cards')}
-                        className={`px-3 py-1 rounded-md ${viewMode === 'cards' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                    >
-                        Tarjetas
-                    </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`px-3 py-1 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                    >
-                        Lista
-                    </button>
-                </div>
-            </div>
-
             <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
                 <ListLoadingPill loading={paginationLoading} label="Cargando materias…" />
                 {paginationLoading && materias.length === 0 ? (
                     <div className="h-32" />
                 ) : materias.length > 0 ? (
-                    <>
-                    {viewMode === 'cards' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="subjects-list">
-                            {materias.map((m, index) => (
-                                <div
-                                    key={m.id}
-                                    className="animate-fade-in"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    <SubjectCard
-                                        subject={m}
-                                        onEdit={handleEditClick}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
                         <div data-tour="subjects-list">
                             <SubjectList 
                                 subjects={materias} 
@@ -309,8 +269,6 @@ export default function Subjects() {
                                 }}
                             />
                         </div>
-                    )}
-                    </>
                 ) : (
                     <div className="text-center py-12">
                     <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

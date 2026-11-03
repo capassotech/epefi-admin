@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ProductCard } from '@/components/product/ProductCard';
 import { ProductList } from '@/components/product/ProductList';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +22,6 @@ export default function Products() {
   const [cursos, setCursos] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
@@ -218,48 +216,11 @@ export default function Products() {
         />
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {cursos.length} de {pagination.total} cursos
-        </p>
-        <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
-          <span>Vista:</span>
-          <button
-            onClick={() => setViewMode('cards')}
-            className={`px-3 py-1 rounded-md ${viewMode === 'cards' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-          >
-            Tarjetas
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-          >
-            Lista
-          </button>
-        </div>
-      </div>
-
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando cursos…" />
         {paginationLoading && cursos.length === 0 ? (
           <div className="h-32" />
         ) : cursos.length > 0 ? (
-          <>
-          {viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="courses-list">
-              {cursos.map((f, index) => (
-                <div
-                  key={f.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <ProductCard
-                    product={f}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
             <div data-tour="courses-list">
               <ProductList
                 products={cursos}
@@ -293,8 +254,6 @@ export default function Products() {
                 }}
               />
             </div>
-          )}
-          </>
         ) : (
           <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

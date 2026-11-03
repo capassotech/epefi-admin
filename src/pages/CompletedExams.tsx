@@ -501,16 +501,6 @@ export default function CompletedExams() {
         <FilterChips chips={chips} onClearAll={handleClearFilters} />
       </div>
 
-      <p className="text-sm text-gray-600">
-        {pendingPagination.total > 0 && (
-          <>
-            <span className="font-medium text-amber-700">{pendingPagination.total} por corregir</span>
-            {" · "}
-          </>
-        )}
-        {generalPagination.total} corregidos
-      </p>
-
       {error ? (
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : pendingPagination.total > 0 || generalPagination.total > 0 ? (
@@ -542,7 +532,12 @@ export default function CompletedExams() {
 
           <section ref={generalListRef} className="space-y-3">
             {pendingPagination.total > 0 && (
-              <h2 className="text-sm font-semibold text-gray-900">Corregidos</h2>
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                Corregidos
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                  {generalPagination.total}
+                </span>
+              </h2>
             )}
             {generalPagination.total === 0 && pendingPagination.total > 0 ? (
               <p className="text-sm text-gray-500 py-2">

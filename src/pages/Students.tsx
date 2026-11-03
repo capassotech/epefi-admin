@@ -288,12 +288,6 @@ export default function Students() {
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {students.length} de {pagination.total} usuarios
-        </p>
-      </div>
-
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando usuarios…" />
         {paginationLoading && students.length === 0 ? (

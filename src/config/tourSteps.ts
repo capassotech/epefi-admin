@@ -49,7 +49,7 @@ export const productsTourSteps: TourStep[] = [
     popover: {
       title: 'Buscar cursos',
       description:
-        'Usá este buscador para encontrar un curso por nombre. También podés ordenar la lista.',
+        'Usá este buscador para encontrar un curso por nombre.',
       side: 'bottom',
       align: 'start',
     },
@@ -65,21 +65,11 @@ export const productsTourSteps: TourStep[] = [
     },
   },
   {
-    element: '[data-tour="view-toggle"]',
-    popover: {
-      title: 'Cómo se muestran',
-      description:
-        'Podés cambiar cómo se ven los cursos: en tarjetas o en lista.',
-      side: 'bottom',
-      align: 'end',
-    },
-  },
-  {
     element: '[data-tour="courses-list"]',
     popover: {
       title: 'Lista de cursos',
       description:
-        'Acá están todos los cursos. Entrá a uno para editarlo o ver los detalles.',
+        'Acá están todos los cursos. Tocá los encabezados para ordenar o filtrar, y entrá a uno para editarlo o ver los detalles.',
       side: 'top',
       align: 'start',
     },
@@ -181,21 +171,11 @@ export const subjectsTourSteps: TourStep[] = [
     },
   },
   {
-    element: '[data-tour="view-toggle"]',
-    popover: {
-      title: 'Forma de verlas',
-      description:
-        'Elegí si querés ver las materias en tarjetas o en lista.',
-      side: 'bottom',
-      align: 'end',
-    },
-  },
-  {
     element: '[data-tour="subjects-list"]',
     popover: {
       title: 'Lista de materias',
       description:
-        'Acá están todas las materias. Entrá a una para editarla o agregar contenido.',
+        'Acá están todas las materias. Tocá los encabezados para ordenar o filtrar, y entrá a una para editarla o agregar contenido.',
       side: 'top',
       align: 'start',
     },
