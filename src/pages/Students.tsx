@@ -92,7 +92,6 @@ export default function Students() {
           : undefined;
 
       const allRows: StudentDB[] = [];
-      let aggregatedTotal = 0;
       let pageCursor = 1;
       let totalPages = 1;
 
@@ -112,7 +111,6 @@ export default function Students() {
           SERVER_PAGE_LIMIT
         );
         totalPages = Math.max(1, meta.pagination.totalPages);
-        aggregatedTotal = Math.max(aggregatedTotal, meta.pagination.total);
         allRows.push(...extractStudentsFromResponse(res));
         pageCursor += 1;
       } while (pageCursor <= totalPages && !isStale());
@@ -120,6 +118,8 @@ export default function Students() {
       // Una búsqueda/filtro más reciente ya está en curso: no pisar su resultado
       if (isStale()) return;
 
+      // El total sale de las filas efectivamente filtradas, para que la paginación
+      // coincida con lo que se muestra en la grilla
       let paginated = paginateStudentsClientSide(allRows, {
         search: searchQuery,
         status: filters.status,
@@ -128,19 +128,6 @@ export default function Students() {
         page,
         limit,
       });
-      if (aggregatedTotal > paginated.pagination.total) {
-        paginated = {
-          ...paginated,
-          pagination: {
-            ...paginated.pagination,
-            total: aggregatedTotal,
-            totalPages: Math.max(
-              1,
-              Math.ceil(aggregatedTotal / limit)
-            ),
-          },
-        };
-      }
 
       const pending = pendingNewUserRef.current;
       if (pending?.id) {
@@ -157,11 +144,8 @@ export default function Students() {
       }
 
       setStudents(paginated.data);
-      setPagination({
-        ...paginated.pagination,
-        limit,
-        ...(forcedPage !== undefined ? { page: forcedPage } : { page }),
-      });
+      // paginated.pagination.page ya viene acotada a totalPages
+      setPagination({ ...paginated.pagination, limit });
     } catch (err) {
       if (isStale()) return;
       console.error("Error al cargar estudiantes:", err);
