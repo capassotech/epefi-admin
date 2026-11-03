@@ -372,7 +372,7 @@ const ModulesModal = ({
         setLoading(true);
         const error = validateForm();
         if (error) {
-            alert(error);
+            toast.error(error);
             setLoading(false);
             return;
         }

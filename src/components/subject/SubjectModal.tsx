@@ -387,7 +387,7 @@ const SubjectModal = ({
                                                 onClick={() => {
                                                     const error = validateForm();
                                                     if (error) {
-                                                        alert(error);
+                                                        toast.error(error);
                                                         return;
                                                     }
                                                     setShowConfirmSaveDialog(true);
