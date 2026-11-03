@@ -62,6 +62,8 @@ export default function Students() {
 
   const pendingNewUserRef = useRef<StudentDB | null>(null);
   const skipNextAutoFetchRef = useRef(false);
+  /** Id del último pedido; las respuestas de pedidos anteriores se descartan */
+  const fetchSeqRef = useRef(0);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -71,6 +73,8 @@ export default function Students() {
     const page = forcedPage !== undefined ? forcedPage : pagination.page;
     const limit = pagination.limit;
     const effectiveFilters = getEffectiveStudentFilters(filters);
+    const seq = ++fetchSeqRef.current;
+    const isStale = () => seq !== fetchSeqRef.current;
 
     try {
       setPaginationLoading(true);
@@ -111,7 +115,10 @@ export default function Students() {
         aggregatedTotal = Math.max(aggregatedTotal, meta.pagination.total);
         allRows.push(...extractStudentsFromResponse(res));
         pageCursor += 1;
-      } while (pageCursor <= totalPages);
+      } while (pageCursor <= totalPages && !isStale());
+
+      // Una búsqueda/filtro más reciente ya está en curso: no pisar su resultado
+      if (isStale()) return;
 
       let paginated = paginateStudentsClientSide(allRows, {
         search: searchQuery,
@@ -156,12 +163,15 @@ export default function Students() {
         ...(forcedPage !== undefined ? { page: forcedPage } : { page }),
       });
     } catch (err) {
+      if (isStale()) return;
       console.error("Error al cargar estudiantes:", err);
       setError("No se pudieron cargar los estudiantes");
       setStudents([]);
     } finally {
-      setPaginationLoading(false);
-      setLoading(false);
+      if (!isStale()) {
+        setPaginationLoading(false);
+        setLoading(false);
+      }
     }
   }, [filters, pagination.limit, pagination.page, searchQuery]);
 
