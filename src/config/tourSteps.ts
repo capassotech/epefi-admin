@@ -43,6 +43,99 @@ export const dashboardTourSteps: TourStep[] = [
   },
 ];
 
+export const examsTourSteps: TourStep[] = [
+  {
+    element: '[data-tour="search-filter"]',
+    popover: {
+      title: 'Buscar exámenes',
+      description: 'Buscá un examen por su título. Debajo vas a ver los filtros que tengas aplicados.',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="view-completed"]',
+    popover: {
+      title: 'Exámenes realizados',
+      description: 'Acá ves los exámenes que ya rindieron los alumnos y corregís los que tienen preguntas de desarrollo.',
+      side: 'bottom',
+      align: 'end',
+    },
+  },
+  {
+    element: '[data-tour="exams-list"]',
+    popover: {
+      title: 'Lista de exámenes',
+      description:
+        'Tocá "Título" para ordenar o "Formación" para filtrar. Con los íconos editás, ves los intentos por alumno o eliminás, y con el interruptor habilitás o deshabilitás el examen.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+];
+
+export const completedExamsTourSteps: TourStep[] = [
+  {
+    element: '[data-tour="completed-search"]',
+    popover: {
+      title: 'Buscar alumno',
+      description: 'Escribí el nombre de un alumno para ver solo sus exámenes.',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="completed-export"]',
+    popover: {
+      title: 'Exportar',
+      description: 'Descargá en CSV o Excel los resultados que estás viendo, con los filtros aplicados.',
+      side: 'bottom',
+      align: 'end',
+    },
+  },
+  {
+    element: '[data-tour="completed-list"]',
+    popover: {
+      title: 'Resultados',
+      description:
+        'Arriba están los exámenes por corregir y debajo los ya corregidos. Filtrá por formación o examen desde los encabezados y tocá una fila para ver el detalle o corregir.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+];
+
+export const studentDetailTourSteps: TourStep[] = [
+  {
+    element: '[data-tour="detail-aside"]',
+    popover: {
+      title: 'Ficha del alumno',
+      description: 'Sus datos, cuántos cursos tiene, cuántos módulos tiene habilitados y su avance general. Desde acá podés editarlo o eliminarlo.',
+      side: 'right',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="student-assign"]',
+    popover: {
+      title: 'Asignar cursos',
+      description: 'Agregale o quitale cursos a este alumno.',
+      side: 'bottom',
+      align: 'end',
+    },
+  },
+  {
+    element: '[data-tour="student-courses"]',
+    popover: {
+      title: 'Cursos y módulos',
+      description:
+        'Desplegá un curso y una materia para ver su avance. Con el interruptor de cada módulo lo habilitás o deshabilitás solo para este alumno, útil cuando paga mes a mes.',
+      side: 'left',
+      align: 'start',
+    },
+  },
+];
+
 export const productsTourSteps: TourStep[] = [
   {
     element: '[data-tour="search-filter"]',

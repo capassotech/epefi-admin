@@ -7,7 +7,10 @@ export function DetailLayout({ aside, children }: { aside: ReactNode; children: 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] max-w-7xl mx-auto">
       {/* Si la ficha es más alta que la pantalla, scrollea por dentro para no cortar contenido */}
-      <aside className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+      <aside
+        data-tour="detail-aside"
+        className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+      >
         {aside}
       </aside>
       <div className="min-w-0 space-y-6">{children}</div>

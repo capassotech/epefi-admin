@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
+import { studentDetailTourSteps } from '@/config/tourSteps';
 import { Button } from '@/components/ui/button';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { Switch } from '@/components/ui/switch';
@@ -395,7 +396,7 @@ export const StudentDetail = () => {
 
     usePageHeader({
         title: student ? `${student.nombre} ${student.apellido}` : undefined,
-        breadcrumbs: [{ label: "Usuarios", to: "/students" }],
+        tourSteps: studentDetailTourSteps,
     });
 
     if (loading) return (
@@ -619,7 +620,7 @@ export const StudentDetail = () => {
             }
         >
             {/* ── Cursos, materias y módulos ── */}
-            <section className="admin-card overflow-hidden min-w-0">
+            <section className="admin-card overflow-hidden min-w-0" data-tour="student-courses">
                 <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
                     <div className="min-w-0">
                         <h2 className="text-sm font-semibold text-gray-900">Cursos asignados</h2>
@@ -631,6 +632,7 @@ export const StudentDetail = () => {
                         size="sm"
                         variant="outline"
                         className="h-8 shrink-0 cursor-pointer"
+                        data-tour="student-assign"
                         onClick={() => {
                             setSelectedCourseIds([]);
                             setAssignDialogOpen(true);

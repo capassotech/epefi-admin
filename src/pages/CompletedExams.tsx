@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { completedExamsTourSteps } from "@/config/tourSteps";
 import { ClipboardCheck, Download, Eye, FileSpreadsheet, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,7 +104,11 @@ function ResultPill({ row }: { row: ExamenRealizado }) {
 
 export default function CompletedExams() {
   const navigate = useNavigate();
-  usePageHeader({ title: "Realizados", breadcrumbs: [{ label: "Exámenes", to: "/exams" }] });
+  usePageHeader({
+    title: "Realizados",
+    tourSteps: completedExamsTourSteps,
+    breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
+  });
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters = readCompletedExamsFilters(searchParams);
   const [pendientes, setPendientes] = useState<ExamenRealizado[]>([]);
@@ -470,7 +475,7 @@ export default function CompletedExams() {
     <div className="space-y-6">
       <div className="w-full space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:w-72">
+          <div className="relative w-full sm:w-72" data-tour="completed-search">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             <Input
               value={filterAlumno}
@@ -481,7 +486,7 @@ export default function CompletedExams() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="h-10 w-full sm:w-auto" disabled={exporting}>
+              <Button type="button" variant="outline" className="h-10 w-full sm:w-auto" disabled={exporting} data-tour="completed-export">
                 <Download className="w-4 h-4 mr-2" />
                 {exporting ? "Exportando…" : "Exportar"}
               </Button>
@@ -504,7 +509,7 @@ export default function CompletedExams() {
       {error ? (
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : pendingPagination.total > 0 || generalPagination.total > 0 ? (
-        <div className={listLoadingClass(loading, "space-y-8")} aria-busy={loading}>
+        <div className={listLoadingClass(loading, "space-y-8")} aria-busy={loading} data-tour="completed-list">
           <ListLoadingPill loading={loading} label="Cargando exámenes…" />
 
           {pendingPagination.total > 0 && (

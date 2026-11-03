@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
+import { examsTourSteps } from "@/config/tourSteps";
 import { ClipboardList, Edit2, Loader2, Trash2, Users } from "lucide-react";
 import { ListLoadingPill } from "@/components/common/ListLoading";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
@@ -32,7 +33,7 @@ const DEFAULT_EXAM_FILTERS: FilterOptions = { sortBy: "date", sortDirection: "de
 
 export default function Exams() {
   const navigate = useNavigate();
-  usePageHeader({ title: "Exámenes" });
+  usePageHeader({ title: "Exámenes", tourSteps: examsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [exams, setExams] = useState<Examen[]>([]);
   const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
@@ -251,6 +252,7 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
+      <div data-tour="search-filter">
       <SearchAndFilter
         onSearch={handleSearch}
         showStateFilter={false}
@@ -266,6 +268,7 @@ export default function Exams() {
             type="button"
             variant="outline"
             className="h-10"
+            data-tour="view-completed"
             onClick={() => navigate("/exams/completed")}
           >
             <ClipboardList className="w-4 h-4 mr-2" />
@@ -273,6 +276,7 @@ export default function Exams() {
           </Button>
         }
       />
+      </div>
 
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando exámenes…" />
@@ -280,7 +284,7 @@ export default function Exams() {
           <div className="h-32" />
         ) : exams.length > 0 ? (
           <TooltipProvider delayDuration={300}>
-          <div className="admin-card overflow-hidden">
+          <div className="admin-card overflow-hidden" data-tour="exams-list">
             {/* ── Vista mobile: filas compactas ── */}
             <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
               {exams.map((exam, index) => {
