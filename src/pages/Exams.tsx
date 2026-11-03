@@ -4,6 +4,7 @@ import { usePageHeader } from "@/context/PageHeaderContext";
 import { examsTourSteps } from "@/config/tourSteps";
 import { ClipboardList, Edit2, Loader2, Trash2, Users } from "lucide-react";
 import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
@@ -277,6 +278,25 @@ export default function Exams() {
         }
       />
       </div>
+
+      <MobileListControls
+        sort={{
+          fields: [{ key: "title", label: "Título" }],
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
+          onChange: handleSortChange,
+          defaultLabel: "Más recientes",
+        }}
+        filters={[
+          {
+            id: "course",
+            label: "Formación",
+            value: filters.courseId,
+            options: courseFilterOptions,
+            onChange: (courseId) => handleFilter(applyColumnFilter(filters, "courseId", courseId)),
+          },
+        ]}
+      />
 
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando exámenes…" />

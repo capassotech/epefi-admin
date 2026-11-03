@@ -12,7 +12,8 @@ import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
 import { ListLoadingPill } from '@/components/common/ListLoading';
-import { applyColumnFilter, applyColumnSort, listLoadingClass, type ColumnSort } from '@/utils/tableState';
+import { applyColumnFilter, applyColumnSort, listLoadingClass, STATUS_FILTER_OPTIONS, type ColumnSort } from '@/utils/tableState';
+import { MobileListControls } from '@/components/common/MobileListControls';
 
 export default function Subjects() {
     const listTopRef = useRef<HTMLDivElement | null>(null);
@@ -167,6 +168,25 @@ export default function Subjects() {
                     showClearFilters
                 />
             </div>
+
+            <MobileListControls
+                sort={{
+                    fields: [{ key: "title", label: "Nombre" }],
+                    sortBy: filters.sortBy,
+                    sortDirection: filters.sortDirection,
+                    onChange: handleSortChange,
+                    defaultLabel: "Orden por defecto",
+                }}
+                filters={[
+                    {
+                        id: "status",
+                        label: "Estado",
+                        value: filters.status,
+                        options: STATUS_FILTER_OPTIONS,
+                        onChange: handleStatusFilterChange,
+                    },
+                ]}
+            />
 
             <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
                 <ListLoadingPill loading={paginationLoading} label="Cargando materias…" />

@@ -113,6 +113,7 @@ export default function ModuleForm() {
 
   const aside = (
     <ProfileCard
+      mobileActionBar
       media={
         <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-violet-50 text-violet-600">
           <FileText className="w-5 h-5" />

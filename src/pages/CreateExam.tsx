@@ -723,6 +723,7 @@ export default function CreateExam() {
 
   const aside = (
     <ProfileCard
+      mobileActionBar
       media={
         <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-orange-50 text-orange-600">
           <ClipboardCheck className="w-5 h-5" />

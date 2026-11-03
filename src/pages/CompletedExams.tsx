@@ -18,6 +18,7 @@ import { PaginationControls } from "@/components/common/PaginationControls";
 import { FilterHeader, PlainHeader } from "@/components/common/TableHeaders";
 import { FilterChips, type FilterChip } from "@/components/common/FilterChips";
 import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
 import { CompletedExamsAPI } from "@/service/completedExams";
 import { ExamsAPI } from "@/service/exams";
 import { CoursesAPI } from "@/service/courses";
@@ -503,6 +504,12 @@ export default function CompletedExams() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        <MobileListControls
+          filters={[
+            { id: "formacion", label: "Formación", value: filterFormacion || undefined, options: courseOptions, onChange: changeFormacion },
+            { id: "examen", label: "Examen", value: filterExamen || undefined, options: examOptions, onChange: changeExamen },
+          ]}
+        />
         <FilterChips chips={chips} onClearAll={handleClearFilters} />
       </div>
 

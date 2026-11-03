@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 /** Dos columnas en desktop: ficha angosta (sticky) a la izquierda y contenido a la derecha */
 export function DetailLayout({ aside, children }: { aside: ReactNode; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)] max-w-7xl mx-auto">
+    // Con la barra de acciones fija en mobile, se deja lugar abajo para que no tape el final del formulario
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[300px_minmax(0,1fr)] max-w-7xl mx-auto max-lg:has-[[data-mobile-actions]]:pb-20">
       {/* Si la ficha es más alta que la pantalla, scrollea por dentro para no cortar contenido */}
       <aside
         data-tour="detail-aside"
@@ -29,7 +30,10 @@ export function ProfileCard({
   cover,
   children,
   footer,
+  mobileActionBar = false,
 }: {
+  /** Formularios: en mobile las acciones del pie se fijan abajo de la pantalla */
+  mobileActionBar?: boolean;
   /** Avatar/ícono chico junto al título */
   media?: ReactNode;
   title: ReactNode;
@@ -56,7 +60,16 @@ export function ProfileCard({
       {children}
       {/* Acciones apiladas a todo el ancho: la principal primero, las secundarias debajo */}
       {footer && (
-        <div data-tour="detail-actions" className="flex flex-col gap-1.5 px-5 py-3">
+        <div
+          data-tour="detail-actions"
+          data-mobile-actions={mobileActionBar || undefined}
+          className={cn(
+            "flex flex-col gap-1.5 px-5 py-3",
+            // En formularios, por debajo de lg las acciones quedan fijas abajo de la pantalla
+            mobileActionBar &&
+              "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:flex-row-reverse max-lg:items-center max-lg:gap-2 max-lg:border-t max-lg:border-gray-200 max-lg:bg-white/95 max-lg:px-4 max-lg:py-2.5 max-lg:backdrop-blur max-lg:[&>*]:min-w-0 max-lg:[&>*]:flex-1"
+          )}
+        >
           {footer}
         </div>
       )}

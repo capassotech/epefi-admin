@@ -186,6 +186,7 @@ export default function Profile() {
 
   const aside = (
     <ProfileCard
+      mobileActionBar
       media={
         <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#7a1a3a]/10 text-sm font-semibold text-[#7a1a3a]">
           {initials || "?"}

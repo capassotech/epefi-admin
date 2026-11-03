@@ -19,10 +19,12 @@ import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
 import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
 import {
   applyColumnFilter,
   applyColumnSort,
   listLoadingClass,
+  STATUS_FILTER_OPTIONS,
   type ColumnSort,
 } from "@/utils/tableState";
 import { extractStudentsFromResponse } from "@/utils/studentDates";
@@ -296,6 +298,40 @@ export default function Students() {
           showStateFilter={false}
         />
       </div>
+
+      <MobileListControls
+        sort={{
+          fields: [
+            { key: "name", label: "Nombre" },
+            { key: "email", label: "Email" },
+            { key: "date", label: "Inicio", ascLabel: "más antiguos", descLabel: "más recientes" },
+          ],
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
+          onChange: handleSortChange,
+          defaultLabel: "Más recientes",
+        }}
+        filters={[
+          {
+            id: "role",
+            label: "Rol",
+            value: filters.role,
+            options: [
+              { value: "all", label: "Todos los roles" },
+              { value: "student", label: "Estudiante" },
+              { value: "admin", label: "Administrador" },
+            ],
+            onChange: (role) => setHeaderFilter("role", role),
+          },
+          {
+            id: "status",
+            label: "Estado",
+            value: filters.status,
+            options: STATUS_FILTER_OPTIONS,
+            onChange: (status) => setHeaderFilter("status", status),
+          },
+        ]}
+      />
 
       <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
         <ListLoadingPill loading={paginationLoading} label="Cargando usuarios…" />

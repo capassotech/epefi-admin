@@ -364,6 +364,7 @@ export default function CreateProduct() {
 
   const aside = (
     <ProfileCard
+      mobileActionBar
       cover={
         <div className="grid aspect-[16/10] w-full place-items-center overflow-hidden bg-gray-100">
           {imagePreviewUrl ? (

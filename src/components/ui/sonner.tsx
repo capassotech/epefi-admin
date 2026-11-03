@@ -12,6 +12,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="bottom-right"
       gap={10}
       offset={20}
+      // En mobile, por encima de la barra de acciones fija de los formularios
+      mobileOffset={{ bottom: 76 }}
       visibleToasts={4}
       className="toaster"
       icons={{

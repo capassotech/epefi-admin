@@ -215,6 +215,7 @@ export default function StudentForm() {
 
   const aside = (
     <ProfileCard
+      mobileActionBar
       media={
         <span
           className={`grid place-items-center w-11 h-11 shrink-0 rounded-full text-sm font-semibold ${
