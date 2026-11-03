@@ -7,6 +7,7 @@ import { TourButton } from "@/components/tour/TourButton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileMenuButton } from "./MobileMenuButton";
+import EnvironmentBanner from "@/components/EnvironmentBanner";
 
 interface AdminTopbarProps {
   onOpenMobileMenu: () => void;
@@ -78,6 +79,7 @@ export function AdminTopbar({ onOpenMobileMenu }: AdminTopbarProps) {
       </div>
 
       <div className="flex items-center gap-1">
+        <EnvironmentBanner variant="pill" />
         <Link
           to="/profile"
           className={cn(

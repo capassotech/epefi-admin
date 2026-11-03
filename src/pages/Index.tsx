@@ -16,7 +16,6 @@ import StudentForm from "./StudentForm";
 import ModuleForm from "./ModuleForm";
 import SubjectForm from "./SubjectForm";
 import Profile from "./Profile";
-import EnvironmentBanner from "@/components/EnvironmentBanner";
 import { SidebarLayoutProvider } from "@/context/SidebarLayoutContext";
 import { PageHeaderProvider } from "@/context/PageHeaderContext";
 import Exams from "./Exams";
@@ -30,7 +29,6 @@ const Index = () => {
 
   return (
     <>
-      <EnvironmentBanner />
       <SidebarLayoutProvider>
       <PageHeaderProvider>
       <div className="min-h-screen bg-gray-50 flex">
