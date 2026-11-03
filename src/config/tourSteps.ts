@@ -6,7 +6,7 @@ export const dashboardTourSteps: TourStep[] = [
     popover: {
       title: 'Menú principal',
       description:
-        'Desde acá entrás a todas las partes del sistema: cursos, usuarios, materias y tu perfil.',
+        'Desde acá entrás a todas las partes del sistema: cursos, usuarios, materias y exámenes.',
       side: 'right',
       align: 'start',
     },

@@ -65,7 +65,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <InteractiveLoader
-        initialMessage="Cargando dashboard"
+        initialMessage="Cargando panel general"
         delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
       />
     );

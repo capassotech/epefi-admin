@@ -1,5 +1,5 @@
 import { AdminSidebar } from "@/components/admin/Sidebar";
-import { MobileMenuButton } from "@/components/admin/MobileMenuButton";
+import { AdminTopbar } from "@/components/admin/Topbar";
 import { Routes, Route } from "react-router-dom";
 import { useState } from "react";
 import Dashboard from "./Dashboard";
@@ -30,13 +30,9 @@ const Index = () => {
       <SidebarLayoutProvider>
       <div className="min-h-screen bg-gray-50 flex">
         <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
-      <main className="flex-1 min-w-0 p-4 lg:p-8 overflow-x-hidden overflow-y-auto">
-        {/* Header móvil */}
-        <div className="lg:hidden mb-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">EPEFI Admin</h1>
-          <MobileMenuButton onClick={() => setIsSidebarOpen(true)} />
-        </div>
-        
+      <div className="flex-1 min-w-0 flex flex-col">
+      <AdminTopbar onOpenMobileMenu={() => setIsSidebarOpen(true)} />
+      <main className="flex-1 min-w-0 p-4 lg:p-8 overflow-x-hidden">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
@@ -57,6 +53,7 @@ const Index = () => {
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
+      </div>
     </div>
       </SidebarLayoutProvider>
     </>
