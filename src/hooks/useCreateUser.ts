@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { type CreateUserFormData, type CreateUserResponse } from "@/types/types";
 import { StudentsAPI } from "@/service/students";
 import { isDuplicateEmailRegistrationError } from "@/utils/errorMessages";
@@ -50,8 +50,7 @@ export const useCreateUser = () => {
           ""
       );
 
-      toast({
-        title: "Usuario creado exitosamente",
+      toast.success("Usuario creado exitosamente", {
         description: `El usuario ${userData.nombre} ${userData.apellido} ha sido registrado correctamente.`,
       });
 
@@ -77,10 +76,8 @@ export const useCreateUser = () => {
         httpStatus
       );
 
-      toast({
-        title: "Error al crear usuario",
+      toast.error("Error al crear usuario", {
         description: errorMessage,
-        variant: "destructive",
       });
 
       return {
@@ -112,8 +109,7 @@ export const useCreateUser = () => {
           id
       );
 
-      toast({
-        title: "Usuario actualizado exitosamente",
+      toast.success("Usuario actualizado exitosamente", {
         description: `El usuario ${userData.nombre} ${userData.apellido} ha sido actualizado correctamente.`,
       });
 
@@ -131,10 +127,8 @@ export const useCreateUser = () => {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
 
-      toast({
-        title: "Error al actualizar usuario",
+      toast.error("Error al actualizar usuario", {
         description: errorMessage,
-        variant: "destructive",
       });
 
       return {

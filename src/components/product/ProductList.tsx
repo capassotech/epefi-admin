@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { CoursesAPI } from "@/service/courses";
 import { StudentsAPI } from "@/service/students";
 import { Link } from "react-router-dom";
-import ToastNotification from "../ui/ToastNotification";
 import { formatCurrency } from '@/utils/currency';
 import { Pencil, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from "sonner";
@@ -51,17 +50,11 @@ interface ProductListProps {
 
 export const ProductList = ({ products, onProductUpdated }: ProductListProps) => {
   const navigate = useNavigate();
-  const [toastState, setToastState] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [pendingCourse, setPendingCourse] = useState<{ course: Course; newState: boolean } | null>(null);
   const [studentsCount, setStudentsCount] = useState<number>(0);
   const [loadingStudentsCount, setLoadingStudentsCount] = useState(false);
-
-  const closeToast = () => setToastState(null);
 
   const handleToggleActive = async (formacion: Course, newActiveState: boolean) => {
     // Si se va a deshabilitar, mostrar advertencia primero
@@ -238,11 +231,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
                               id.trim().length === 0
                             ) {
                               console.error("Curso sin ID válido:", f);
-                              setToastState({
-                                message:
-                                  "Error: Este curso no tiene un ID válido.",
-                                type: "error",
-                              });
+                              toast.error("Este curso no tiene un ID válido.");
                               return;
                             }
 
@@ -299,15 +288,6 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
           )}
         </ul>
       </div>
-      {/* Toast de notificación */}
-      {toastState && (
-        <ToastNotification
-          message={toastState.message}
-          type={toastState.type}
-          onClose={closeToast}
-        />
-      )}
-
       {/* Modal de confirmación para deshabilitar curso */}
       <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
         <AlertDialogContent>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import ToastNotification from '../ui/ToastNotification';
 import { CoursesAPI } from '@/service/courses';
 import { type Subject } from '@/types/types';
 import { Edit2, X, Loader2 } from 'lucide-react';
@@ -20,14 +19,11 @@ interface SubjectListProps {
 }
 
 export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false, showTitle = true, onStatusChange, onSubjectStatusUpdated }: SubjectListProps) => {
-  const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isUnassigning, setIsUnassigning] = useState(false);
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   /** Override local para que el Switch refleje el toggle aunque el padre no actualice aún */
   const [statusOverrides, setStatusOverrides] = useState<Record<string, boolean>>({});
-
-  const closeToast = () => setToastState(null);
 
   const isSubjectActive = (m: Subject) => {
     const override = statusOverrides[String(m.id)];
@@ -188,13 +184,6 @@ export const SubjectList = ({ subjects, onEdit, onUnassign, showUnassign = false
           )}
         </ul>
       </div>
-      {toastState && (
-        <ToastNotification
-          message={toastState.message}
-          type={toastState.type}
-          onClose={closeToast}
-        />
-      )}
     </div>
   );
 };

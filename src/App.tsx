@@ -2,8 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import { TooltipProvider } from "./components/ui/tooltip";
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import CreateFirstAdmin from "./pages/CreateFirstAdmin";
@@ -18,7 +17,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <Routes>

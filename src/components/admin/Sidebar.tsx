@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const navigation = [
   {
-    name: "Dashboard",
+    name: "Panel general",
     href: "/",
     icon: BookOpen,
   },

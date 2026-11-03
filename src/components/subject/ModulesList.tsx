@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import ToastNotification from '../ui/ToastNotification';
 import { type Module } from '@/types/types';
 import { Edit2, Trash2, Loader2, Users, UserMinus } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
@@ -24,7 +23,6 @@ interface ModulesListProps {
 }
 
 export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabledByModule, onToggleSuccess }: ModulesListProps) => {
-  const [toastState, setToastState] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [togglingModuleId, setTogglingModuleId] = useState<string | null>(null);
   const [moduleEnabledStates, setModuleEnabledStates] = useState<Record<string, boolean>>({});
   const [moduloExcepciones, setModuloExcepciones] = useState<Record<string, Array<{ id: string; nombre: string }>>>({});
@@ -36,8 +34,6 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
       setModuleEnabledStates(defaultEnabledByModule);
     }
   }, [defaultEnabledByModule]);
-
-  const closeToast = () => setToastState(null);
 
   const refetchExcepciones = (silent = false) => {
     if (!materiaId) return;
@@ -81,7 +77,6 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al actualizar módulos';
       toast.error(errorMessage);
-      setToastState({ message: errorMessage, type: 'error' });
     } finally {
       setTogglingModuleId(null);
     }
@@ -219,13 +214,6 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
           )}
         </ul>
       </div>
-      {toastState && (
-        <ToastNotification
-          message={toastState.message}
-          type={toastState.type}
-          onClose={closeToast}
-        />
-      )}
     </div>
   );
 };

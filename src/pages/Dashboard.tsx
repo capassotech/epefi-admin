@@ -76,10 +76,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-gray-100">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-          <p className="text-gray-500 text-base">
-            Resumen general de tu plataforma
-          </p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">Panel general</h1>
+          
         </div>
         <div className="flex items-center gap-3 text-right sm:text-left">
           <TourButton steps={dashboardTourSteps} />
