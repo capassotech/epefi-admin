@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/DetailLayout";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useNavigate } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
@@ -13,6 +14,7 @@ import {
   Save,
   Loader2,
   CheckCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -314,199 +316,213 @@ export default function CreateProduct() {
 
   const handleBack = () => { if (currentTab > 0) setCurrentTab(currentTab - 1) };
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <p className="text-sm text-gray-500">
-        Completa los datos para crear este curso.
-      </p>
+  const watchedTitle = form.watch("titulo");
+  const isStepLocked = (index: number) => index > 0 && !createdCourseId;
 
-      {courseCreated && (
-        <Card className="border-l-4 border-l-green-500 bg-green-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <CheckCircle className="w-5 h-5 text-green-600" />
+  const handleEstadoChange = async (checked: boolean, onChange: (value: "activo" | "inactivo") => void, oldEstado: "activo" | "inactivo") => {
+    const newEstado = checked ? "activo" : "inactivo";
+    onChange(newEstado);
+
+    // Guardar automáticamente si el curso ya fue creado
+    if (courseAlreadyCreatedInSession && createdCourseId) {
+      try {
+        const course = await CoursesAPI.getById(createdCourseId);
+        if (course) {
+          await CoursesAPI.update(createdCourseId, { ...course, estado: newEstado });
+          toast.success(`Curso ${newEstado === "activo" ? "activado" : "desactivado"} exitosamente`);
+        }
+      } catch (error) {
+        console.error("Error al actualizar estado del curso:", error);
+        toast.error("Error al actualizar el estado del curso");
+        // Revertir el cambio si falla
+        onChange(oldEstado);
+      }
+    }
+  };
+
+  const handleCreateOrNext = async () => {
+    // Si el curso ya está creado, solo avanzar
+    if (createdCourseId && courseAlreadyCreatedInSession) {
+      handleNext();
+      return;
+    }
+    // Validar formulario antes de crear
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast.error("Por favor completa todos los campos requeridos.");
+      return;
+    }
+    // Prevenir múltiples clics
+    if (loading) return;
+    await createCourse(form.getValues());
+  };
+
+  const aside = (
+    <ProfileCard
+      cover={
+        <div className="grid aspect-[16/10] w-full place-items-center overflow-hidden bg-gray-100">
+          {imagePreviewUrl ? (
+            <img src={imagePreviewUrl} alt="Portada del curso" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex flex-col items-center gap-1 text-xs text-gray-400">
+              <ImageIcon className="w-6 h-6 text-gray-300" />
+              Sin portada
+            </span>
+          )}
+        </div>
+      }
+      title={watchedTitle?.trim() || "Nuevo curso"}
+      subtitle="Curso"
+      footer={
+        <>
+          {currentTab === 0 ? (
+            <Button type="button" size="sm" className="h-8 cursor-pointer" onClick={handleCreateOrNext} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  {createdCourseId ? "Actualizando…" : "Creando…"}
+                </>
+              ) : (
+                <>
+                  {createdCourseId ? "Siguiente" : "Crear y continuar"}
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button type="button" size="sm" className="h-8 cursor-pointer" onClick={finalizeCourse} disabled={loading}>
+              {loading ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              {loading ? "Guardando…" : "Finalizar curso"}
+            </Button>
+          )}
+          {currentTab > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-gray-500 cursor-pointer"
+              onClick={handleBack}
+              disabled={loading}
+            >
+              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+              Anterior
+            </Button>
+          )}
+        </>
+      }
+    >
+      {/* Estado del curso */}
+      <FormField
+        control={form.control}
+        name="estado"
+        render={({ field }) => (
+          <FormItem className="space-y-0">
+            <label className="flex cursor-pointer items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
               <div>
-                <p className="font-medium text-green-800">
-                  Curso creado exitosamente
+                <FormLabel className="text-sm font-medium text-gray-900">Curso habilitado</FormLabel>
+                <p className="text-xs text-gray-500">
+                  {field.value === "activo" ? "Visible para los alumnos" : "Oculto para los alumnos"}
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              <FormControl>
+                <Switch
+                  checked={field.value === "activo"}
+                  onCheckedChange={(checked) => handleEstadoChange(checked, field.onChange, field.value)}
+                  className="data-[state=checked]:bg-green-600"
+                />
+              </FormControl>
+            </label>
+          </FormItem>
+        )}
+      />
 
-      <Form {...form}>
-        <div className="border-b border-gray-200">
-          <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
-            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide min-w-0">
-              {tabs.map((tab, index) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentTab(index)}
-                  disabled={index === 1 && !createdCourseId || index === 2 && !createdCourseId}
-                  className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
-                    ? "border-blue-500 text-blue-600"
-                    : index === 1 && !createdCourseId || index === 2 && !createdCourseId
-                      ? "border-transparent text-gray-300 cursor-not-allowed"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+      {/* Pasos del asistente */}
+      <ol className="space-y-0.5 px-3 py-3">
+        {tabs.map((tab, index) => {
+          const active = currentTab === index;
+          const locked = isStepLocked(index);
+          const done = index < currentTab || (index === 0 && !!createdCourseId);
+          return (
+            <li key={tab.id}>
+              <button
+                type="button"
+                onClick={() => setCurrentTab(index)}
+                disabled={locked}
+                className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors ${
+                  active
+                    ? "bg-gray-100 font-medium text-gray-900"
+                    : locked
+                      ? "cursor-not-allowed text-gray-300"
+                      : "text-gray-600 hover:bg-gray-50 cursor-pointer"
+                }`}
+              >
+                <span
+                  className={`grid place-items-center w-5 h-5 shrink-0 rounded-full text-[11px] font-semibold ${
+                    done && !active
+                      ? "bg-green-50 text-green-600"
+                      : active
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-400"
+                  }`}
                 >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-            
-            {/* Checkbox de estado - siempre visible de forma sutil */}
-            <FormField
-              control={form.control}
-              name="estado"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                  <FormControl>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-gray-200/50 hover:bg-gray-100/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={field.value === "activo"}
-                        onChange={async (e) => {
-                          const newEstado = e.target.checked ? "activo" : "inactivo";
-                          const oldEstado = field.value;
-                          field.onChange(newEstado);
-                          
-                          // Guardar automáticamente si el curso ya fue creado
-                          if (courseAlreadyCreatedInSession && createdCourseId) {
-                            try {
-                              const course = await CoursesAPI.getById(createdCourseId);
-                              
-                              if (course) {
-                                await CoursesAPI.update(createdCourseId, {
-                                  ...course,
-                                  estado: newEstado,
-                                });
-                                toast.success(`Curso ${newEstado === "activo" ? "activado" : "desactivado"} exitosamente`);
-                              }
-                            } catch (error) {
-                              console.error("Error al actualizar estado del curso:", error);
-                              toast.error("Error al actualizar el estado del curso");
-                              // Revertir el cambio si falla
-                              field.onChange(oldEstado);
-                            }
-                          }
-                        }}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <FormLabel className="text-xs font-medium text-gray-600 cursor-pointer">
-                        {field.value === "activo" ? (
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                            Inactivo
-                          </span>
-                        )}
-                      </FormLabel>
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          <Card>
-            <CardContent className="p-6">
-              {currentTab === 0 && 
-                <GeneralInfoForm 
-                  control={form.control} 
-                  setImagePreviewUrl={setImagePreviewUrl} 
-                  imagePreviewUrl={imagePreviewUrl} 
-                  setIsDialogOpen={setIsDialogOpen} 
+                  {done && !active ? <CheckCircle className="w-3.5 h-3.5" /> : index + 1}
+                </span>
+                {tab.label}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </ProfileCard>
+  );
+
+  return (
+    <Form {...form}>
+      <DetailLayout aside={aside}>
+        {courseCreated && (
+          <p className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            <CheckCircle className="w-4 h-4 shrink-0 text-green-600" />
+            Curso creado exitosamente. Ahora podés agregarle materias.
+          </p>
+        )}
+
+        <form onSubmit={(e) => e.preventDefault()}>
+          <SectionCard
+            title={tabs[currentTab]?.label}
+            description={
+              currentTab === 0
+                ? "Completá los datos para crear este curso"
+                : "Asociá materias existentes o creá nuevas para este curso"
+            }
+          >
+            <div className="px-5 py-5">
+              {currentTab === 0 && (
+                <GeneralInfoForm
+                  control={form.control}
+                  setImagePreviewUrl={setImagePreviewUrl}
+                  imagePreviewUrl={imagePreviewUrl}
+                  setIsDialogOpen={setIsDialogOpen}
                   isDialogOpen={isDialogOpen}
                   currentImageUrl={null}
                   currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
                   currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
                 />
-              }
-              {currentTab === 1 && <SubjectCreation courseId={createdCourseId} control={form.control} courseTitle={form.getValues("titulo") || null} />}
-            </CardContent>
-          </Card>
-
-          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentTab === 0 || loading || currentTab === 2 && !createdCourseId}
-              className="w-full sm:w-auto"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Anterior
-            </Button>
-
-            {currentTab === 0 ? (
-              <Button
-                type="button"
-                className="cursor-pointer w-full sm:w-auto"
-                onClick={async () => {
-                  // Si el curso ya está creado, solo avanzar
-                  if (createdCourseId && courseAlreadyCreatedInSession) {
-                    handleNext();
-                    return;
-                  }
-
-                  // Validar formulario antes de crear
-                  const isValid = await form.trigger();
-                  if (!isValid) {
-                    toast.error("Por favor completa todos los campos requeridos.");
-                    return;
-                  }
-                  
-                  // Prevenir múltiples clics
-                  if (loading) {
-                    return;
-                  }
-                  
-                  await createCourse(form.getValues());
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {createdCourseId ? "Actualizando..." : "Creando..."}
-                  </>
-                ) : createdCourseId ? (
-                  <>
-                    Siguiente
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                ) : (
-                  <>
-                    Crear y Continuar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button type="button" onClick={finalizeCourse} disabled={loading} className="w-full sm:w-auto">
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Finalizar Curso
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+              )}
+              {currentTab === 1 && (
+                <SubjectCreation
+                  courseId={createdCourseId}
+                  control={form.control}
+                  courseTitle={form.getValues("titulo") || null}
+                />
+              )}
+            </div>
+          </SectionCard>
         </form>
-      </Form>
-    </div>
+      </DetailLayout>
+    </Form>
   );
 }

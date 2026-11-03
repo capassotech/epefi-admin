@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/DetailLayout";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
@@ -13,9 +15,8 @@ import {
   Save,
   Loader2,
   CheckCircle,
-  X,
-  Clock,
-  Trash,
+  Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -432,330 +433,172 @@ export default function EditProduct() {
 
   if (loading && !createdCourseId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
+      <InteractiveLoader
+        initialMessage="Cargando curso"
+        delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
+      />
     );
   }
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {showSaveMessage && lastSaveTime && (
-        <Card className="border-l-4 border-l-green-500 bg-green-50">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start space-x-3 min-w-0">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-green-800">Cambios guardados</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Clock className="w-3 h-3 text-green-600" />
-                    <p className="text-xs text-green-700">
-                      {lastSaveTime.toLocaleTimeString('es-AR', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        second: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSaveMessage(false)}
-                className="text-green-700 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-100"
-                aria-label="Cerrar mensaje"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  const watchedTitle = form.watch("titulo");
+  const coverSrc = imagePreviewUrl || currentImageUrl;
 
-      <Form {...form}>
-        <div className="border-b border-gray-200">
-          <div className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
-            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide min-w-0">
-              {tabs.map((tab, index) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentTab(index)}
-                  className={`py-2 px-4 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${currentTab === index
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-            
-            {/* Checkbox de estado - siempre visible de forma sutil */}
-            <FormField
-              control={form.control}
-              name="estado"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                  <FormControl>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-gray-200/50 hover:bg-gray-100/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={field.value === "activo"}
-                        onChange={async (e) => {
-                          const newEstado = e.target.checked ? "activo" : "inactivo";
-                          const oldEstado = field.value;
-                          field.onChange(newEstado);
-                          
-                          // Guardar automáticamente el cambio de estado
-                          if (id) {
-                            try {
-                              setLoading(true);
-                              const course = await CoursesAPI.getById(id);
-                              
-                              if (course) {
-                                await CoursesAPI.update(id, {
-                                  ...course,
-                                  estado: newEstado,
-                                });
-                                
-                                // Actualizar los datos originales
-                                if (originalCourseData) {
-                                  setOriginalCourseData({
-                                    ...originalCourseData,
-                                    estado: newEstado,
-                                  });
-                                }
-                                
-                                // Mostrar mensaje de cambios guardados
-                                setLastSaveTime(new Date());
-                                setShowSaveMessage(true);
-                              }
-                            } catch (error) {
-                              console.error("Error al actualizar estado del curso:", error);
-                              toast.error("Error al actualizar el estado del curso");
-                              // Revertir el cambio si falla
-                              field.onChange(oldEstado);
-                            } finally {
-                              setLoading(false);
-                            }
-                          }
-                        }}
-                        disabled={loading}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                      <FormLabel className="text-xs font-medium text-gray-600 cursor-pointer">
-                        {field.value === "activo" ? (
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                            Inactivo
-                          </span>
-                        )}
-                      </FormLabel>
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </div>
+  // Guarda automáticamente el cambio de estado (habilitado / deshabilitado)
+  const handleEstadoChange = async (
+    checked: boolean,
+    onChange: (value: "activo" | "inactivo") => void,
+    oldEstado: "activo" | "inactivo"
+  ) => {
+    const newEstado = checked ? "activo" : "inactivo";
+    onChange(newEstado);
+    if (!id) return;
+    try {
+      setLoading(true);
+      const course = await CoursesAPI.getById(id);
+      if (course) {
+        await CoursesAPI.update(id, { ...course, estado: newEstado });
+        // Actualizar los datos originales
+        if (originalCourseData) {
+          setOriginalCourseData({ ...originalCourseData, estado: newEstado });
+        }
+        setLastSaveTime(new Date());
+        setShowSaveMessage(true);
+      }
+    } catch (error) {
+      console.error("Error al actualizar estado del curso:", error);
+      toast.error("Error al actualizar el estado del curso");
+      // Revertir el cambio si falla
+      onChange(oldEstado);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveGeneral = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast.error("Por favor completa todos los campos requeridos.");
+      return;
+    }
+    if (!hasChanges(form.getValues())) {
+      // Si no hay cambios, solo avanzar a la siguiente pestaña
+      handleNext();
+      return;
+    }
+    // Si hay cambios, guardar y luego avanzar (onSubmit ya llama a handleNext)
+    await form.handleSubmit(onSubmit)();
+  };
+
+  const handleSaveSubjects = async () => {
+    // Si hay cambios en los campos del formulario, guardarlos
+    if (hasChanges(form.getValues())) {
+      await form.handleSubmit(onSubmit)();
+      return;
+    }
+    // Las materias se actualizan automáticamente en SubjectCreation,
+    // pero necesitamos actualizar originalCourseData para reflejar el estado actual
+    try {
+      setLoading(true);
+      const course = await CoursesAPI.getById(id!);
+
+      // Actualizar URLs de PDFs desde el curso actualizado
+      setCurrentPlanDeEstudiosUrl(course.planDeEstudiosUrl || null);
+      setCurrentFechasDeExamenesUrl(course.fechasDeExamenesUrl || null);
+
+      setOriginalCourseData({
+        titulo: course.titulo || "",
+        descripcion: course.descripcion || "",
+        precio: course.precio || 0,
+        estado: course.estado || "activo",
+        imagen: undefined,
+        materias: Array.isArray(course.materias) ? course.materias : [],
+        planDeEstudios: undefined,
+        fechasDeExamenes: undefined,
+        fechaInicioDictado: parseDictadoDateForInput(course.fechaInicioDictado),
+        fechaFinDictado: parseDictadoDateForInput(course.fechaFinDictado),
+      });
+
+      // Mostrar mensaje de éxito y redirigir
+      setLastSaveTime(new Date());
+      setShowSaveMessage(true);
+      toast.success("Curso actualizado exitosamente");
+      setTimeout(() => {
+        navigate("/products");
+      }, 1500);
+    } catch (err) {
+      console.error("Error al verificar cambios:", err);
+      toast.error("Error al verificar el estado del curso");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const aside = (
+    <ProfileCard
+      cover={
+        <div className="grid aspect-[16/10] w-full place-items-center overflow-hidden bg-gray-100">
+          {coverSrc ? (
+            <img src={coverSrc} alt="Portada del curso" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex flex-col items-center gap-1 text-xs text-gray-400">
+              <ImageIcon className="w-6 h-6 text-gray-300" />
+              Sin portada
+            </span>
+          )}
         </div>
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit(onSubmit)
-        }} className="space-y-8">
-          <Card>
-            <CardContent className="p-6">
-              {currentTab < 1 
-                ? <GeneralInfoForm 
-                    key={`general-form-${pdfsVersion}-${currentPlanDeEstudiosUrl}-${currentFechasDeExamenesUrl}`}
-                    control={form.control} 
-                    setImagePreviewUrl={setImagePreviewUrl}
-                    imagePreviewUrl={imagePreviewUrl}
-                    setIsDialogOpen={setIsDialogOpen}
-                    isDialogOpen={isDialogOpen}
-                    currentImageUrl={currentImageUrl}
-                    currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
-                    currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
-                    onDeletePlanDeEstudios={handleDeletePlanDeEstudios}
-                    onDeleteFechasDeExamenes={handleDeleteFechasDeExamenes}
-                    planDeEstudiosDeleted={planDeEstudiosDeleted}
-                    fechasDeExamenesDeleted={fechasDeExamenesDeleted}
-                  />
-                : ( 
-                  <SubjectCreation courseId={createdCourseId} />
-                )}
-            </CardContent>
-          </Card>
-
-          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-between">
+      }
+      title={watchedTitle?.trim() || "Curso sin título"}
+      subtitle="Curso"
+      footer={
+        <>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 cursor-pointer"
+            onClick={currentTab === 0 ? handleSaveGeneral : handleSaveSubjects}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {loading ? "Guardando…" : currentTab === 0 ? "Guardar y continuar" : "Guardar cambios"}
+            {!loading && currentTab === 0 && <ArrowRight className="w-3.5 h-3.5 ml-1.5" />}
+          </Button>
+          {currentTab > 0 && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-gray-500 cursor-pointer"
               onClick={handleBack}
-              disabled={currentTab === 0 || loading}
-              className="cursor-pointer w-full sm:w-auto"
+              disabled={loading}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
               Anterior
             </Button>
-
-            {currentTab === 0 ? (
-              <Button
-                type="button"
-                className="cursor-pointer w-full sm:w-auto"
-                onClick={async () => {
-                  const isValid = await form.trigger();
-                  if (!isValid) {
-                    toast.error("Por favor completa todos los campos requeridos.");
-                    return;
-                  }
-                  
-                  const currentData = form.getValues();
-                  if (!hasChanges(currentData)) {
-                    // Si no hay cambios, solo avanzar a la siguiente pestaña
-                    handleNext();
-                    return;
-                  }
-                  
-                  // Si hay cambios, guardar y luego avanzar (onSubmit ya llama a handleNext)
-                  await form.handleSubmit(onSubmit)();
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Guardar y Continuar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button 
-                className="cursor-pointer w-full sm:w-auto" 
-                onClick={async () => {
-                  const currentData = form.getValues();
-                  
-                  // Si hay cambios en los campos del formulario, guardarlos
-                  if (hasChanges(currentData)) {
-                    await form.handleSubmit(onSubmit)();
-                  } else {
-                    // Si no hay cambios en el formulario, verificar si hay cambios en materias
-                    // Las materias se actualizan automáticamente en SubjectCreation,
-                    // pero necesitamos actualizar originalCourseData para reflejar el estado actual
-                    try {
-                      setLoading(true);
-                      const course = await CoursesAPI.getById(id!);
-                      
-                      // Actualizar URLs de PDFs desde el curso actualizado
-                      setCurrentPlanDeEstudiosUrl(course.planDeEstudiosUrl || null);
-                      setCurrentFechasDeExamenesUrl(course.fechasDeExamenesUrl || null);
-                      
-                      // Actualizar originalCourseData con los datos actuales del curso
-                      const updatedFormData = {
-                        titulo: course.titulo || "",
-                        descripcion: course.descripcion || "",
-                        precio: course.precio || 0,
-                        estado: course.estado || "activo",
-                        imagen: undefined,
-                        materias: Array.isArray(course.materias) ? course.materias : [],
-                        planDeEstudios: undefined,
-                        fechasDeExamenes: undefined,
-                        fechaInicioDictado: parseDictadoDateForInput(course.fechaInicioDictado),
-                        fechaFinDictado: parseDictadoDateForInput(course.fechaFinDictado),
-                      };
-                      
-                      setOriginalCourseData(updatedFormData);
-                      
-                      // Mostrar mensaje de éxito y redirigir
-                      setLastSaveTime(new Date());
-                      setShowSaveMessage(true);
-                      toast.success("Curso actualizado exitosamente");
-                      setTimeout(() => {
-                        navigate("/products");
-                      }, 1500);
-                    } catch (err) {
-                      console.error("Error al verificar cambios:", err);
-                      toast.error("Error al verificar el estado del curso");
-                    } finally {
-                      setLoading(false);
-                    }
-                  }
-                }} 
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Guardar Cambios
-              </Button>
-            )}
-          </div>
-        </form>
-      </Form>
-
-          {/* Los modales de materias están en SubjectCreation */}
-
-      {/* Modales de confirmación de eliminación de PDFs */}
-      <ConfirmDeleteModal
-        isOpen={isDeletePlanModalOpen}
-        onCancel={handleCancelDeletePlan}
-        onConfirm={handleConfirmDeletePlanDeEstudios}
-        itemName="Plan de Estudios"
-        deleteLoading={false}
-        id="plan-de-estudios"
-      />
-
-      <ConfirmDeleteModal
-        isOpen={isDeleteFechasModalOpen}
-        onCancel={handleCancelDeleteFechas}
-        onConfirm={handleConfirmDeleteFechasDeExamenes}
-        itemName="Fechas de Exámenes"
-        deleteLoading={false}
-        id="fechas-de-examenes"
-      />
-
-      {/* Sección de eliminación del curso */}
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <div className="flex justify-center">
+          )}
           <AlertDialog open={isDeleteCourseModalOpen} onOpenChange={setIsDeleteCourseModalOpen}>
             <AlertDialogTrigger asChild>
-              <Button
+              <button
                 type="button"
-                variant="destructive"
-                size="lg"
-                className="bg-red-600 hover:bg-red-700 text-white"
                 disabled={deleteCourseLoading}
+                className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {deleteCourseLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Eliminando...
-                  </>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <>
-                    <Trash className="w-4 h-4 mr-2" />
-                    Eliminar Curso Permanentemente
-                  </>
+                  <Trash2 className="w-3.5 h-3.5" />
                 )}
-              </Button>
+                Eliminar curso
+              </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>¿Eliminar curso permanentemente?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción eliminará el curso "{form.getValues().titulo || "este curso"}" y todos sus datos asociados de forma permanente. 
+                  Esta acción eliminará el curso "{form.getValues().titulo || "este curso"}" y todos sus datos asociados de forma permanente.
                   Esta acción no se puede deshacer.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -774,8 +617,132 @@ export default function EditProduct() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {/* Estado del curso: se guarda al instante */}
+      <FormField
+        control={form.control}
+        name="estado"
+        render={({ field }) => (
+          <FormItem className="space-y-0">
+            <label className="flex cursor-pointer items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+              <div>
+                <FormLabel className="text-sm font-medium text-gray-900">Curso habilitado</FormLabel>
+                <p className="text-xs text-gray-500">
+                  {field.value === "activo" ? "Visible para los alumnos" : "Oculto para los alumnos"}
+                </p>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value === "activo"}
+                  onCheckedChange={(checked) => handleEstadoChange(checked, field.onChange, field.value)}
+                  disabled={loading}
+                  className="data-[state=checked]:bg-green-600"
+                />
+              </FormControl>
+            </label>
+          </FormItem>
+        )}
+      />
+
+      {/* Secciones del curso */}
+      <ol className="space-y-0.5 px-3 py-3">
+        {tabs.map((tab, index) => {
+          const active = currentTab === index;
+          return (
+            <li key={tab.id}>
+              <button
+                type="button"
+                onClick={() => setCurrentTab(index)}
+                className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors cursor-pointer ${
+                  active ? "bg-gray-100 font-medium text-gray-900" : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <span
+                  className={`grid place-items-center w-5 h-5 shrink-0 rounded-full text-[11px] font-semibold ${
+                    active ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-400"
+                  }`}
+                >
+                  {index + 1}
+                </span>
+                {tab.label}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      {showSaveMessage && lastSaveTime && (
+        <p className="flex items-center gap-1.5 border-t border-gray-100 px-5 py-2.5 text-xs text-green-700">
+          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+          Cambios guardados ·{" "}
+          {lastSaveTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </p>
+      )}
+    </ProfileCard>
+  );
+
+  return (
+    <Form {...form}>
+      <DetailLayout aside={aside}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            form.handleSubmit(onSubmit);
+          }}
+        >
+          <SectionCard
+            title={tabs[currentTab]?.label}
+            description={
+              currentTab === 0
+                ? "Datos generales, portada, fechas y documentos del curso"
+                : "Asociá, desasigná o creá materias para este curso"
+            }
+          >
+            <div className="px-5 py-5">
+              {currentTab < 1 ? (
+                <GeneralInfoForm
+                  key={`general-form-${pdfsVersion}-${currentPlanDeEstudiosUrl}-${currentFechasDeExamenesUrl}`}
+                  control={form.control}
+                  setImagePreviewUrl={setImagePreviewUrl}
+                  imagePreviewUrl={imagePreviewUrl}
+                  setIsDialogOpen={setIsDialogOpen}
+                  isDialogOpen={isDialogOpen}
+                  currentImageUrl={currentImageUrl}
+                  currentPlanDeEstudiosUrl={currentPlanDeEstudiosUrl}
+                  currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
+                  onDeletePlanDeEstudios={handleDeletePlanDeEstudios}
+                  onDeleteFechasDeExamenes={handleDeleteFechasDeExamenes}
+                  planDeEstudiosDeleted={planDeEstudiosDeleted}
+                  fechasDeExamenesDeleted={fechasDeExamenesDeleted}
+                />
+              ) : (
+                <SubjectCreation courseId={createdCourseId} />
+              )}
+            </div>
+          </SectionCard>
+        </form>
+
+        {/* Modales de confirmación de eliminación de PDFs */}
+        <ConfirmDeleteModal
+          isOpen={isDeletePlanModalOpen}
+          onCancel={handleCancelDeletePlan}
+          onConfirm={handleConfirmDeletePlanDeEstudios}
+          itemName="Plan de Estudios"
+          deleteLoading={false}
+          id="plan-de-estudios"
+        />
+
+        <ConfirmDeleteModal
+          isOpen={isDeleteFechasModalOpen}
+          onCancel={handleCancelDeleteFechas}
+          onConfirm={handleConfirmDeleteFechasDeExamenes}
+          itemName="Fechas de Exámenes"
+          deleteLoading={false}
+          id="fechas-de-examenes"
+        />
+      </DetailLayout>
+    </Form>
   );
 }

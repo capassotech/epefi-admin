@@ -1,11 +1,10 @@
 // src/pages/StudentEdit.tsx
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { GraduationCap, IdCard, Loader2, Mail, Save, ShieldCheck, User } from "lucide-react";
 import { usePageHeader } from "@/context/PageHeaderContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { DetailLayout, ProfileCard, SectionCard, StatusPill } from "@/components/common/DetailLayout";
+import { FormField } from "@/components/common/FormField";
 import { useCreateUser } from "@/hooks/useCreateUser";
 import { StudentsAPI } from "@/service/students";
 import type { StudentDB } from "@/types/types";
@@ -39,32 +39,6 @@ const toForm = (student: StudentDB): FormState => ({
 
 // Solo números, hasta 8 dígitos
 const formatDNI = (value: string) => value.replace(/\D/g, "").slice(0, 8);
-
-function Field({
-  id,
-  label,
-  icon,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  icon: ReactNode;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="flex items-center gap-1.5 text-xs font-medium text-gray-600 [&_svg]:w-3.5 [&_svg]:h-3.5 [&_svg]:text-gray-400">
-        {icon}
-        {label}
-        <span className="text-red-500">*</span>
-      </Label>
-      {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
 
 export default function StudentEdit() {
   const { id } = useParams<{ id: string }>();
@@ -214,7 +188,7 @@ export default function StudentEdit() {
     <DetailLayout aside={aside}>
       <SectionCard title="Datos personales" description="Todos los campos son obligatorios">
         <form id="edit-user-form" onSubmit={handleSubmit} className="grid gap-4 px-5 py-5 sm:grid-cols-2">
-          <Field id="nombre" label="Nombre" icon={<User />} error={errors.nombre}>
+          <FormField id="nombre" label="Nombre" icon={<User />} error={errors.nombre}>
             <Input
               id="nombre"
               value={form.nombre}
@@ -223,8 +197,8 @@ export default function StudentEdit() {
               disabled={saving}
               autoFocus
             />
-          </Field>
-          <Field id="apellido" label="Apellido" icon={<User />} error={errors.apellido}>
+          </FormField>
+          <FormField id="apellido" label="Apellido" icon={<User />} error={errors.apellido}>
             <Input
               id="apellido"
               value={form.apellido}
@@ -232,9 +206,9 @@ export default function StudentEdit() {
               className={errors.apellido ? "border-red-500" : ""}
               disabled={saving}
             />
-          </Field>
+          </FormField>
           <div className="sm:col-span-2">
-            <Field id="email" label="Email" icon={<Mail />} error={errors.email}>
+            <FormField id="email" label="Email" icon={<Mail />} error={errors.email}>
               <Input
                 id="email"
                 type="email"
@@ -244,9 +218,9 @@ export default function StudentEdit() {
                 className={errors.email ? "border-red-500" : ""}
                 disabled={saving}
               />
-            </Field>
+            </FormField>
           </div>
-          <Field id="dni" label="DNI" icon={<IdCard />} error={errors.dni}>
+          <FormField id="dni" label="DNI" icon={<IdCard />} error={errors.dni}>
             <Input
               id="dni"
               inputMode="numeric"
@@ -257,8 +231,8 @@ export default function StudentEdit() {
               className={errors.dni ? "border-red-500" : ""}
               disabled={saving}
             />
-          </Field>
-          <Field id="role" label="Rol" icon={<ShieldCheck />} error={errors.role}>
+          </FormField>
+          <FormField id="role" label="Rol" icon={<ShieldCheck />} error={errors.role}>
             <Select value={form.role} onValueChange={(value) => setField("role", value)} disabled={saving}>
               <SelectTrigger id="role" className={`w-full ${errors.role ? "border-red-500" : ""}`}>
                 <SelectValue placeholder="Seleccionar rol" />
@@ -268,7 +242,7 @@ export default function StudentEdit() {
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>
             </Select>
-          </Field>
+          </FormField>
         </form>
       </SectionCard>
     </DetailLayout>

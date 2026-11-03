@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useCreateUser } from "@/hooks/useCreateUser";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, Mail, IdCard, Loader2, Save, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Mail, IdCard, Loader2, Save, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { DetailLayout, InfoList, InfoRow, ProfileCard, SectionCard } from "@/components/common/DetailLayout";
+import { FormField } from "@/components/common/FormField";
 import { toast } from "sonner";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import authService from "@/service/authService";
@@ -175,137 +176,119 @@ export default function Profile() {
     );
   }
 
+  const busy = isSaving || isLoading;
+  const initials = `${formData.nombre[0] ?? ""}${formData.apellido[0] ?? ""}`.toUpperCase();
+  const isDirty =
+    formData.nombre !== (user.nombre || "") ||
+    formData.apellido !== (user.apellido || "") ||
+    formData.email !== (user.email || "") ||
+    formData.dni !== (user.dni || "");
+
+  const aside = (
+    <ProfileCard
+      media={
+        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#7a1a3a]/10 text-sm font-semibold text-[#7a1a3a]">
+          {initials || "?"}
+        </span>
+      }
+      title={`${formData.nombre || "Nombre"} ${formData.apellido || "Apellido"}`}
+      subtitle={
+        <span className="flex items-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-violet-600" />
+          Administrador
+        </span>
+      }
+      footer={
+        <>
+          <Button
+            type="submit"
+            form="profile-form"
+            size="sm"
+            className="h-8 cursor-pointer"
+            disabled={busy || !isDirty}
+            data-tour="save-button"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+            {busy ? "Guardando…" : "Guardar cambios"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 cursor-pointer"
+            onClick={() => setIsPasswordModalOpen(true)}
+            data-tour="change-password"
+          >
+            <Lock className="w-3.5 h-3.5 mr-1.5" />
+            Cambiar contraseña
+          </Button>
+        </>
+      }
+    >
+      <InfoList>
+        <InfoRow icon={<Mail />} label="Email">
+          <span title={user.email}>{user.email || "—"}</span>
+        </InfoRow>
+      </InfoList>
+      <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
+        {isDirty ? "Tenés cambios sin guardar." : "Modificá tus datos y guardá para aplicar los cambios."}
+      </p>
+    </ProfileCard>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Información del Perfil */}
-      <Card data-tour="profile-info">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Información Personal
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Nombre y Apellido */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="nombre" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Nombre <span className="text-red-500">*</span>
-                </Label>
+    <>
+      <DetailLayout aside={aside}>
+        <div data-tour="profile-info">
+          <SectionCard title="Datos personales" description="Todos los campos son obligatorios">
+            <form id="profile-form" onSubmit={handleSubmit} className="grid gap-4 px-5 py-5 sm:grid-cols-2">
+              <FormField id="nombre" label="Nombre" icon={<User />} error={errors.nombre}>
                 <Input
                   id="nombre"
-                  type="text"
                   placeholder="Tu nombre"
                   value={formData.nombre}
                   onChange={(e) => handleInputChange("nombre", e.target.value)}
                   className={errors.nombre ? "border-red-500" : ""}
-                  disabled={isSaving || isLoading}
+                  disabled={busy}
                 />
-                {errors.nombre && (
-                  <p className="text-sm text-red-500">{errors.nombre}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apellido" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Apellido <span className="text-red-500">*</span>
-                </Label>
+              </FormField>
+              <FormField id="apellido" label="Apellido" icon={<User />} error={errors.apellido}>
                 <Input
                   id="apellido"
-                  type="text"
                   placeholder="Tu apellido"
                   value={formData.apellido}
                   onChange={(e) => handleInputChange("apellido", e.target.value)}
                   className={errors.apellido ? "border-red-500" : ""}
-                  disabled={isSaving || isLoading}
+                  disabled={busy}
                 />
-                {errors.apellido && (
-                  <p className="text-sm text-red-500">{errors.apellido}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Email <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className={errors.email ? "border-red-500" : ""}
-                disabled={isSaving || isLoading}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
-              )}
-            </div>
-
-            {/* DNI */}
-            <div className="space-y-2">
-              <Label htmlFor="dni" className="flex items-center gap-2">
-                <IdCard className="w-4 h-4" />
-                DNI <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="dni"
-                type="text"
-                placeholder="12345678"
-                value={formData.dni}
-                onChange={(e) => {
-                  const formatted = formatDNI(e.target.value);
-                  handleInputChange("dni", formatted);
-                }}
-                maxLength={8}
-                className={errors.dni ? "border-red-500" : ""}
-                disabled={isSaving || isLoading}
-              />
-              {errors.dni && (
-                <p className="text-sm text-red-500">{errors.dni}</p>
-              )}
-            </div>
-
-            {/* Botones */}
-            <div className="flex flex-col-reverse gap-3 pt-4 border-t sm:flex-row sm:justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="flex items-center justify-center gap-2 w-full sm:w-auto"
-                data-tour="change-password"
-              >
-                <Lock className="w-4 h-4" />
-                Cambiar Contraseña
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSaving || isLoading}
-                className="w-full sm:w-auto sm:min-w-[120px]"
-                data-tour="save-button"
-              >
-                {isSaving || isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Guardar Cambios
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              </FormField>
+              <FormField id="email" label="Email" icon={<Mail />} error={errors.email} className="sm:col-span-2">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={errors.email ? "border-red-500" : ""}
+                  disabled={busy}
+                />
+              </FormField>
+              <FormField id="dni" label="DNI" icon={<IdCard />} error={errors.dni}>
+                <Input
+                  id="dni"
+                  inputMode="numeric"
+                  placeholder="12345678"
+                  value={formData.dni}
+                  onChange={(e) => handleInputChange("dni", formatDNI(e.target.value))}
+                  maxLength={8}
+                  className={errors.dni ? "border-red-500" : ""}
+                  disabled={busy}
+                />
+              </FormField>
+            </form>
+          </SectionCard>
+        </div>
+      </DetailLayout>
 
       {/* Modal de Cambio de Contraseña */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
@@ -556,6 +539,6 @@ export default function Profile() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Plus } from "lucide-react";
+import { AlertCircle, ArrowLeft, BookOpen, CheckCircle, Loader2, Plus } from "lucide-react";
+import {
+    DetailLayout,
+    ProfileCard,
+    SectionCard,
+    SectionEmpty,
+    StatGrid,
+} from "@/components/common/DetailLayout";
 import type { Module, Subject } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
@@ -265,121 +271,111 @@ export default function CreateModule() {
 
     if (!pendingSubject && !subjectFromQuery) {
         return (
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-yellow-500" />
-                            No hay materia pendiente
-                        </CardTitle>
-                        <CardDescription>
-                            No se encontró materia para gestionar módulos.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Button onClick={() => navigate('/subjects')} variant="outline">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Volver a Materias
-                        </Button>
-                    </CardContent>
-                </Card>
+            <div className="admin-card mx-auto max-w-md">
+                <SectionEmpty icon={<AlertCircle />}>
+                    <p className="font-medium text-gray-700">No hay materia pendiente</p>
+                    <p className="text-xs text-gray-500">No se encontró una materia para gestionar módulos.</p>
+                    <Button onClick={() => navigate('/subjects')} variant="outline" size="sm" className="mt-2 h-8 cursor-pointer">
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                        Volver a Materias
+                    </Button>
+                </SectionEmpty>
             </div>
         );
     }
 
-    return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <span>
-                            {subjectFromQuery ? (
-                                <>Gestionando módulos de: {subjectFromQuery.nombre}</>
-                            ) : (
-                                <>Creando módulos para: {pendingSubject?.nombre}</>
-                            )}
-                        </span>
-                        <Button onClick={handleBackToSubjects} variant="outline" size="sm" className="cursor-pointer" disabled={loading}>
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            {loading ? <Loader2 className='h-4 w-4 animate-spin' /> : 'Cancelar'}
-                        </Button>
-                    </CardTitle>
-                    <CardDescription>
-                        {subjectFromQuery ? (
-                            <>Agrega o actualiza los módulos de esta materia.</>
-                        ) : (
-                            <>Crea los módulos que formarán parte de esta materia. Puedes agregar tantos módulos como necesites.</>
-                        )}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-sm text-gray-600">
-                            Módulos creados: <span className="font-semibold">{modules.length}</span>
-                        </div>
-                        {modules.length > 0 && !subjectFromQuery && (
-                            <Button 
-                                onClick={handleFinishSubjectCreation}
-                                disabled={isCreatingSubject}
-                                className="bg-green-600 hover:bg-green-700 cursor-pointer"
-                            >
-                                {isCreatingSubject ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                        Creando materia...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Finalizar y Crear Materia
-                                    </>
-                                )}
-                            </Button>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+    const isNewSubject = !subjectFromQuery;
 
-            <Card>
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <CardTitle>Módulos existentes</CardTitle>
-                        <CardDescription>
-                            {modules.length === 0
-                                ? 'Aún no hay módulos para esta materia.'
-                                : 'Visualiza los módulos ya creados para esta materia.'}
-                        </CardDescription>
-                    </div>
-                    <div>
-                        <Button onClick={() => setIsCreateModalOpen(true)} className="cursor-pointer">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Crear módulo
+    const aside = (
+        <ProfileCard
+            media={
+                <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-violet-50 text-violet-600">
+                    <BookOpen className="w-5 h-5" />
+                </span>
+            }
+            title={currentSubject?.nombre || "Materia"}
+            subtitle={isNewSubject ? "Materia nueva" : "Gestión de módulos"}
+            footer={
+                <>
+                    {isNewSubject && (
+                        <Button
+                            onClick={handleFinishSubjectCreation}
+                            disabled={isCreatingSubject || modules.length === 0}
+                            size="sm"
+                            className="h-8 cursor-pointer"
+                        >
+                            {isCreatingSubject ? (
+                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                            )}
+                            {isCreatingSubject ? "Creando materia…" : "Finalizar y crear materia"}
                         </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {modules.length === 0 ? (
-                        <div className="text-sm text-gray-500">Sin módulos</div>
-                    ) : (
-                        <div className="space-y-3">
-                            <ModulesList 
-                                modules={modules} 
-                                materiaId={subjectFromQuery?.id || pendingSubject?.id || ''}
-                                onDelete={handleDeleteClick} 
-                                onEdit={handleEditClick}
-                                defaultEnabledByModule={modulosHabilitadosEstado}
-                                onToggleSuccess={async () => {
-                                  if (subjectFromQuery?.id) {
-                                    const estado = await CoursesAPI.getModulosHabilitadosEstado(subjectFromQuery.id);
-                                    setModulosHabilitadosEstado(estado);
-                                  }
-                                }}
-                            />
-                        </div>
                     )}
-                </CardContent>
-            </Card>
-            
+                    <Button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        variant={isNewSubject ? "outline" : "default"}
+                        size="sm"
+                        className="h-8 cursor-pointer"
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        Crear módulo
+                    </Button>
+                    <Button
+                        onClick={handleBackToSubjects}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-gray-500 cursor-pointer"
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isNewSubject ? "Cancelar" : "Volver a materias"}
+                    </Button>
+                </>
+            }
+        >
+            <StatGrid stats={[{ label: "Módulos", value: modules.length }]} />
+            <p className="px-5 py-3 text-xs text-gray-500">
+                {isNewSubject
+                    ? "Creá los módulos que formarán parte de esta materia y finalizá para guardarla."
+                    : "Agregá o actualizá los módulos de esta materia."}
+            </p>
+        </ProfileCard>
+    );
+
+    return (
+        <DetailLayout aside={aside}>
+            <SectionCard
+                title="Módulos"
+                description={
+                    modules.length === 0
+                        ? "Aún no hay módulos para esta materia"
+                        : "El interruptor define si el módulo está habilitado por defecto para los alumnos"
+                }
+            >
+                {modules.length === 0 ? (
+                    <SectionEmpty icon={<BookOpen />}>
+                        <p className="font-medium text-gray-600">Sin módulos todavía</p>
+                        <p className="text-xs text-gray-400">Usá "Crear módulo" para agregar el primero.</p>
+                    </SectionEmpty>
+                ) : (
+                    <div className="p-3">
+                        <ModulesList
+                            modules={modules}
+                            materiaId={subjectFromQuery?.id || pendingSubject?.id || ''}
+                            onDelete={handleDeleteClick}
+                            onEdit={handleEditClick}
+                            defaultEnabledByModule={modulosHabilitadosEstado}
+                            onToggleSuccess={async () => {
+                              if (subjectFromQuery?.id) {
+                                const estado = await CoursesAPI.getModulosHabilitadosEstado(subjectFromQuery.id);
+                                setModulosHabilitadosEstado(estado);
+                              }
+                            }}
+                        />
+                    </div>
+                )}
+            </SectionCard>
+
             <ModulesModal
                 isOpen={isCreateModalOpen}
                 onCancel={handleCancelCreate}
@@ -397,6 +393,6 @@ export default function CreateModule() {
                 itemName={modules.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
                 id={confirmDeleteId || ""}
             />
-        </div>
+        </DetailLayout>
     );
 }
