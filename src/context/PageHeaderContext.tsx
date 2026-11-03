@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { TourStep } from "@/hooks/useTour";
 
+export type Breadcrumb = { label: string; to: string };
+
 export type PageHeader = {
   title?: string;
   /** Pasos del tutorial de la página; si se omite no se muestra el ícono de ayuda */
   tourSteps?: TourStep[];
-  /** Ruta a la que vuelve la flecha del topbar, o -1 para volver en el historial */
-  backTo?: string | -1;
+  /** Secciones padre que se muestran antes del título (ej: Exámenes › Editar examen) */
+  breadcrumbs?: Breadcrumb[];
 };
 
 const PageHeaderContext = createContext<PageHeader>({});
@@ -26,13 +28,15 @@ export function usePageHeaderValue() {
   return useContext(PageHeaderContext);
 }
 
-/** Declara el título (y opcionalmente tutorial y "volver") que muestra el menú superior */
-export function usePageHeader({ title, tourSteps, backTo }: PageHeader) {
+/** Declara el título (y opcionalmente tutorial y breadcrumb) que muestra el menú superior */
+export function usePageHeader({ title, tourSteps, breadcrumbs }: PageHeader) {
   const setHeader = useContext(SetPageHeaderContext);
+  // Los breadcrumbs suelen llegar como array nuevo en cada render: se comparan por contenido
+  const breadcrumbsKey = JSON.stringify(breadcrumbs ?? []);
 
   useEffect(() => {
-    setHeader({ title, tourSteps, backTo });
-  }, [setHeader, title, tourSteps, backTo]);
+    setHeader({ title, tourSteps, breadcrumbs: JSON.parse(breadcrumbsKey) as Breadcrumb[] });
+  }, [setHeader, title, tourSteps, breadcrumbsKey]);
 
   useEffect(() => () => setHeader({}), [setHeader]);
 }

@@ -49,7 +49,7 @@ import {
 export default function EditProduct() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  usePageHeader({ title: "Editar curso", backTo: "/products" });
+  usePageHeader({ title: "Editar curso", breadcrumbs: [{ label: "Cursos", to: "/products" }] });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 

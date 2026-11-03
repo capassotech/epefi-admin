@@ -668,7 +668,10 @@ export default function CreateExam() {
     }
   };
 
-  usePageHeader({ title: isEditing ? "Editar examen" : "Crear examen", backTo: "/exams" });
+  usePageHeader({
+    title: isEditing ? "Editar examen" : "Crear examen",
+    breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
+  });
 
   if (loadingCourses || loadingExam) {
     return (

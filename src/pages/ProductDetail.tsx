@@ -233,7 +233,7 @@ const ProductDetail = () => {
     }
   };
 
-  usePageHeader({ title: curso?.titulo, backTo: -1 });
+  usePageHeader({ title: curso?.titulo, breadcrumbs: [{ label: "Cursos", to: "/products" }] });
 
   if (loading) return (
     <InteractiveLoader

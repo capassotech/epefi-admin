@@ -405,8 +405,14 @@ export default function CompletedExamDetail() {
   };
 
   usePageHeader({
-    title: modoCorreccion ? "Corregir examen realizado" : "Detalle del examen realizado",
-    backTo: returnTo,
+    title: `${modoCorreccion ? "Corregir" : "Detalle"}${meta?.nombreAlumno ? ` · ${meta.nombreAlumno}` : ""}`,
+    // Si se llegó desde el panel general, la ruta lo refleja; si no, cuelga de Exámenes › Realizados
+    breadcrumbs: returnTo.startsWith(COMPLETED_EXAMS_LIST_PATH)
+      ? [
+          { label: "Exámenes", to: "/exams" },
+          { label: "Realizados", to: returnTo },
+        ]
+      : [{ label: "Panel general", to: returnTo }],
   });
 
   if (loading) {

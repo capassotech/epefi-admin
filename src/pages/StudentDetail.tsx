@@ -327,7 +327,7 @@ export const StudentDetail = () => {
 
     usePageHeader({
         title: student ? `${student.nombre} ${student.apellido}` : undefined,
-        backTo: -1,
+        breadcrumbs: [{ label: "Usuarios", to: "/students" }],
     });
 
     if (loading) return (

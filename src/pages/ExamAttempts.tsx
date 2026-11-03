@@ -186,7 +186,15 @@ export default function ExamAttempts() {
     }
   };
 
-  usePageHeader({ title: data?.examen.titulo || "Examen", backTo: "/exams" });
+  usePageHeader({
+    title: "Intentos",
+    breadcrumbs: [
+      { label: "Exámenes", to: "/exams" },
+      ...(data?.examen.titulo && id
+        ? [{ label: data.examen.titulo, to: `/exams/${encodeURIComponent(id)}/edit` }]
+        : []),
+    ],
+  });
 
   if (loading && !data) {
     return (

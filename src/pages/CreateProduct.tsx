@@ -29,7 +29,7 @@ import SubjectCreation from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
-  usePageHeader({ title: "Crear nuevo curso", backTo: "/products" });
+  usePageHeader({ title: "Crear curso", breadcrumbs: [{ label: "Cursos", to: "/products" }] });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 

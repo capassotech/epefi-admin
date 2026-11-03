@@ -10,6 +10,7 @@ import ModulesList from "@/components/subject/ModulesList";
 import ModulesModal from "@/components/subject/ModulesModal";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { safeGetItem, safeRemoveItem } from "@/utils/storage";
+import { usePageHeader } from "@/context/PageHeaderContext";
 
 interface PendingSubjectData {
     id: string;
@@ -32,6 +33,17 @@ export default function CreateModule() {
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [modulosHabilitadosEstado, setModulosHabilitadosEstado] = useState<Record<string, boolean>>({});
+
+    const currentSubject = subjectFromQuery ?? pendingSubject;
+    usePageHeader({
+        title: "Módulos",
+        breadcrumbs: [
+            { label: "Materias", to: "/subjects" },
+            ...(currentSubject?.nombre && subjectFromQuery
+                ? [{ label: currentSubject.nombre, to: `/subjects/${encodeURIComponent(subjectFromQuery.id)}` }]
+                : []),
+        ],
+    });
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);

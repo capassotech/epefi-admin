@@ -86,7 +86,7 @@ const EMPTY_PAGINATION: PaginationMeta = {
 
 export default function CompletedExams() {
   const navigate = useNavigate();
-  usePageHeader({ title: "Exámenes realizados", backTo: "/exams" });
+  usePageHeader({ title: "Realizados", breadcrumbs: [{ label: "Exámenes", to: "/exams" }] });
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters = readCompletedExamsFilters(searchParams);
   const [pendientes, setPendientes] = useState<ExamenRealizado[]>([]);

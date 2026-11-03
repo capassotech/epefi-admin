@@ -215,7 +215,7 @@ export const SubjectDetail = () => {
         }
     };
 
-    usePageHeader({ title: materia?.nombre, backTo: -1 });
+    usePageHeader({ title: materia?.nombre, breadcrumbs: [{ label: "Materias", to: "/subjects" }] });
 
     if (loading) return (
         <InteractiveLoader

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronLeft, LogOut } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { usePageHeaderValue } from "@/context/PageHeaderContext";
@@ -17,7 +17,8 @@ export function AdminTopbar({ onOpenMobileMenu }: AdminTopbarProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
-  const { title, tourSteps, backTo } = usePageHeaderValue();
+  const { title, tourSteps, breadcrumbs } = usePageHeaderValue();
+  const crumbs = breadcrumbs ?? [];
 
   const handleLogout = async () => {
     try {
@@ -41,19 +42,34 @@ export function AdminTopbar({ onOpenMobileMenu }: AdminTopbarProps) {
           <MobileMenuButton onClick={onOpenMobileMenu} className="lg:flex -ml-2 mr-1 p-1.5 text-gray-500" />
         )}
 
-        {backTo !== undefined && (
-          <button
-            type="button"
-            onClick={() => (backTo === -1 ? navigate(-1) : navigate(backTo))}
-            className="-ml-1.5 p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
-            aria-label="Volver"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        )}
-
         {title ? (
-          <h1 className="text-sm font-medium text-gray-700 truncate">{title}</h1>
+          <nav aria-label="Ruta de navegación" className="min-w-0">
+            <ol className="flex items-center gap-1.5 min-w-0 text-sm">
+              {crumbs.map((crumb, index) => (
+                <li
+                  key={`${crumb.to}-${index}`}
+                  // En mobile solo se muestra la sección inmediatamente anterior
+                  className={cn(
+                    "items-center gap-1.5 min-w-0 shrink",
+                    index === crumbs.length - 1 ? "flex" : "hidden sm:flex"
+                  )}
+                >
+                  <Link
+                    to={crumb.to}
+                    className="max-w-[180px] truncate text-gray-400 hover:text-gray-900 transition-colors"
+                  >
+                    {crumb.label}
+                  </Link>
+                  <ChevronRight className="w-3.5 h-3.5 shrink-0 text-gray-300" aria-hidden="true" />
+                </li>
+              ))}
+              <li className="min-w-0">
+                <h1 className="font-medium text-gray-700 truncate" aria-current="page">
+                  {title}
+                </h1>
+              </li>
+            </ol>
+          </nav>
         ) : (
           isMobile && <img src="/logoNegro.png" alt="EPEFI" className="h-5 w-auto opacity-80" />
         )}
