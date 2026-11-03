@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { IconAction } from '@/components/ui/icon-action';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { INACTIVE_ROW_TEXT, inactiveRowClass } from '@/utils/tableState';
 import { type Module } from '@/types/types';
-import { Edit2, Trash2, Loader2, Users, UserMinus } from 'lucide-react';
+import { Edit2, Trash2, Loader2, UserMinus } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import { toast } from 'sonner';
 import {
@@ -82,139 +84,104 @@ export const ModulesList = ({ modules, materiaId, onDelete, onEdit, defaultEnabl
     }
   };
 
+  const isModuleEnabled = (id: string) =>
+    moduleEnabledStates[id] !== undefined ? moduleEnabledStates[id] : (defaultEnabledByModule?.[id] ?? false);
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white shadow sm:rounded-lg">
-        <ul role="list" className="divide-y divide-gray-200">
-          {modules.length === 0 ? (
-            <li className="px-4 py-6 text-center text-gray-500">
-              No hay módulos registrados.
-            </li>
-          ) : (
-            modules.map((m) => (
+    <TooltipProvider delayDuration={300}>
+    <div className="admin-card overflow-hidden">
+      {modules.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-gray-500">No hay módulos registrados.</p>
+      ) : (
+        <ul role="list" className="divide-y divide-gray-100 bg-white">
+          {modules.map((m) => {
+            const isEnabled = isModuleEnabled(m.id);
+            const excepciones = moduloExcepciones[m.id] ?? [];
+            return (
               <li
                 key={m.id}
-                className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 hover:bg-gray-50 transition-colors duration-150"
+                className={`flex items-center gap-3 px-4 py-2 transition-colors duration-150 ${inactiveRowClass(isEnabled || loadingExcepciones)}`}
               >
-                <div className="flex-1 min-w-0 w-full">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base sm:text-lg font-semibold text-gray-900 transition-colors duration-200 break-words">
-                        {m.titulo}
-                      </p>
-                      {m.descripcion && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {m.descripcion}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`truncate text-sm font-medium ${
+                      isEnabled || loadingExcepciones ? "text-gray-900" : INACTIVE_ROW_TEXT
+                    }`}
+                  >
+                    {m.titulo}
+                  </p>
+                  {m.descripcion && (
+                    <p className="truncate text-xs text-gray-500">{m.descripcion}</p>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 w-full sm:flex-col sm:gap-2 sm:ml-4 sm:w-auto sm:flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit?.(m);
-                    }}
+                {!loadingExcepciones && excepciones.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        <UserMinus className="w-3 h-3" />
+                        {excepciones.length} no habilitado{excepciones.length !== 1 ? 's' : ''}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 sm:w-80" align="end">
+                      <p className="font-medium text-amber-800 mb-2">Estudiantes sin este módulo habilitado</p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Los siguientes tienen este módulo deshabilitado individualmente:
+                      </p>
+                      <ul className="text-sm space-y-1 max-h-48 overflow-y-auto">
+                        {excepciones.map((s) => (
+                          <li key={s.id} className="flex items-center gap-2 py-1 px-2 rounded bg-amber-50">
+                            <UserMinus className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                            {s.nombre}
+                          </li>
+                        ))}
+                      </ul>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <IconAction label="Editar módulo" onClick={() => onEdit?.(m)}>
+                    <Edit2 />
+                  </IconAction>
+                  <IconAction
+                    label="Eliminar módulo"
+                    onClick={() => onDelete?.(m.id)}
+                    className="hover:bg-red-50 hover:text-red-600"
                   >
-                    <Edit2 className="w-4 h-4 mr-1.5" />
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 hover:text-red-800 transition-all duration-200 shadow-sm cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete?.(m.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1.5" />
-                    Eliminar
-                  </Button>
-                  <div className="flex flex-col gap-1 w-full sm:w-auto">
-                    {loadingExcepciones ? (
-                      <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full sm:min-w-[180px]">
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
-                        <span className="text-sm text-gray-600">Cargando...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div 
-                          className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 w-full min-w-0 sm:min-w-[180px]"
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Users className="w-4 h-4 text-gray-500 shrink-0" />
-                            <span className="text-sm text-gray-700 leading-tight">
-                              {togglingModuleId === m.id ? 'Actualizando...' : 'Habilitado por defecto'}
-                            </span>
-                          </div>
-                          {togglingModuleId === m.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
-                          ) : (
-                            <Switch
-                              checked={moduleEnabledStates[m.id] !== undefined ? moduleEnabledStates[m.id] : (defaultEnabledByModule?.[m.id] ?? false)}
-                              onCheckedChange={(checked) => {
-                                handleToggleModuleForAll(m.id, checked);
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                              }}
-                              disabled={togglingModuleId !== null}
-                              className="shrink-0 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                            />
-                          )}
-                        </div>
-                        {(moduloExcepciones[m.id]?.length ?? 0) > 0 && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-auto min-h-8 w-full justify-center sm:justify-start text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 whitespace-normal"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <UserMinus className="w-4 h-4 mr-1.5 shrink-0" />
-                            {moduloExcepciones[m.id].length} estudiante{moduloExcepciones[m.id].length !== 1 ? 's' : ''} no habilitado{moduloExcepciones[m.id].length !== 1 ? 's' : ''}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 sm:w-80" align="end" onClick={(e) => e.stopPropagation()}>
-                          <p className="font-medium text-amber-800 mb-2">Estudiantes sin este módulo habilitado</p>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Los siguientes tienen este módulo deshabilitado individualmente:
-                          </p>
-                          <ul className="text-sm space-y-1 max-h-48 overflow-y-auto">
-                            {moduloExcepciones[m.id].map((s) => (
-                              <li key={s.id} className="flex items-center gap-2 py-1 px-2 rounded bg-amber-50">
-                                <UserMinus className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                {s.nombre}
-                              </li>
-                            ))}
-                          </ul>
-                        </PopoverContent>
-                      </Popover>
+                    <Trash2 />
+                  </IconAction>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="grid place-items-center w-10 h-8">
+                        {loadingExcepciones || togglingModuleId === m.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        ) : (
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) => handleToggleModuleForAll(m.id, checked)}
+                            disabled={togglingModuleId !== null}
+                            aria-label={isEnabled ? "Deshabilitar módulo para todos" : "Habilitar módulo para todos"}
+                            className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 disabled:opacity-50"
+                          />
                         )}
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>{isEnabled ? "Habilitado por defecto para los alumnos" : "Deshabilitado por defecto"}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </li>
-            ))
-          )}
+            );
+          })}
         </ul>
-      </div>
+      )}
     </div>
+    </TooltipProvider>
   );
 };
 

@@ -14,7 +14,8 @@ import { subjectsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { ListLoadingPill, listLoadingClass } from '@/components/common/ListLoading';
+import { ListLoadingPill } from '@/components/common/ListLoading';
+import { applyColumnFilter, applyColumnSort, listLoadingClass, type ColumnSort } from '@/utils/tableState';
 
 export default function Subjects() {
     const listTopRef = useRef<HTMLDivElement | null>(null);
@@ -63,7 +64,7 @@ export default function Subjects() {
                 search: searchQuery.trim() || undefined,
                 status,
                 sortBy,
-                sortOrder: sortBy ? "asc" : undefined,
+                sortOrder: sortBy ? filters.sortDirection ?? "asc" : undefined,
             });
             const paginated = normalizePaginatedResponse<Subject>(res, pagination.page, pagination.limit);
             const data = paginated.data;
@@ -188,22 +189,15 @@ export default function Subjects() {
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
-    const filterOptions = {
-        types: [
-            { value: 'TEORICA', label: 'Teórica' },
-            { value: 'PRACTICA', label: 'Práctica' },
-            { value: 'MIXTA', label: 'Mixta' },
-        ],
-        sortOptions: [
-            { value: 'title', label: 'Título' },
-            { value: 'status', label: 'Estado' },
-        ],
-    };
+    // Orden y estado se eligen desde los encabezados de la tabla
+    const handleSortChange = (sort: ColumnSort) => handleFilter(applyColumnSort(filters, sort));
+    const handleStatusFilterChange = (status: string | undefined) =>
+        handleFilter(applyColumnFilter(filters, 'status', status));
 
     if (loading) {
         return (
             <InteractiveLoader
-                initialMessage="Cargando cursos"
+                initialMessage="Cargando materias"
                 delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
             />
         );
@@ -221,7 +215,10 @@ export default function Subjects() {
                     onFilter={handleFilter}
                     onCreateNew={() => setIsCreateModalOpen(true)}
                     createButtonText="Crear materia"
-                    filterOptions={filterOptions}
+                    showStateFilter={false}
+                    currentFilters={filters}
+                    resetFiltersTo={{}}
+                    showClearFilters
                 />
             </div>
 
@@ -274,6 +271,11 @@ export default function Subjects() {
                                 onDelete={handleDeleteClick} 
                                 onEdit={handleEditClick} 
                                 showTitle={false}
+                                sortBy={filters.sortBy}
+                                sortDirection={filters.sortDirection}
+                                onSortChange={handleSortChange}
+                                status={filters.status}
+                                onStatusFilterChange={handleStatusFilterChange}
                                 onStatusChange={async () => {
                                     try {
                                         await fetchMaterias();

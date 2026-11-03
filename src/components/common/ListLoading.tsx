@@ -1,19 +1,9 @@
 import { Loader } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /**
- * Clases para el contenedor de un listado mientras se recarga (orden, filtros, página):
- * el contenido actual queda visible pero atenuado y sin interacción.
+ * Píldora flotante "Cargando…" que se superpone al listado.
+ * Se usa junto con `listLoadingClass` (utils/tableState) en el contenedor.
  */
-export function listLoadingClass(loading: boolean, className?: string) {
-  return cn(
-    "relative [&>:not([data-loading-pill])]:transition-opacity [&>:not([data-loading-pill])]:duration-200",
-    loading && "pointer-events-none [&>:not([data-loading-pill])]:opacity-50",
-    className
-  );
-}
-
-/** Píldora flotante "Cargando…" que se superpone al listado */
 export function ListLoadingPill({ loading, label }: { loading: boolean; label: string }) {
   if (!loading) return null;
   return (

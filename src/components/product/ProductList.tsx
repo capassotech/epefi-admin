@@ -2,12 +2,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+import { IconAction } from "@/components/ui/icon-action";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FilterHeader, PlainHeader, SortableHeader } from "@/components/common/TableHeaders";
+import {
+  INACTIVE_ROW_TEXT,
+  STATUS_FILTER_OPTIONS,
+  inactiveRowClass,
+  type ColumnSort,
+  type SortDirection,
+} from "@/utils/tableState";
 import { CoursesAPI } from "@/service/courses";
 import { StudentsAPI } from "@/service/students";
-import { Link } from "react-router-dom";
 import { formatCurrency } from '@/utils/currency';
-import { Pencil, Loader2, AlertTriangle } from 'lucide-react';
+import { Pencil, Loader2, AlertTriangle, Eye } from 'lucide-react';
 import { toast } from "sonner";
 import type { Course, StudentDB } from "@/types/types";
 import {
@@ -21,34 +29,26 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Componente para manejar imágenes con placeholder
-const ImageWithPlaceholder = ({ src, alt, className }: { src?: string; alt: string; className?: string }) => {
-  const [hasError, setHasError] = useState(false);
-  
-  if (!src || hasError) {
-    return (
-      <div className={`${className} flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl border-2 border-gray-300`}>
-        <p className="text-gray-400 text-[10px] sm:text-xs font-medium text-center px-1">Sin imagen</p>
-      </div>
-    );
-  }
-  
-  return (
-    <img
-      src={src}
-      onError={() => setHasError(true)}
-      className={className}
-      alt={alt}
-    />
-  );
-};
-
 interface ProductListProps {
   products: Course[];
   onProductUpdated?: (id: string, newEstado: "activo" | "inactivo") => void;
+  sortBy?: string;
+  sortDirection?: SortDirection;
+  onSortChange?: (sort: ColumnSort) => void;
+  status?: string;
+  /** undefined = habilitados y deshabilitados */
+  onStatusFilterChange?: (status: string | undefined) => void;
 }
 
-export const ProductList = ({ products, onProductUpdated }: ProductListProps) => {
+export const ProductList = ({
+  products,
+  onProductUpdated,
+  sortBy,
+  sortDirection,
+  onSortChange,
+  status,
+  onStatusFilterChange,
+}: ProductListProps) => {
   const navigate = useNavigate();
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
@@ -165,128 +165,139 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
     }
   };
 
+  const goToEdit = (f: Course) => {
+    const id = f.id;
+    if (!id || typeof id !== "string" || id.trim().length === 0) {
+      console.error("Curso sin ID válido:", f);
+      toast.error("Este curso no tiene un ID válido.");
+      return;
+    }
+    navigate(`/products/${encodeURIComponent(id)}/edit`);
+  };
+
+  const renderActions = (f: Course, tour: boolean) => {
+    const isActive = f.estado === "activo";
+    return (
+      <div
+        className="flex items-center justify-end gap-0.5"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <IconAction label="Ver curso" onClick={() => navigate(`/products/${encodeURIComponent(f.id)}`)}>
+          <Eye />
+        </IconAction>
+        <IconAction label="Editar curso" onClick={() => goToEdit(f)}>
+          <Pencil />
+        </IconAction>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="grid place-items-center w-10 h-8" data-tour={tour ? "switch-toggle" : undefined}>
+              {updatingStatusId === f.id ? (
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              ) : (
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={(checked) => handleToggleActive(f, checked)}
+                  disabled={updatingStatusId !== null || loadingStudentsCount}
+                  aria-label={isActive ? "Deshabilitar curso" : "Habilitar curso"}
+                  className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 disabled:opacity-50"
+                />
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{isActive ? "Habilitado" : "Deshabilitado"}</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Lista */}
-      <div className="bg-white shadow sm:rounded-lg">
-        <ul role="list" className="divide-y divide-gray-200">
-          {products.length === 0 ? (
-            <li className="px-4 py-6 text-center text-gray-500">
-              No hay cursos registrados.
+    <TooltipProvider delayDuration={300}>
+    <div className="admin-card overflow-hidden">
+      {/* ── Vista mobile: filas compactas ── */}
+      <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
+        {products.map((f, index) => {
+          const isActive = f.estado === "activo";
+          return (
+            <li
+              key={f.id}
+              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer ${inactiveRowClass(isActive)}`}
+              onClick={() => navigate(`/products/${encodeURIComponent(f.id)}`)}
+            >
+              <div className="min-w-0 flex-1">
+                <p className={`truncate text-sm font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                  {f.titulo}
+                </p>
+                <p className={`text-xs ${isActive ? "text-gray-500" : INACTIVE_ROW_TEXT}`}>
+                  {formatCurrency(f.precio)} · {f.materias?.length || 0} materias
+                </p>
+              </div>
+              {renderActions(f, index === 0)}
             </li>
-          ) : (
-            products.map((f) => (
-              <li
-                key={f.id}
-                className="px-4 py-4 sm:px-6 sm:py-5 bg-white hover:bg-gray-50 border-b border-gray-200 transition-all duration-200"
-              >
-                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                  {/* Imagen */}
-                  <div className="flex-shrink-0">
-                    <ImageWithPlaceholder
-                      src={f.image || (f as any).imagen}
-                      alt={f.titulo}
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl border-2 border-gray-200 shadow-sm"
-                    />
-                  </div>
+          );
+        })}
+      </ul>
 
-                  {/* Contenido */}
-                  <div className="flex-1 min-w-0 w-full">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                          <Link
-                            to={`/products/${encodeURIComponent(f.id)}`}
-                            className="text-base sm:text-lg font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors line-clamp-2"
-                          >
-                            {f.titulo}
-                          </Link>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-gray-600 mb-2">
-                          <span className="font-medium">{f.materias?.length || 0} materias</span>
-                        </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-sm text-gray-700 line-clamp-2 flex-1 sm:mr-4">
-                            {f.descripcion}
-                          </p>
-                          <p className="text-lg font-bold text-gray-900 flex-shrink-0">
-                            {formatCurrency(f.precio)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Botones de acción */}
-                      <div className="flex flex-wrap gap-2 w-full sm:flex-col sm:gap-2 sm:ml-4 sm:w-auto flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 px-3 flex-1 min-w-[7rem] sm:flex-none border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const id = f.id;
-
-                            if (
-                              !id ||
-                              typeof id !== "string" ||
-                              id.trim().length === 0
-                            ) {
-                              console.error("Curso sin ID válido:", f);
-                              toast.error("Este curso no tiene un ID válido.");
-                              return;
-                            }
-
-                            navigate(`/products/${encodeURIComponent(id)}/edit`);
-                          }}
-                        >
-                          <Pencil className="w-4 h-4 mr-1.5" />
-                          Editar
-                        </Button>
-                        
-                        <div 
-                          data-tour="switch-toggle"
-                          className={`flex items-center justify-between gap-2 px-3 py-2 border rounded-lg transition-colors w-full sm:w-auto ${
-                            (f.estado === "activo")
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-red-50 border-red-200'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                          }}
-                        >
-                          <span className={`text-sm font-medium ${
-                            (f.estado === "activo")
-                              ? 'text-green-700' 
-                              : 'text-red-700'
-                          }`}>
-                            {updatingStatusId === f.id ? 'Actualizando...' : ((f.estado === "activo") ? 'Habilitado' : 'Deshabilitado')}
-                          </span>
-                          {updatingStatusId === f.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                          ) : (
-                            <Switch
-                              checked={f.estado === "activo"}
-                              onCheckedChange={(checked) => {
-                                handleToggleActive(f, checked);
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                              }}
-                              disabled={updatingStatusId !== null}
-                              className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+      {/* ── Vista desktop: tabla ── */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <SortableHeader
+                label="Título"
+                column="title"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+                className="pl-4 pr-3"
+              />
+              <PlainHeader>Materias</PlainHeader>
+              <SortableHeader
+                label="Precio"
+                column="price"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+                ascHint="menor a mayor"
+                descHint="mayor a menor"
+              />
+              <FilterHeader
+                label="Acciones"
+                tooltip="Filtrar por estado (habilitados / deshabilitados)"
+                value={status}
+                options={STATUS_FILTER_OPTIONS}
+                onChange={onStatusFilterChange}
+                align="right"
+                className="pl-3 pr-4"
+              />
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {products.map((f, index) => {
+              const isActive = f.estado === "activo";
+              return (
+                <tr
+                  key={f.id}
+                  className={`transition-colors duration-150 cursor-pointer ${inactiveRowClass(isActive)}`}
+                  onClick={() => navigate(`/products/${encodeURIComponent(f.id)}`)}
+                >
+                  <td className={`pl-4 pr-3 py-1.5 font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                    <span className="line-clamp-1">{f.titulo}</span>
+                  </td>
+                  <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                    {f.materias?.length || 0}
+                  </td>
+                  <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                    {formatCurrency(f.precio)}
+                  </td>
+                  <td className="pl-3 pr-4 py-1.5 whitespace-nowrap">{renderActions(f, index === 0)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       {/* Modal de confirmación para deshabilitar curso */}
       <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
@@ -348,6 +359,7 @@ export const ProductList = ({ products, onProductUpdated }: ProductListProps) =>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 };
 

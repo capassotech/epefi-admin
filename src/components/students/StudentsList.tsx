@@ -7,18 +7,15 @@ import {
   Calendar,
   Eye,
   Users,
-  ArrowDown,
-  ArrowUp,
-  ChevronsUpDown,
-  ListFilter,
 } from "lucide-react";
+import { FilterHeader, SortableHeader } from "../common/TableHeaders";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+  INACTIVE_ROW_TEXT,
+  STATUS_FILTER_OPTIONS,
+  inactiveRowClass,
+  type ColumnSort,
+  type SortDirection,
+} from "@/utils/tableState";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
@@ -33,9 +30,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 import { StudentsAPI } from "@/service/students";
 import { toast } from "sonner";
 
-type SortKey = "name" | "email";
-type SortDirection = "asc" | "desc";
-
 interface StudentListProps {
   students: StudentDB[];
   onDelete: (id: string) => void;
@@ -44,7 +38,7 @@ interface StudentListProps {
   sortBy?: string;
   sortDirection?: SortDirection;
   /** Ciclo por columna: asc → desc → sin orden de columna (null) */
-  onSortChange?: (sort: { sortBy: SortKey; sortDirection: SortDirection } | null) => void;
+  onSortChange?: (sort: ColumnSort) => void;
   role?: string;
   /** undefined = todos los roles */
   onRoleChange?: (role: string | undefined) => void;
@@ -53,147 +47,11 @@ interface StudentListProps {
   onStatusFilterChange?: (status: string | undefined) => void;
 }
 
-function SortableHeader({
-  label,
-  column,
-  sortBy,
-  sortDirection,
-  onSortChange,
-}: {
-  label: string;
-  column: SortKey;
-  sortBy?: string;
-  sortDirection?: SortDirection;
-  onSortChange?: StudentListProps["onSortChange"];
-}) {
-  const isActive = sortBy === column;
-  const Icon = !isActive ? ChevronsUpDown : sortDirection === "desc" ? ArrowDown : ArrowUp;
-
-  const handleClick = () => {
-    if (!onSortChange) return;
-    if (!isActive) onSortChange({ sortBy: column, sortDirection: "asc" });
-    else if (sortDirection !== "desc") onSortChange({ sortBy: column, sortDirection: "desc" });
-    else onSortChange(null);
-  };
-
-  // Describe lo que hará el próximo clic
-  const tooltip = !isActive
-    ? `Ordenar por ${label.toLowerCase()} (A → Z)`
-    : sortDirection !== "desc"
-      ? `Ordenar por ${label.toLowerCase()} (Z → A)`
-      : "Quitar orden (volver a fecha de creación)";
-
-  return (
-    <th
-      className="px-3 py-2.5 text-left"
-      aria-sort={isActive ? (sortDirection === "desc" ? "descending" : "ascending") : "none"}
-    >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={handleClick}
-            aria-label={tooltip}
-            className={`group inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors cursor-pointer ${
-              isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            {label}
-            <Icon
-              className={`w-3.5 h-3.5 transition-opacity ${
-                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
-              }`}
-            />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </th>
-  );
-}
-
 const ROLE_OPTIONS = [
   { value: "all", label: "Todos los roles" },
   { value: "student", label: "Estudiante" },
   { value: "admin", label: "Administrador" },
 ];
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "Todos" },
-  { value: "active", label: "Activos" },
-  { value: "inactive", label: "Inactivos" },
-];
-
-/** Encabezado de columna que abre un menú para filtrar; "all" = sin filtro */
-function FilterHeader({
-  label,
-  tooltip,
-  value,
-  options,
-  onChange,
-  align = "left",
-  className = "px-3",
-}: {
-  label: string;
-  tooltip: string;
-  value?: string;
-  options: { value: string; label: string }[];
-  onChange?: (value: string | undefined) => void;
-  align?: "left" | "right";
-  className?: string;
-}) {
-  const current = value && value !== "all" ? value : "all";
-  const isActive = current !== "all";
-  const activeLabel = options.find((o) => o.value === current)?.label;
-
-  return (
-    <th className={`${className} py-2.5 ${align === "right" ? "text-right" : "text-left"}`}>
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={`group inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors cursor-pointer ${
-                  isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {label}
-                {isActive && (
-                  <span className="normal-case tracking-normal font-normal text-gray-500">
-                    · {activeLabel}
-                  </span>
-                )}
-                <ListFilter
-                  className={`w-3.5 h-3.5 transition-opacity ${
-                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-data-[state=open]:opacity-60"
-                  }`}
-                />
-              </button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>{tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align={align === "right" ? "end" : "start"} className="w-44">
-          <DropdownMenuRadioGroup
-            value={current}
-            onValueChange={(next) => onChange?.(next === "all" ? undefined : next)}
-          >
-            {options.map((option) => (
-              <DropdownMenuRadioItem key={option.value} value={option.value}>
-                {option.label}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </th>
-  );
-}
 
 export function StudentList({
   students,
@@ -279,9 +137,6 @@ export function StudentList({
   //     day: "numeric",
   //   });
   // };
-
-  /** Texto de usuarios deshabilitados: tachado en rojo y atenuado */
-  const inactiveText = "text-gray-400 line-through decoration-red-500 decoration-[1.5px]";
 
   const getFullName = (student: StudentDB) => {
     return (
@@ -476,6 +331,7 @@ export function StudentList({
               <SortableHeader
                 label="Nombre"
                 column="name"
+                defaultLabel="fecha de creación"
                 sortBy={sortBy}
                 sortDirection={sortDirection}
                 onSortChange={onSortChange}
@@ -483,6 +339,7 @@ export function StudentList({
               <SortableHeader
                 label="Email"
                 column="email"
+                defaultLabel="fecha de creación"
                 sortBy={sortBy}
                 sortDirection={sortDirection}
                 onSortChange={onSortChange}
@@ -496,9 +353,9 @@ export function StudentList({
               />
               <FilterHeader
                 label="Acciones"
-                tooltip="Filtrar por estado (activos / inactivos)"
+                tooltip="Filtrar por estado (habilitados / deshabilitados)"
                 value={status}
-                options={STATUS_OPTIONS}
+                options={STATUS_FILTER_OPTIONS}
                 onChange={onStatusFilterChange}
                 align="right"
                 className="pl-3 pr-4"
@@ -511,9 +368,7 @@ export function StudentList({
               return (
               <tr
                 key={student.id || student.uid || `student-${index}`}
-                className={`transition-colors duration-150 cursor-pointer ${
-                  isActive ? "hover:bg-gray-50" : "bg-red-50/40 hover:bg-red-50/70"
-                }`}
+                className={`transition-colors duration-150 cursor-pointer ${inactiveRowClass(isActive)}`}
                 onClick={() => navigate(`/students/${student.id}`)}
               >
                 <td
@@ -527,10 +382,10 @@ export function StudentList({
                     aria-label={`Seleccionar ${getFullName(student)}`}
                   />
                 </td>
-                <td className={`px-3 py-1.5 whitespace-nowrap font-medium ${isActive ? "text-gray-900" : inactiveText}`}>
+                <td className={`px-3 py-1.5 whitespace-nowrap font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
                   {getFullName(student)}
                 </td>
-                <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : inactiveText}`}>
+                <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
                   {student.email || "Sin email"}
                 </td>
                 <td className="px-3 py-1.5 whitespace-nowrap">

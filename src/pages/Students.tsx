@@ -17,7 +17,13 @@ import { studentsTourSteps } from "@/config/tourSteps";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
-import { ListLoadingPill, listLoadingClass } from "@/components/common/ListLoading";
+import { ListLoadingPill } from "@/components/common/ListLoading";
+import {
+  applyColumnFilter,
+  applyColumnSort,
+  listLoadingClass,
+  type ColumnSort,
+} from "@/utils/tableState";
 import { extractStudentsFromResponse } from "@/utils/studentDates";
 import {
   getEffectiveStudentFilters,
@@ -244,23 +250,12 @@ export default function Students() {
 
   // El orden se elige desde los encabezados de la tabla (Nombre / Email);
   // sin columna activa se usa el orden por defecto (fecha de creación, más nuevos primero)
-  const handleSortChange = (
-    sort: { sortBy: "name" | "email"; sortDirection: "asc" | "desc" } | null
-  ) => {
-    handleFilter({
-      ...filters,
-      sortBy: sort?.sortBy ?? DEFAULT_STUDENT_FILTERS.sortBy,
-      sortDirection: sort?.sortDirection ?? DEFAULT_STUDENT_FILTERS.sortDirection,
-    });
-  };
+  const handleSortChange = (sort: ColumnSort) =>
+    handleFilter(applyColumnSort(filters, sort, DEFAULT_STUDENT_FILTERS));
 
   // Rol y estado se filtran desde los encabezados "Rol" y "Acciones" de la tabla
-  const setHeaderFilter = (key: "role" | "status", value: string | undefined) => {
-    const next = { ...filters };
-    if (value) next[key] = value;
-    else delete next[key];
-    handleFilter(next);
-  };
+  const setHeaderFilter = (key: "role" | "status", value: string | undefined) =>
+    handleFilter(applyColumnFilter(filters, key, value));
 
   if (loading) {
     return (

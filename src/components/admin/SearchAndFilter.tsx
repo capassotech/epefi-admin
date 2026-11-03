@@ -26,9 +26,10 @@ const SORT_LABELS: Record<string, string> = {
   name: "Nombre",
   email: "Email",
   title: "Título",
+  price: "Precio",
 };
 const ROLE_LABELS: Record<string, string> = { student: "Estudiante", admin: "Administrador" };
-const STATUS_LABELS: Record<string, string> = { active: "Activos", inactive: "Inactivos" };
+const STATUS_LABELS: Record<string, string> = { active: "Habilitados", inactive: "Deshabilitados" };
 
 interface SearchAndFilterProps {
   onSearch: (query: string) => void;

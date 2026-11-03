@@ -13,7 +13,8 @@ import { productsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { ListLoadingPill, listLoadingClass } from '@/components/common/ListLoading';
+import { ListLoadingPill } from '@/components/common/ListLoading';
+import { applyColumnFilter, applyColumnSort, listLoadingClass, type ColumnSort } from '@/utils/tableState';
 
 export default function Products() {
   const navigate = useNavigate();
@@ -52,11 +53,7 @@ export default function Products() {
       };
 
       const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
-      const sortOrder = filters.sortBy
-        ? filters.sortBy === "price"
-          ? "desc"
-          : "asc"
-        : undefined;
+      const sortOrder = sortBy ? filters.sortDirection ?? "asc" : undefined;
       const status =
         filters.status && filters.status !== "all"
           ? statusMap[filters.status]
@@ -188,20 +185,10 @@ export default function Products() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filterOptions = {
-    types: [
-      { value: 'ON_DEMAND', label: 'On Demand' },
-      { value: 'ASYNC', label: 'Asincrónica' },
-      { value: 'VIVO', label: 'En Vivo' },
-      { value: 'EBOOK', label: 'E-book' },
-    ],
-    sortOptions: [
-      { value: 'title', label: 'Título' },
-      { value: 'price', label: 'Precio' },
-      { value: 'students', label: 'Estudiantes' },
-      { value: 'date', label: 'Fecha de creación' },
-    ],
-  };
+  // Orden y estado se eligen desde los encabezados de la tabla
+  const handleSortChange = (sort: ColumnSort) => handleFilter(applyColumnSort(filters, sort));
+  const handleStatusFilterChange = (status: string | undefined) =>
+    handleFilter(applyColumnFilter(filters, 'status', status));
 
   if (loading) {
     return (
@@ -224,7 +211,10 @@ export default function Products() {
           onFilter={handleFilter}
           onCreateNew={() => navigate('/products/create')}
           createButtonText="Crear curso"
-          filterOptions={filterOptions}
+          showStateFilter={false}
+          currentFilters={filters}
+          resetFiltersTo={{}}
+          showClearFilters
         />
       </div>
 
@@ -271,8 +261,13 @@ export default function Products() {
             </div>
           ) : (
             <div data-tour="courses-list">
-              <ProductList 
+              <ProductList
                 products={cursos}
+                sortBy={filters.sortBy}
+                sortDirection={filters.sortDirection}
+                onSortChange={handleSortChange}
+                status={filters.status}
+                onStatusFilterChange={handleStatusFilterChange}
                 onProductUpdated={(id, newEstado) => {
                   // Actualizar el estado local sin recargar todo
                   console.log('Actualizando estado local del curso:', { id, newEstado });
