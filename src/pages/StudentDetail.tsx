@@ -3,33 +3,39 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
     BookOpen,
     Mail,
     IdCard,
-    User,
-    CheckCircle,
     CheckCircle2,
-    XCircle,
-    Calendar,
-    Trash,
+    CalendarDays,
+    Trash2,
     Loader2,
-    ChevronDown,
     ChevronRight,
     Play,
     FileText,
-    GraduationCap,
     Edit2,
+    Plus,
+    ShieldCheck,
+    GraduationCap,
 } from 'lucide-react';
 import type { Course, StudentDB, Subject, Module } from '@/types/types';
 import { StudentsAPI } from '@/service/students';
 import { CoursesAPI } from '@/service/courses';
+import { getFechaRegistroSeconds } from '@/utils/studentDates';
+import {
+    DetailLayout,
+    InfoList,
+    InfoRow,
+    ProfileCard,
+    StatGrid,
+    StatusPill,
+} from '@/components/common/DetailLayout';
 import { toast } from 'sonner';
 import { CoursesAsignStudentModal } from '@/components/students/CoursesAsignStudentModal';
-import { CreateUserModal } from '@/components/students/CreateUserModal';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -60,6 +66,29 @@ interface ModuleWithStatus extends Module {
     progressPercentage?: number;
 }
 
+type ProgressSummary = { completed: number; total: number; percentage: number };
+
+const splitList = (value?: string | null) =>
+    value ? (value.includes('|||') ? value.split('|||') : [value]) : [];
+
+/** Barra de progreso fina con porcentaje; no se muestra si no hay contenidos */
+function ProgressInline({ summary, className = 'w-24' }: { summary: ProgressSummary; className?: string }) {
+    if (summary.total === 0) return null;
+    return (
+        <div className="flex items-center gap-2">
+            <div className={`h-1.5 overflow-hidden rounded-full bg-gray-100 ${className}`}>
+                <div
+                    className={`h-full rounded-full transition-[width] duration-500 ${
+                        summary.percentage === 100 ? 'bg-green-500' : 'bg-green-400'
+                    }`}
+                    style={{ width: `${summary.percentage}%` }}
+                />
+            </div>
+            <span className="w-9 text-right text-xs tabular-nums text-gray-500">{summary.percentage}%</span>
+        </div>
+    );
+}
+
 export const StudentDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -72,6 +101,7 @@ export const StudentDetail = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
     const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+    const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
     const [updatingModules, setUpdatingModules] = useState<Set<string>>(new Set());
     const [assignDialogOpen, setAssignDialogOpen] = useState(false);
     const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
@@ -85,7 +115,7 @@ export const StudentDetail = () => {
     };
 
     // Calcular progreso de un módulo
-    const calculateModuleProgress = (module: Module): { completed: number; total: number; percentage: number } => {
+    const calculateModuleProgress = (module: Module): ProgressSummary => {
         let completed = 0;
         let total = 0;
 
@@ -102,7 +132,7 @@ export const StudentDetail = () => {
 
         // Contar documentos
         if (module.url_archivo) {
-            const documents = module.url_archivo.includes('|||') 
+            const documents = module.url_archivo.includes('|||')
                 ? module.url_archivo.split('|||').filter(url => url.trim())
                 : [module.url_archivo];
             documents.forEach((_, index) => {
@@ -115,6 +145,18 @@ export const StudentDetail = () => {
 
         const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
         return { completed, total, percentage };
+    };
+
+    /** Suma el progreso de varios módulos (para materias, cursos y el total del alumno) */
+    const sumProgress = (modules: Module[]): ProgressSummary => {
+        let completed = 0;
+        let total = 0;
+        modules.forEach((module) => {
+            const p = calculateModuleProgress(module);
+            completed += p.completed;
+            total += p.total;
+        });
+        return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
     };
 
     // Cargar datos del estudiante y módulos habilitados
@@ -168,18 +210,18 @@ export const StudentDetail = () => {
                     const materias: SubjectWithDetails[] = [];
                     if (course.materias && course.materias.length > 0) {
                         const subjectsData = await CoursesAPI.getMateriasByIds(course.materias);
-                        
+
                         for (const subject of subjectsData) {
                             // Cargar módulos de la materia
                             const modulos: ModuleWithStatus[] = [];
                             if (subject.modulos && subject.modulos.length > 0) {
                                 const modulesData = await CoursesAPI.getModulesByIds(subject.modulos);
-                                
+
                                 for (const module of modulesData) {
                                     // Calcular progreso usando progressInfo directamente
                                     let moduleCompleted = 0;
                                     let moduleTotal = 0;
-                                    
+
                                     // Contar videos
                                     if (module.url_video) {
                                         const videos = Array.isArray(module.url_video) ? module.url_video : [module.url_video];
@@ -191,10 +233,10 @@ export const StudentDetail = () => {
                                             }
                                         });
                                     }
-                                    
+
                                     // Contar documentos
                                     if (module.url_archivo) {
-                                        const documents = module.url_archivo.includes('|||') 
+                                        const documents = module.url_archivo.includes('|||')
                                             ? module.url_archivo.split('|||').filter((url: string) => url.trim())
                                             : [module.url_archivo];
                                         documents.forEach((_: string, index: number) => {
@@ -205,11 +247,11 @@ export const StudentDetail = () => {
                                             }
                                         });
                                     }
-                                    
-                                    const moduleProgressPercentage = moduleTotal > 0 
-                                        ? Math.round((moduleCompleted / moduleTotal) * 100) 
+
+                                    const moduleProgressPercentage = moduleTotal > 0
+                                        ? Math.round((moduleCompleted / moduleTotal) * 100)
                                         : 0;
-                                    
+
                                     modulos.push({
                                         ...module,
                                         enabled: modulesHabilitados[module.id] === true,
@@ -217,7 +259,7 @@ export const StudentDetail = () => {
                                         progressPercentage: moduleProgressPercentage,
                                         completedContents: {
                                             documents: module.url_archivo ? (
-                                                module.url_archivo.includes('|||') 
+                                                module.url_archivo.includes('|||')
                                                     ? module.url_archivo.split('|||').filter((url: string) => url.trim()).map((_: string, index: number) => {
                                                         const contentKey = `${module.id}_document_${index}`;
                                                         return progressInfo[module.id]?.[contentKey] === true;
@@ -260,6 +302,10 @@ export const StudentDetail = () => {
             }
 
             setCourses(coursesData);
+            // Con un solo curso no hace falta un clic extra para verlo
+            if (coursesData.length === 1) {
+                setExpandedCourses((prev) => (prev.size > 0 ? prev : new Set([coursesData[0].id])));
+            }
         } catch (error) {
             console.error("⚠️ Error general al cargar cursos:", error);
             setCourses([]);
@@ -268,25 +314,13 @@ export const StudentDetail = () => {
         }
     };
 
-    const toggleCourse = (courseId: string) => {
-        const newExpanded = new Set(expandedCourses);
-        if (newExpanded.has(courseId)) {
-            newExpanded.delete(courseId);
-        } else {
-            newExpanded.add(courseId);
-        }
-        setExpandedCourses(newExpanded);
-    };
-
-    const toggleSubject = (subjectId: string) => {
-        const newExpanded = new Set(expandedSubjects);
-        if (newExpanded.has(subjectId)) {
-            newExpanded.delete(subjectId);
-        } else {
-            newExpanded.add(subjectId);
-        }
-        setExpandedSubjects(newExpanded);
-    };
+    const toggleIn = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) =>
+        setter((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
 
     const handleModuleToggle = async (moduleId: string, currentEnabled: boolean) => {
         if (!id) return;
@@ -296,8 +330,6 @@ export const StudentDetail = () => {
         try {
             const newEnabled = !currentEnabled;
             await StudentsAPI.updateStudentModule(id, moduleId, newEnabled);
-
-            // El estado se actualiza directamente en courses, no necesitamos moduleStates separado
 
             // Actualizar en la lista de cursos
             setCourses(prev => prev.map(course => ({
@@ -325,6 +357,42 @@ export const StudentDetail = () => {
         }
     };
 
+    const reloadStudentAndCourses = async () => {
+        if (!id) return;
+        try {
+            const studentData = await StudentsAPI.getById(id);
+            setStudent(studentData);
+            if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
+                const [modulesData, progressData] = await Promise.all([
+                    StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
+                    StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
+                ]);
+                setProgress(progressData.progreso || {});
+                await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
+            } else {
+                setCourses([]);
+            }
+        } catch (error) {
+            console.error("Error al recargar datos del estudiante:", error);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!id) return;
+        setIsDeleting(true);
+        try {
+            await StudentsAPI.delete(id);
+            toast.success('Usuario eliminado exitosamente');
+            setDeleteConfirmOpen(false);
+            navigate('/students');
+        } catch (err) {
+            toast.error('Error al eliminar el usuario');
+            console.error('Error al eliminar:', err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     usePageHeader({
         title: student ? `${student.nombre} ${student.apellido}` : undefined,
         breadcrumbs: [{ label: "Usuarios", to: "/students" }],
@@ -339,473 +407,328 @@ export const StudentDetail = () => {
     if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
     if (!student) return <div className="p-6">No se encontró el estudiante</div>;
 
-    return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex justify-end">
-                <div onClick={(e) => e.stopPropagation()}>
-                    <CreateUserModal
-                        onUserCreated={async () => {
-                            // Recargar datos del estudiante después de editar
-                            if (!id) return;
-                            try {
-                                const studentData = await StudentsAPI.getById(id);
-                                setStudent(studentData);
-                            } catch (error) {
-                                console.error("Error al recargar datos del estudiante:", error);
-                            }
-                        }}
-                        triggerText=""
-                        isEditing={true}
-                        editingUser={student}
+    const isAdmin = Boolean(student.role?.admin);
+    const isActive = Boolean(student.activo);
+    const registeredAt = getFechaRegistroSeconds(student);
+    const allModules = courses.flatMap((c) => c.materias.flatMap((s) => s.modulos));
+    const overall = sumProgress(allModules);
+    const enabledModules = allModules.filter((m) => m.enabled).length;
+    const initials = `${student.nombre?.[0] ?? ''}${student.apellido?.[0] ?? ''}`.toUpperCase();
+
+    const profileActions = (
+        <>
+            <Button
+                variant="outline"
+                size="sm"
+                className="h-8 cursor-pointer"
+                onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+            >
+                <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                Editar datos
+            </Button>
+
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialogTrigger asChild>
+                    <button
+                        type="button"
+                        disabled={isDeleting}
+                        className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50"
                     >
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 px-3 w-full sm:w-auto justify-center border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
-                            title="Editar usuario"
-                        >
-                            <Edit2 className="w-4 h-4 mr-1.5" />
-                            Editar
-                        </Button>
-                    </CreateUserModal>
-                </div>
-            </div>
+                        {isDeleting ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                        Eliminar
+                    </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción eliminará el usuario "{student?.nombre || ""} {student?.apellido || ""}" y todos sus datos asociados de forma permanente.
+                            Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                            Eliminar Permanentemente
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
 
-            {/* Información del estudiante */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <User className="w-5 h-5 mr-2 text-gray-600" />
-                        Información del Estudiante
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Personal</h3>
-                            
-                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                <Mail className="w-5 h-5 text-blue-500" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Email</p>
-                                    <p className="font-medium text-gray-900">{student.email || 'No especificado'}</p>
-                                </div>
-                            </div>
+    const renderModule = (module: ModuleWithStatus) => {
+        const moduleProgress = calculateModuleProgress(module);
+        const documents = module.url_archivo ? module.url_archivo.split('|||').filter(url => url.trim()) : [];
+        const videos = module.url_video ? (Array.isArray(module.url_video) ? module.url_video : [module.url_video]) : [];
+        const docNames = splitList(module.nombres_archivos);
+        const videoNames = splitList(module.nombres_videos);
+        const hasContents = documents.length + videos.length > 0;
+        const isOpen = expandedModules.has(module.id);
 
-                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                <IdCard className="w-5 h-5 text-green-500" />
-                                <div>
-                                    <p className="text-sm text-gray-500">DNI</p>
-                                    <p className="font-medium text-gray-900">{student.dni || 'No especificado'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado de Cuenta</h3>
-                        
-                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                <User className="w-5 h-5 text-purple-500" />
-                                <div className="flex-1">
-                                    <p className="text-sm text-gray-500">Rol</p>
-                                    <div className="mt-1">
-                                        {student.role?.admin ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                Admin
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                Estudiante
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                {student.activo ? (
-                                    <CheckCircle className="w-5 h-5 text-green-500" />
+        return (
+            <li key={module.id}>
+                <div
+                    className={`flex items-center gap-3 rounded-md py-1.5 pl-2 pr-1 transition-colors ${
+                        hasContents ? 'cursor-pointer hover:bg-gray-50' : ''
+                    }`}
+                    onClick={hasContents ? () => toggleIn(setExpandedModules, module.id) : undefined}
+                >
+                    <ChevronRight
+                        className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform ${isOpen ? 'rotate-90' : ''} ${
+                            hasContents ? '' : 'invisible'
+                        }`}
+                    />
+                    <p
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                            module.enabled ? 'text-gray-800' : 'text-gray-400 line-through decoration-red-500'
+                        }`}
+                    >
+                        {module.titulo}
+                    </p>
+                    {hasContents && (
+                        <span className="hidden sm:inline text-xs tabular-nums text-gray-400">
+                            {moduleProgress.completed}/{moduleProgress.total}
+                        </span>
+                    )}
+                    <ProgressInline summary={moduleProgress} className="w-16" />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div
+                                className="grid place-items-center w-10 h-7"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {updatingModules.has(module.id) ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                                 ) : (
-                                    <XCircle className="w-5 h-5 text-red-500" />
+                                    <Switch
+                                        checked={module.enabled}
+                                        onCheckedChange={() => handleModuleToggle(module.id, module.enabled)}
+                                        aria-label={module.enabled ? 'Deshabilitar módulo' : 'Habilitar módulo'}
+                                        className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300"
+                                    />
                                 )}
-                                <div className="flex-1">
-                                    <p className="text-sm text-gray-500">Estado</p>
-                                    <div className="mt-1">
-                                        {student.activo ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Activo
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                Inactivo
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            <p>{module.enabled ? 'Habilitado para este alumno' : 'Deshabilitado para este alumno'}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
 
-                            {student.fechaRegistro && (
-                                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                    <Calendar className="w-5 h-5 text-gray-500" />
-                                    <div>
-                                        <p className="text-sm text-gray-500">Fecha de Registro</p>
-                                        <p className="font-medium text-gray-900">
-                                            {new Date(student.fechaRegistro._seconds * 1000).toLocaleDateString('es-AR', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                {isOpen && hasContents && (
+                    <ul className="mb-1.5 ml-8 space-y-1 border-l border-gray-100 pl-3 pt-0.5">
+                        {documents.map((_, index) => {
+                            const done = isContentCompleted(module.id, index, 'document');
+                            return (
+                                <li key={`doc-${index}`} className="flex items-center gap-2 text-xs">
+                                    {done ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
+                                    ) : (
+                                        <FileText className="w-3.5 h-3.5 shrink-0 text-gray-300" />
+                                    )}
+                                    <span className={`truncate ${done ? 'text-gray-700' : 'text-gray-400'}`}>
+                                        {docNames[index]?.trim() || `Documento ${index + 1}`}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                        {videos.map((_, index) => {
+                            const done = isContentCompleted(module.id, index, 'video');
+                            return (
+                                <li key={`video-${index}`} className="flex items-center gap-2 text-xs">
+                                    {done ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
+                                    ) : (
+                                        <Play className="w-3.5 h-3.5 shrink-0 text-gray-300" />
+                                    )}
+                                    <span className={`truncate ${done ? 'text-gray-700' : 'text-gray-400'}`}>
+                                        {videoNames[index]?.trim() || `Video ${index + 1}`}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </li>
+        );
+    };
 
-            {/* Cursos y Módulos */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center min-w-0">
-                            <GraduationCap className="w-5 h-5 mr-2 text-gray-600 flex-shrink-0" />
-                            <span className="text-sm sm:text-base font-semibold truncate">Cursos y Módulos ({courses.length})</span>
-                        </div>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                                setSelectedCourseIds([]);
-                                setAssignDialogOpen(true);
-                            }}
-                            className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer flex-shrink-0"
-                            title="Asignar cursos"
+    return (
+        <TooltipProvider delayDuration={300}>
+        <DetailLayout
+            aside={
+                <ProfileCard
+                    media={
+                        <span
+                            className={`grid place-items-center w-11 h-11 shrink-0 rounded-full text-sm font-semibold ${
+                                isAdmin ? 'bg-violet-50 text-violet-700' : 'bg-gray-100 text-gray-600'
+                            }`}
                         >
-                            <Calendar className="w-4 h-4 mr-1.5 text-white" />
-                            Asignar Cursos
-                        </Button>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {loadingCourses ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                            <span className="ml-2 text-gray-600">Cargando cursos y módulos...</span>
-                        </div>
-                    ) : courses.length === 0 ? (
-                        <div className="text-center py-8">
-                            <p className="text-gray-500">No hay cursos asignados a este estudiante.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {courses.map((course) => (
-                                <div key={course.id} className="border rounded-lg overflow-hidden">
+                            {initials || '?'}
+                        </span>
+                    }
+                    title={`${student.nombre} ${student.apellido}`}
+                    subtitle={
+                        <span className="flex items-center gap-1.5">
+                            {isAdmin ? (
+                                <ShieldCheck className="w-3.5 h-3.5 text-violet-600" />
+                            ) : (
+                                <GraduationCap className="w-3.5 h-3.5" />
+                            )}
+                            {isAdmin
+                                ? student.role?.student
+                                    ? 'Administrador y estudiante'
+                                    : 'Administrador'
+                                : 'Estudiante'}
+                        </span>
+                    }
+                    badge={<StatusPill active={isActive} />}
+                    footer={profileActions}
+                >
+                    <InfoList>
+                        <InfoRow icon={<Mail />} label="Email">
+                            <span title={student.email}>{student.email || 'No especificado'}</span>
+                        </InfoRow>
+                        <InfoRow icon={<IdCard />} label="DNI">
+                            {student.dni || <span className="text-gray-400">No especificado</span>}
+                        </InfoRow>
+                        <InfoRow icon={<CalendarDays />} label="Registro">
+                            {registeredAt
+                                ? new Date(registeredAt * 1000).toLocaleDateString('es-AR', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                  })
+                                : <span className="text-gray-400">—</span>}
+                        </InfoRow>
+                    </InfoList>
+                    {/* Resumen de avance */}
+                    <StatGrid
+                        stats={[
+                            { label: 'Cursos', value: courses.length },
+                            { label: 'Módulos', value: `${enabledModules}/${allModules.length}` },
+                            { label: 'Avance', value: overall.total > 0 ? `${overall.percentage}%` : '—' },
+                        ]}
+                    />
+                </ProfileCard>
+            }
+        >
+            {/* ── Cursos, materias y módulos ── */}
+            <section className="admin-card overflow-hidden min-w-0">
+                <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+                    <div className="min-w-0">
+                        <h2 className="text-sm font-semibold text-gray-900">Cursos asignados</h2>
+                        <p className="text-xs text-gray-500">
+                            Habilitá o deshabilitá módulos individualmente para este alumno
+                        </p>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 shrink-0 cursor-pointer"
+                        onClick={() => {
+                            setSelectedCourseIds([]);
+                            setAssignDialogOpen(true);
+                        }}
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        Asignar cursos
+                    </Button>
+                </header>
+
+                {loadingCourses ? (
+                    <div className="flex items-center justify-center gap-2 py-12 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Cargando cursos y módulos…
+                    </div>
+                ) : courses.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                        <BookOpen className="w-6 h-6 text-gray-300" />
+                        <p className="text-sm text-gray-500">No tiene cursos asignados.</p>
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-100">
+                        {courses.map((course) => {
+                            const courseOpen = expandedCourses.has(course.id);
+                            const courseProgress = sumProgress(course.materias.flatMap((s) => s.modulos));
+                            return (
+                                <li key={course.id}>
                                     <button
-                                        onClick={() => toggleCourse(course.id)}
-                                        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        type="button"
+                                        onClick={() => toggleIn(setExpandedCourses, course.id)}
+                                        className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                                        aria-expanded={courseOpen}
                                     >
-                                        <div className="flex items-center space-x-3 flex-1">
-                                            {expandedCourses.has(course.id) ? (
-                                                <ChevronDown className="w-6 h-6 text-gray-500 flex-shrink-0" />
-                                            ) : (
-                                                <ChevronRight className="w-6 h-6 text-gray-500 flex-shrink-0" />
-                                            )}
-                                            <BookOpen className="w-6 h-6 text-blue-500 flex-shrink-0" />
-                                            <div className="text-left flex-1">
-                                                <h3 className="font-semibold text-base sm:text-lg text-gray-900">{course.titulo}</h3>
-                                                {/* Progreso del curso */}
-                                                {(() => {
-                                                    let courseCompleted = 0;
-                                                    let courseTotal = 0;
-                                                    course.materias.forEach(subject => {
-                                                        subject.modulos.forEach(module => {
-                                                            const moduleProgress = calculateModuleProgress(module);
-                                                            courseCompleted += moduleProgress.completed;
-                                                            courseTotal += moduleProgress.total;
-                                                        });
-                                                    });
-                                                    const courseProgressPercentage = courseTotal > 0 
-                                                        ? Math.round((courseCompleted / courseTotal) * 100) 
-                                                        : 0;
-                                                    
-                                                    if (courseTotal > 0) {
-                                                        return (
-                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                                <div className="bg-gray-200 rounded-full h-2 w-24 sm:flex-1 sm:max-w-[200px]">
-                                                                    <div
-                                                                        className="bg-green-500 h-2 rounded-full transition-all"
-                                                                        style={{ width: `${courseProgressPercentage}%` }}
-                                                                    />
-                                                                </div>
-                                                                <span className="text-xs text-gray-600 font-medium">
-                                                                    {courseProgressPercentage}% completado ({courseCompleted}/{courseTotal})
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })()}
-                                            </div>
+                                        <ChevronRight
+                                            className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${courseOpen ? 'rotate-90' : ''}`}
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-semibold text-gray-900">{course.titulo}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {course.materias.length} materia{course.materias.length !== 1 ? 's' : ''}
+                                                {courseProgress.total > 0 &&
+                                                    ` · ${courseProgress.completed} de ${courseProgress.total} contenidos`}
+                                            </p>
                                         </div>
-                                        <span className="text-xs sm:text-sm text-gray-500 ml-2 flex-shrink-0">
-                                            {course.materias.length} materia{course.materias.length !== 1 ? 's' : ''}
-                                        </span>
+                                        <ProgressInline summary={courseProgress} className="w-28" />
                                     </button>
 
-                                    {expandedCourses.has(course.id) && (
-                                        <div className="p-4 bg-white border-t">
+                                    {courseOpen && (
+                                        <div className="pb-3 pl-10 pr-4">
                                             {course.materias.length === 0 ? (
-                                                <p className="text-gray-500 text-sm">No hay materias en este curso.</p>
+                                                <p className="py-2 text-xs text-gray-400">Este curso no tiene materias.</p>
                                             ) : (
-                                <div className="space-y-3">
+                                                <ul className="space-y-0.5">
                                                     {course.materias.map((subject) => {
-                                                        // Calcular progreso de la materia
-                                                        let subjectCompleted = 0;
-                                                        let subjectTotal = 0;
-                                                        subject.modulos.forEach(module => {
-                                                            const moduleProgress = calculateModuleProgress(module);
-                                                            subjectCompleted += moduleProgress.completed;
-                                                            subjectTotal += moduleProgress.total;
-                                                        });
-                                                        const subjectProgressPercentage = subjectTotal > 0 
-                                                            ? Math.round((subjectCompleted / subjectTotal) * 100) 
-                                                            : 0;
-
+                                                        const subjectOpen = expandedSubjects.has(subject.id);
+                                                        const subjectProgress = sumProgress(subject.modulos);
                                                         return (
-                                                            <div key={subject.id} className="border rounded-lg overflow-hidden">
+                                                            <li key={subject.id}>
                                                                 <button
-                                                                    onClick={() => toggleSubject(subject.id)}
-                                                                    className="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                                    type="button"
+                                                                    onClick={() => toggleIn(setExpandedSubjects, subject.id)}
+                                                                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-gray-50 transition-colors cursor-pointer"
+                                                                    aria-expanded={subjectOpen}
                                                                 >
-                                                                    <div className="flex items-center space-x-3 flex-1">
-                                                                        {expandedSubjects.has(subject.id) ? (
-                                                                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                                                                        ) : (
-                                                                            <ChevronRight className="w-4 h-4 text-gray-500" />
-                                                                        )}
-                                                                        <BookOpen className="w-4 h-4 text-purple-500" />
-                                                                        <div className="flex-1 text-left">
-                                                                            <span className="font-medium text-gray-900">{subject.nombre}</span>
-                                                                            {subjectTotal > 0 && (
-                                                                                <div className="mt-1 flex items-center gap-2">
-                                                                                    <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-[100px]">
-                                                                                        <div
-                                                                                            className="bg-green-500 h-1.5 rounded-full transition-all"
-                                                                                            style={{ width: `${subjectProgressPercentage}%` }}
-                                                                                        />
-                                                                                    </div>
-                                                                                    <span className="text-xs text-gray-600">
-                                                                                        {subjectProgressPercentage}%
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                                                                    <ChevronRight
+                                                                        className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform ${subjectOpen ? 'rotate-90' : ''}`}
+                                                                    />
+                                                                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                                                                        {subject.nombre}
+                                                                    </p>
+                                                                    <span className="hidden sm:inline text-xs text-gray-400">
                                                                         {subject.modulos.length} módulo{subject.modulos.length !== 1 ? 's' : ''}
                                                                     </span>
+                                                                    <ProgressInline summary={subjectProgress} className="w-20" />
                                                                 </button>
 
-                                                            {expandedSubjects.has(subject.id) && (
-                                                                <div className="p-3 bg-white border-t">
-                                                                    {subject.modulos.length === 0 ? (
-                                                                        <p className="text-gray-500 text-sm">No hay módulos en esta materia.</p>
-                                                                    ) : (
-                                                                        <div className="space-y-2">
-                                                                            {subject.modulos.map((module) => {
-                                                                                // Calcular progreso del módulo
-                                                                                const moduleProgress = calculateModuleProgress(module);
-                                                                                const progressPercentage = moduleProgress.percentage;
-                                                                                
-                                                                                // Obtener documentos y videos del módulo
-                                                                                const documents = module.url_archivo ? (
-                                                                                    module.url_archivo.includes('|||') 
-                                                                                        ? module.url_archivo.split('|||').filter(url => url.trim())
-                                                                                        : [module.url_archivo]
-                                                                                ) : [];
-                                                                                const videos = module.url_video ? (
-                                                                                    Array.isArray(module.url_video) ? module.url_video : [module.url_video]
-                                                                                ) : [];
-
-                                                                                return (
-                                                                                    <div
-                                                                                        key={module.id}
-                                                                                        className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                                                                    >
-                                                                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1 sm:gap-0">
-                                                                                            <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                                                                                {module.tipo_contenido === 'video' ? (
-                                                                                                    <Play className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                                                                                                ) : (
-                                                                                                    <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                                                                                )}
-                                                                                                <div className="flex-1 min-w-0">
-                                                                                                    <p className="font-medium text-sm text-gray-900 truncate">
-                                                                                                        {module.titulo}
-                                                                                                    </p>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div className="flex items-center gap-2 sm:space-x-3 sm:ml-4">
-                                                                                                {updatingModules.has(module.id) ? (
-                                                                                                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                                                                                                ) : (
-                                                                                                    <Switch
-                                                                                                        checked={module.enabled}
-                                                                                                        onCheckedChange={() => handleModuleToggle(module.id, module.enabled)}
-                                                                                                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
-                                                                                                    />
-                                                                                                )}
-                                                                                                <span className={`text-xs font-medium ${
-                                                                                                    module.enabled ? 'text-green-700' : 'text-red-700'
-                                                                                                }`}>
-                                                                                                    {module.enabled ? 'Habilitado' : 'Deshabilitado'}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        
-                                                                                        {/* Barra de progreso del módulo */}
-                                                                                        {(documents.length > 0 || videos.length > 0) && (
-                                                                                            <div className="mt-3 space-y-2">
-                                                                                                <div className="flex items-center justify-between text-xs">
-                                                                                                    <span className="text-gray-600 font-medium">Progreso del módulo</span>
-                                                                                                    <span className="text-gray-600">
-                                                                                                        {moduleProgress.completed} de {moduleProgress.total} completados ({progressPercentage}%)
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                                                    <div
-                                                                                                        className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                                                                                        style={{ width: `${progressPercentage}%` }}
-                                                                                                    />
-                                                                                                </div>
-                                                                                                
-                                                                                                {/* Lista de contenidos con estado */}
-                                                                                                <div className="mt-2 space-y-1">
-                                                                                                    {/* Documentos */}
-                                                                                                    {documents.map((_, index) => {
-                                                                                                        const isCompleted = isContentCompleted(module.id, index, 'document');
-                                                                                                        const customNames = module.nombres_archivos
-                                                                                                            ? (module.nombres_archivos.includes('|||') ? module.nombres_archivos.split('|||') : [module.nombres_archivos])
-                                                                                                            : [];
-                                                                                                        const docName = customNames[index]?.trim() || `Documento ${index + 1}`;
-                                                                                                        return (
-                                                                                                            <div key={`doc-${index}`} className="flex items-center gap-2 text-xs">
-                                                                                                                {isCompleted ? (
-                                                                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                                                                                                                ) : (
-                                                                                                                    <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                                                                                                )}
-                                                                                                                <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                                                                                                    {docName} {isCompleted ? '(Completado)' : '(Pendiente)'}
-                                                                                                                </span>
-                                                                                                            </div>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                    {/* Videos */}
-                                                                                                    {videos.map((_, index) => {
-                                                                                                        const isCompleted = isContentCompleted(module.id, index, 'video');
-                                                                                                        const customVideoNames = module.nombres_videos
-                                                                                                            ? (module.nombres_videos.includes('|||') ? module.nombres_videos.split('|||') : [module.nombres_videos])
-                                                                                                            : [];
-                                                                                                        const videoName = customVideoNames[index]?.trim() || `Video ${index + 1}`;
-                                                                                                        return (
-                                                                                                            <div key={`video-${index}`} className="flex items-center gap-2 text-xs">
-                                                                                                                {isCompleted ? (
-                                                                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                                                                                                                ) : (
-                                                                                                                    <Play className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                                                                                                )}
-                                                                                                                <span className={isCompleted ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                                                                                                    {videoName} {isCompleted ? '(Completado)' : '(Pendiente)'}
-                                                                                                                </span>
-                                                                                                            </div>
-                                                                                                        );
-                                                                                                    })}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            </div>
+                                                                {subjectOpen && (
+                                                                    <div className="ml-5 border-l border-gray-100 pl-2">
+                                                                        {subject.modulos.length === 0 ? (
+                                                                            <p className="py-2 pl-2 text-xs text-gray-400">Esta materia no tiene módulos.</p>
+                                                                        ) : (
+                                                                            <ul>{subject.modulos.map(renderModule)}</ul>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </li>
                                                         );
                                                     })}
-                                                </div>
+                                                </ul>
                                             )}
                                         </div>
                                     )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Sección de eliminación del usuario */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-                <div className="flex justify-center">
-                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                size="lg"
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                                disabled={isDeleting}
-                            >
-                                {isDeleting ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Eliminando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Trash className="w-4 h-4 mr-2" />
-                                        Eliminar Usuario Permanentemente
-                                    </>
-                                )}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar usuario permanentemente?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción eliminará el usuario "{student?.nombre || ""} {student?.apellido || ""}" y todos sus datos asociados de forma permanente. 
-                                    Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={async () => {
-                                        if (!id) return;
-                                        setIsDeleting(true);
-                                        try {
-                                            await StudentsAPI.delete(id);
-                                            toast.success('Usuario eliminado exitosamente');
-                                            setDeleteConfirmOpen(false);
-                                            navigate('/students');
-                                        } catch (err) {
-                                            toast.error('Error al eliminar el usuario');
-                                            console.error('Error al eliminar:', err);
-                                        } finally {
-                                            setIsDeleting(false);
-                                        }
-                                    }}
-                                    className="bg-red-600 hover:bg-red-700"
-                                >
-                                    Eliminar Permanentemente
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
-            </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </section>
 
             {/* Modal para asignar cursos */}
             <CoursesAsignStudentModal
@@ -828,46 +751,11 @@ export const StudentDetail = () => {
                         return "Ocurrió un error inesperado";
                     }
                 }}
-                setCourses={async () => {
-                    if (!id) return;
-                    try {
-                        const studentData = await StudentsAPI.getById(id);
-                        setStudent(studentData);
-                        if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
-                            const [modulesData, progressData] = await Promise.all([
-                                StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
-                                StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
-                            ]);
-                            setProgress(progressData.progreso || {});
-                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
-                        } else {
-                            setCourses([]);
-                        }
-                    } catch (error) {
-                        console.error("Error al recargar datos del estudiante:", error);
-                    }
-                }}
+                setCourses={reloadStudentAndCourses}
                 showTrigger={false}
-                onCoursesUpdated={async () => {
-                    if (!id) return;
-                    try {
-                        const studentData = await StudentsAPI.getById(id);
-                        setStudent(studentData);
-                        if (studentData.cursos_asignados && studentData.cursos_asignados.length > 0) {
-                            const [modulesData, progressData] = await Promise.all([
-                                StudentsAPI.getStudentModules(id).catch(() => ({ modulos_habilitados: {} })),
-                                StudentsAPI.getStudentProgress(id).catch(() => ({ progreso: {} })),
-                            ]);
-                            setProgress(progressData.progreso || {});
-                            await loadCoursesWithDetails(studentData.cursos_asignados, modulesData.modulos_habilitados || {}, progressData.progreso || {});
-                        } else {
-                            setCourses([]);
-                        }
-                    } catch (error) {
-                        console.error("Error al recargar datos del estudiante:", error);
-                    }
-                }}
+                onCoursesUpdated={reloadStudentAndCourses}
             />
-        </div>
+        </DetailLayout>
+        </TooltipProvider>
     );
 };

@@ -1,18 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
-import { ArrowLeft, Loader, RotateCcw, Save, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardCheck,
+  Loader,
+  Pencil,
+  RotateCcw,
+  Save,
+  Search,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { IconAction } from "@/components/ui/icon-action";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
+import { PlainHeader } from "@/components/common/TableHeaders";
+import { ListLoadingPill } from "@/components/common/ListLoading";
+import {
+  DetailLayout,
+  ProfileCard,
+  SectionCard,
+  SectionEmpty,
+  StatGrid,
+} from "@/components/common/DetailLayout";
+import { listLoadingClass } from "@/utils/tableState";
 import {
   ExamsAPI,
   type AlumnoIntentosRow,
@@ -80,10 +93,11 @@ export default function ExamAttempts() {
 
   const alumnos = useMemo(() => data?.alumnos ?? [], [data]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchQuery(searchInput.trim());
-  };
+  // Búsqueda en vivo, con una pequeña demora para no pedir en cada tecla
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const handleSaveDefault = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,251 +235,229 @@ export default function ExamAttempts() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-gray-500 break-words">
-        Intentos por alumno
-        {data?.examen.tituloFormacion || data?.examen.idFormacion
-          ? ` · ${data?.examen.tituloFormacion || data?.examen.idFormacion}`
-          : ""}
-      </p>
+  const withAttempts = alumnos.filter((row) => row.intentosUsados > 0).length;
+  const customized = alumnos.filter((row) => row.esOverride).length;
+  const defaultDirty = defaultDraft !== String(intentosDefault);
 
-      <form
-        onSubmit={handleSaveDefault}
-        className="flex flex-col gap-3 rounded-md border bg-white p-4 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div className="space-y-1 min-w-0">
-          <p className="font-semibold text-gray-900">
-            Intentos para todos los alumnos
-          </p>
-          <p className="text-sm text-gray-600">
-            Se aplica a todos los alumnos que no tengan un límite personalizado.
+  const setDraft = (idAlumno: string, value: string) =>
+    setDrafts((prev) => ({ ...prev, [idAlumno]: value }));
+
+  const isRowDirty = (row: AlumnoIntentosRow) =>
+    (drafts[row.idAlumno] ?? "") !== String(row.intentosMaximos);
+
+  /** "1 de 3" con barra fina; ámbar cuando agotó los intentos */
+  const renderUsage = (row: AlumnoIntentosRow) => {
+    const max = Math.max(1, row.intentosMaximos);
+    const ratio = Math.min(1, row.intentosUsados / max);
+    const exhausted = row.intentosUsados >= row.intentosMaximos;
+    return (
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 w-14 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className={`h-full rounded-full ${exhausted ? "bg-amber-400" : "bg-gray-400"}`}
+            style={{ width: `${ratio * 100}%` }}
+          />
+        </div>
+        <span className={`text-xs tabular-nums ${exhausted ? "text-amber-700" : "text-gray-500"}`}>
+          {row.intentosUsados} de {row.intentosMaximos}
+        </span>
+      </div>
+    );
+  };
+
+  const renderMaxEditor = (row: AlumnoIntentosRow) => {
+    const isSaving = !!saving[row.idAlumno];
+    return (
+      <div className="flex items-center justify-end gap-0.5">
+        <Input
+          type="number"
+          min={Math.max(1, row.intentosUsados)}
+          step={1}
+          aria-label={`Intentos máximos de ${row.nombreAlumno}`}
+          className="h-8 w-16 text-right tabular-nums"
+          value={drafts[row.idAlumno] ?? ""}
+          disabled={isSaving}
+          onChange={(e) => setDraft(row.idAlumno, e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave(row);
+          }}
+        />
+        <IconAction
+          label={isRowDirty(row) ? "Guardar límite" : "Sin cambios para guardar"}
+          disabled={isSaving || !isRowDirty(row)}
+          onClick={() => handleSave(row)}
+          className={isRowDirty(row) ? "text-gray-900" : undefined}
+        >
+          {isSaving ? <Loader className="animate-spin" /> : <Save />}
+        </IconAction>
+        <IconAction
+          label={
+            row.esOverride
+              ? `Volver al límite general (${intentosDefault})`
+              : "Ya usa el límite general"
+          }
+          disabled={isSaving || !row.esOverride}
+          onClick={() => handleReset(row)}
+        >
+          <RotateCcw />
+        </IconAction>
+      </div>
+    );
+  };
+
+  const aside = (
+    <ProfileCard
+      media={
+        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-orange-50 text-orange-600">
+          <ClipboardCheck className="w-5 h-5" />
+        </span>
+      }
+      title={data?.examen.titulo || "Examen"}
+      subtitle={data?.examen.tituloFormacion || data?.examen.idFormacion || "Examen"}
+      footer={
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 cursor-pointer"
+          onClick={() => navigate(`/exams/${encodeURIComponent(examenId)}/edit`)}
+        >
+          <Pencil className="w-3.5 h-3.5 mr-1.5" />
+          Editar examen
+        </Button>
+      }
+    >
+      <form onSubmit={handleSaveDefault} className="space-y-2 border-b border-gray-100 px-5 py-4">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Intentos para todos</p>
+          <p className="text-xs text-gray-500">
+            Se aplica a los alumnos sin un límite personalizado.
           </p>
         </div>
-        <div className="flex items-end gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           <Input
             type="number"
             min={1}
             step={1}
-            className="w-24"
+            aria-label="Intentos para todos los alumnos"
+            className="h-8 w-20 tabular-nums"
             value={defaultDraft}
             disabled={savingDefault}
             onChange={(e) => setDefaultDraft(e.target.value)}
           />
-          <Button type="submit" className="cursor-pointer" disabled={savingDefault}>
-            {savingDefault ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-1" />
-                Guardar
-              </>
-            )}
+          <Button
+            type="submit"
+            size="sm"
+            className="h-8 cursor-pointer"
+            disabled={savingDefault || !defaultDirty}
+          >
+            {savingDefault ? <Loader className="w-3.5 h-3.5 animate-spin" /> : "Guardar"}
           </Button>
         </div>
       </form>
+      <StatGrid
+        stats={[
+          { label: "Alumnos", value: alumnos.length },
+          { label: "Rindieron", value: withAttempts },
+          { label: "Personalizados", value: customized },
+        ]}
+      />
+    </ProfileCard>
+  );
 
-      <form
-        onSubmit={handleSearch}
-        className="flex flex-col sm:flex-row gap-2 sm:items-center"
+  return (
+    <TooltipProvider delayDuration={300}>
+    <DetailLayout aside={aside}>
+      <SectionCard
+        title="Intentos por alumno"
+        description="Ajustá el máximo de un alumno en particular; el resto usa el límite general"
+        action={
+          <div className="relative w-44 sm:w-60">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-gray-400" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Buscar alumno..."
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+        }
       >
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Buscar por nombre o email"
-            className="pl-9"
-          />
-        </div>
-        <Button type="submit" variant="outline" className="shrink-0">
-          Buscar
-        </Button>
-      </form>
-
-      {loading ? (
-        <div className="flex justify-center gap-3 py-12">
-          <Loader className="animate-spin" />
-          <span className="text-zinc-700">Actualizando listado…</span>
-        </div>
-      ) : alumnos.length === 0 ? (
-        <div className="text-center py-12 rounded-md border bg-white">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Sin alumnos
-          </h3>
-          <p className="text-gray-600">
-            No hay alumnos asignados a la formación de este examen
-            {searchQuery ? " con ese criterio de búsqueda" : ""}.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
-            {alumnos.map((row) => {
-              const isSaving = !!saving[row.idAlumno];
-              return (
-                <div key={row.idAlumno} className="p-4 space-y-3">
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-semibold text-gray-900 break-words">
-                      {row.nombreAlumno}
-                    </p>
-                    <p className="text-sm text-gray-600 break-words">
-                      {row.emailAlumno || "—"}
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-sm text-gray-700">
-                      <span>
-                        Usados: <strong>{row.intentosUsados}</strong>
-                      </span>
+        <div className={listLoadingClass(loading)} aria-busy={loading}>
+          <ListLoadingPill loading={loading} label="Actualizando alumnos…" />
+          {alumnos.length === 0 ? (
+            <SectionEmpty icon={<Users />}>
+              No hay alumnos asignados a la formación de este examen
+              {searchQuery ? " con ese criterio de búsqueda" : ""}.
+            </SectionEmpty>
+          ) : (
+            <>
+              {/* ── Vista mobile: filas compactas ── */}
+              <ul role="list" className="block md:hidden divide-y divide-gray-100">
+                {alumnos.map((row) => (
+                  <li key={row.idAlumno} className="space-y-2 px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">{row.nombreAlumno}</p>
+                        <p className="truncate text-xs text-gray-500">{row.emailAlumno || "—"}</p>
+                      </div>
                       {row.esOverride && (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
+                        <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                           Personalizado
                         </span>
                       )}
                     </div>
-                  </div>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-gray-500">Máximo</label>
-                      <Input
-                        type="number"
-                        min={Math.max(1, row.intentosUsados)}
-                        step={1}
-                        className="w-24"
-                        value={drafts[row.idAlumno] ?? ""}
-                        disabled={isSaving}
-                        onChange={(e) =>
-                          setDrafts((prev) => ({
-                            ...prev,
-                            [row.idAlumno]: e.target.value,
-                          }))
-                        }
-                      />
+                    <div className="flex items-center justify-between gap-2">
+                      {renderUsage(row)}
+                      {renderMaxEditor(row)}
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="cursor-pointer"
-                      disabled={isSaving}
-                      onClick={() => handleSave(row)}
-                    >
-                      {isSaving ? (
-                        <Loader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-1" />
-                          Guardar
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer"
-                      disabled={isSaving || !row.esOverride}
-                      onClick={() => handleReset(row)}
-                    >
-                      <RotateCcw className="w-4 h-4 mr-1" />
-                      Default
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </li>
+                ))}
+              </ul>
 
-          <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Alumno</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Usados</TableHead>
-                  <TableHead className="text-right w-32">Máximo</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {alumnos.map((row) => {
-                  const isSaving = !!saving[row.idAlumno];
-                  return (
-                    <TableRow key={row.idAlumno}>
-                      <TableCell className="font-medium">
-                        {row.nombreAlumno}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {row.emailAlumno || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {row.intentosUsados}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min={Math.max(1, row.intentosUsados)}
-                          step={1}
-                          className="w-20 ml-auto text-right"
-                          value={drafts[row.idAlumno] ?? ""}
-                          disabled={isSaving}
-                          onChange={(e) =>
-                            setDrafts((prev) => ({
-                              ...prev,
-                              [row.idAlumno]: e.target.value,
-                            }))
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {row.esOverride ? (
-                          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 border border-amber-200">
-                            Personalizado
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-500">
-                            Default ({intentosDefault})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="cursor-pointer"
-                            disabled={isSaving}
-                            onClick={() => handleSave(row)}
-                          >
-                            {isSaving ? (
-                              <Loader className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Save className="w-4 h-4 mr-1" />
-                                Guardar
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="cursor-pointer"
-                            disabled={isSaving || !row.esOverride}
-                            onClick={() => handleReset(row)}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            Default
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </>
-      )}
-    </div>
+              {/* ── Vista desktop: tabla ── */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <PlainHeader className="pl-5 pr-3">Alumno</PlainHeader>
+                      <PlainHeader>Email</PlainHeader>
+                      <PlainHeader>Intentos</PlainHeader>
+                      <PlainHeader>Límite</PlainHeader>
+                      <PlainHeader align="right" className="pl-3 pr-5">
+                        Máximo
+                      </PlainHeader>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {alumnos.map((row) => (
+                      <tr key={row.idAlumno} className="hover:bg-gray-50 transition-colors">
+                        <td className="pl-5 pr-3 py-1.5 font-medium text-gray-900 whitespace-nowrap">
+                          {row.nombreAlumno}
+                        </td>
+                        <td className="px-3 py-1.5 text-gray-600">
+                          <span className="line-clamp-1">{row.emailAlumno || "—"}</span>
+                        </td>
+                        <td className="px-3 py-1.5 whitespace-nowrap">{renderUsage(row)}</td>
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          {row.esOverride ? (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              Personalizado
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">General ({intentosDefault})</span>
+                          )}
+                        </td>
+                        <td className="pl-3 pr-5 py-1.5 whitespace-nowrap">{renderMaxEditor(row)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </SectionCard>
+    </DetailLayout>
+    </TooltipProvider>
   );
 }

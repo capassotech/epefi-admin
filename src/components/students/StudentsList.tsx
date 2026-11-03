@@ -20,7 +20,6 @@ import {
   type SortDirection,
 } from "@/utils/tableState";
 import { type StudentDB } from "@/types/types";
-import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
@@ -301,24 +300,16 @@ export function StudentList({
                 Ver
               </Button>
 
-              <div className="w-full">
-                <CreateUserModal
-                  onUserCreated={onUserUpdated}
-                  triggerText=""
-                  isEditing={true}
-                  editingUser={student}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 w-full justify-center border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
-                    data-tour="edit-student"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 mr-1" />
-                    Editar
-                  </Button>
-                </CreateUserModal>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-full justify-center border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
+                onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+                data-tour="edit-student"
+              >
+                <Edit2 className="w-3.5 h-3.5 mr-1" />
+                Editar
+              </Button>
 
               <Button
                 size="sm"
@@ -488,16 +479,13 @@ export function StudentList({
                     >
                       <Eye />
                     </IconAction>
-                    <CreateUserModal
-                      onUserCreated={onUserUpdated}
-                      triggerText=""
-                      isEditing={true}
-                      editingUser={student}
+                    <IconAction
+                      label="Editar usuario"
+                      onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+                      data-tour="edit-student"
                     >
-                      <IconAction label="Editar usuario" data-tour="edit-student">
-                        <Edit2 />
-                      </IconAction>
-                    </CreateUserModal>
+                      <Edit2 />
+                    </IconAction>
                     <IconAction
                       label={
                         disableIndividualCursos

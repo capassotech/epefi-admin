@@ -1,19 +1,22 @@
-// src/pages/ProductDetail.tsx
+// src/pages/SubjectDetail.tsx
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import {
-    BookOpen,
-    Image as ImageIcon,
-    Trash,
-    Loader2,
-} from 'lucide-react';
+import { BookOpen, GraduationCap, Loader2, Plus, Trash2 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
-import type { Module, Subject } from '@/types/types';
+import type { Course, Module, Subject } from '@/types/types';
+import {
+    DetailLayout,
+    InfoList,
+    InfoRow,
+    ProfileCard,
+    SectionCard,
+    SectionEmpty,
+    StatGrid,
+    StatusPill,
+} from '@/components/common/DetailLayout';
 import ModulesList from '@/components/subject/ModulesList';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import ModulesModal from '@/components/subject/ModulesModal';
@@ -94,6 +97,14 @@ export const SubjectDetail = () => {
 
         fetchData();
     }, [id]);
+
+    // Cursos para mostrar a cuáles pertenece la materia
+    const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
+    useEffect(() => {
+        CoursesAPI.getAllList()
+            .then((list) => setCoursesById(Object.fromEntries(list.map((c) => [String(c.id), c]))))
+            .catch((err) => console.error("Error al cargar cursos:", err));
+    }, []);
 
     const handleDeleteClick = (id: string) => {
         setConfirmDeleteId(id);
@@ -227,54 +238,123 @@ export const SubjectDetail = () => {
     if (!materia) return <div className="p-6">No se encontró la materia</div>;
 
     const moduleCount = materia.modulos?.length ?? 0;
+    const isActive = materia.activo !== undefined ? materia.activo : materia.estado !== 'inactivo';
+    // Ignora ids de cursos eliminados que hayan quedado en la materia
+    const materiaCourses = (materia.id_cursos ?? [])
+        .map((courseId) => coursesById[courseId])
+        .filter((course): course is Course => !!course);
+    const openCreateModule = () => {
+        setEditingSubject(null);
+        setIsCreateModalOpen(true);
+    };
+
+    const aside = (
+        <ProfileCard
+            cover={
+                materia.imagen && (
+                    <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100">
+                        <img src={materia.imagen} alt={materia.nombre} className="h-full w-full object-cover" />
+                    </div>
+                )
+            }
+            title={materia.nombre}
+            subtitle="Materia"
+            badge={<StatusPill active={isActive} activeLabel="Habilitada" inactiveLabel="Deshabilitada" />}
+            footer={
+                <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                    <AlertDialogTrigger asChild>
+                        <button
+                            type="button"
+                            disabled={isDeletingMateria}
+                            className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            {isDeletingMateria ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                            Eliminar materia
+                        </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar materia permanentemente?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción eliminará la materia "{materia?.nombre || "esta materia"}" y todos sus datos asociados de forma permanente.
+                                Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={async () => {
+                                    if (!id) return;
+                                    setIsDeletingMateria(true);
+                                    try {
+                                        await CoursesAPI.deleteMateria(id);
+                                        toast.success('Materia eliminada exitosamente');
+                                        setDeleteConfirmOpen(false);
+                                        navigate('/subjects');
+                                    } catch (err) {
+                                        toast.error('Error al eliminar la materia');
+                                        console.error('Error al eliminar:', err);
+                                    } finally {
+                                        setIsDeletingMateria(false);
+                                    }
+                                }}
+                                className="bg-red-600 hover:bg-red-700"
+                            >
+                                Eliminar Permanentemente
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            }
+        >
+            <InfoList>
+                <InfoRow icon={<GraduationCap />} label="Cursos">
+                    {materiaCourses.length === 0 ? (
+                        <span className="text-gray-400">Sin curso</span>
+                    ) : (
+                        <div className="flex flex-col gap-0.5 whitespace-normal">
+                            {materiaCourses.map((course) => (
+                                <Link
+                                    key={course.id}
+                                    to={`/products/${encodeURIComponent(course.id)}`}
+                                    className="truncate hover:text-blue-600 hover:underline"
+                                >
+                                    {course.titulo}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </InfoRow>
+            </InfoList>
+            <StatGrid
+                stats={[
+                    { label: 'Módulos', value: moduleCount },
+                    { label: 'Cursos', value: materiaCourses.length },
+                ]}
+            />
+        </ProfileCard>
+    );
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto p-4">
-            {materia.imagen && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center">
-                            <ImageIcon className="w-5 h-5 mr-2 text-gray-600" />
-                            Portada
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <img
-                            src={materia.imagen || '/placeholder.svg'}
-                            alt={materia.nombre}
-                            className="max-w-full h-auto rounded-lg border"
-                        />
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center min-w-0">
-                            <BookOpen className="w-5 h-5 mr-2 text-gray-600 shrink-0" />
-                            <span className="break-words">Módulos ({moduleCount})</span>
-                        </div>
-                        <Button
-                            size="sm"
-                            className="cursor-pointer w-full sm:w-auto shrink-0"
-                            onClick={() => {
-                                setEditingSubject(null);
-                                setIsCreateModalOpen(true);
-                            }}
-                        >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Crear módulo
-                        </Button>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {loadingModulos ? (
-                        <div className="flex items-center justify-center py-8 gap-2 text-gray-500">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <p>Cargando módulos...</p>
-                        </div>
-                    ) : modulos.length > 0 ? (
+        <DetailLayout aside={aside}>
+            <SectionCard
+                title="Módulos"
+                description="El interruptor define si el módulo está habilitado por defecto para los alumnos"
+                action={
+                    <Button size="sm" variant="outline" className="h-8 shrink-0 cursor-pointer" onClick={openCreateModule}>
+                        <Plus className="w-3.5 h-3.5 mr-1.5" />
+                        Crear módulo
+                    </Button>
+                }
+            >
+                {loadingModulos ? (
+                    <SectionEmpty icon={<Loader2 className="animate-spin" />}>Cargando módulos…</SectionEmpty>
+                ) : modulos.length > 0 ? (
+                    <div className="p-3">
                         <ModulesList
                             modules={modulos}
                             materiaId={id || ''}
@@ -292,28 +372,14 @@ export const SubjectDetail = () => {
                                 }
                             }}
                         />
-                    ) : (
-                        <div className="text-center py-10 px-4">
-                            <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                            <p className="text-gray-600 font-medium">Esta materia aún no tiene módulos</p>
-                            <p className="text-sm text-gray-400 mt-1 mb-4">
-                                Creá el primero para empezar a cargar contenido.
-                            </p>
-                            <Button
-                                size="sm"
-                                className="cursor-pointer"
-                                onClick={() => {
-                                    setEditingSubject(null);
-                                    setIsCreateModalOpen(true);
-                                }}
-                            >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Crear módulo
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                ) : (
+                    <SectionEmpty icon={<BookOpen />}>
+                        <p className="font-medium text-gray-600">Esta materia aún no tiene módulos</p>
+                        <p className="text-xs text-gray-400">Creá el primero para empezar a cargar contenido.</p>
+                    </SectionEmpty>
+                )}
+            </SectionCard>
 
 
             <ModulesModal
@@ -333,68 +399,7 @@ export const SubjectDetail = () => {
                 itemName={modulos.find(m => m.id === confirmDeleteId)?.titulo || "este módulo"}
                 id={confirmDeleteId || ""}
             />
-
-            {/* Sección de eliminación de la materia */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-                <div className="flex justify-center">
-                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                size="lg"
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                                disabled={isDeletingMateria}
-                            >
-                                {isDeletingMateria ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Eliminando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Trash className="w-4 h-4 mr-2" />
-                                        Eliminar Materia Permanentemente
-                                    </>
-                                )}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar materia permanentemente?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción eliminará la materia "{materia?.nombre || "esta materia"}" y todos sus datos asociados de forma permanente. 
-                                    Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={async () => {
-                                        if (!id) return;
-                                        setIsDeletingMateria(true);
-                                        try {
-                                            await CoursesAPI.deleteMateria(id);
-                                            toast.success('Materia eliminada exitosamente');
-                                            setDeleteConfirmOpen(false);
-                                            navigate('/subjects');
-                                        } catch (err) {
-                                            toast.error('Error al eliminar la materia');
-                                            console.error('Error al eliminar:', err);
-                                        } finally {
-                                            setIsDeletingMateria(false);
-                                        }
-                                    }}
-                                    className="bg-red-600 hover:bg-red-700"
-                                >
-                                    Eliminar Permanentemente
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
-            </div>
-        </div>
+        </DetailLayout>
     );
 };
 

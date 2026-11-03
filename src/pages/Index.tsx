@@ -12,6 +12,7 @@ import CreateModule from "./CreateModule";
 import Students from "./Students";
 import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
+import StudentEdit from "./StudentEdit";
 import Profile from "./Profile";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import { SidebarLayoutProvider } from "@/context/SidebarLayoutContext";
@@ -34,7 +35,8 @@ const Index = () => {
         <AdminSidebar isOpen={isSidebarOpen} onToggle={setIsSidebarOpen} />
       <div className="flex-1 min-w-0 flex flex-col">
       <AdminTopbar onOpenMobileMenu={() => setIsSidebarOpen(true)} />
-      <main className="flex-1 min-w-0 p-4 lg:p-8 overflow-x-hidden">
+      {/* overflow-x-clip (no hidden): hidden crea un contenedor de scroll y rompe position: sticky */}
+      <main className="flex-1 min-w-0 p-4 lg:p-8 overflow-x-clip">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
@@ -46,6 +48,7 @@ const Index = () => {
           <Route path="/modules/create" element={<CreateModule />} />
           <Route path="/students" element={<Students />} />
           <Route path="/students/:id" element={<StudentDetail />} />
+          <Route path="/students/:id/edit" element={<StudentEdit />} />
           <Route path="/exams" element={<Exams />} />
           <Route path="/exams/create" element={<CreateExam />} />
           <Route path="/exams/completed" element={<CompletedExams />} />

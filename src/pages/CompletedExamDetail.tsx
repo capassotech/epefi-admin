@@ -1,11 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
-import { Check, Save, X } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  ClipboardCheck,
+  GraduationCap,
+  RotateCcw,
+  Save,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  DetailLayout,
+  InfoList,
+  InfoRow,
+  ProfileCard,
+  SectionCard,
+  SectionEmpty,
+  StatGrid,
+} from "@/components/common/DetailLayout";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -439,99 +454,132 @@ export default function CompletedExamDetail() {
     );
   }
 
+  const isPending = meta.estado === "pendiente_correccion";
+  const alumnoInitials = (meta.nombreAlumno || "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  const resultPill = isPending ? (
+    <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+      Por corregir
+    </span>
+  ) : (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+        meta.aprobado ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+      }`}
+    >
+      {meta.aprobado ? "Aprobado" : "No aprobado"}
+    </span>
+  );
+
+  // En modo corrección las acciones viven en la ficha fija, siempre a mano
+  const correctionActions = modoCorreccion ? (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        className="h-8"
+        onClick={desarrolloIds.length > 0 ? handleGuardarCorreccion : handlePublicarNota}
+        disabled={saving}
+      >
+        <Save className="w-3.5 h-3.5 mr-1.5" />
+        {desarrolloIds.length > 0
+          ? saving
+            ? "Guardando…"
+            : "Guardar corrección"
+          : saving
+            ? "Publicando…"
+            : "Publicar nota"}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 text-gray-500"
+        onClick={() => navigate(returnTo)}
+        disabled={saving}
+      >
+        Cancelar
+      </Button>
+    </>
+  ) : undefined;
+
+  const aside = (
+    <ProfileCard
+      media={
+        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+          {alumnoInitials || "?"}
+        </span>
+      }
+      title={meta.nombreAlumno || "Alumno"}
+      subtitle={modoCorreccion ? "Corrección de examen" : "Examen realizado"}
+      badge={resultPill}
+      footer={correctionActions}
+    >
+      <InfoList>
+        <InfoRow icon={<ClipboardCheck />} label="Examen">
+          <span title={examTitle}>{examTitle}</span>
+        </InfoRow>
+        <InfoRow icon={<GraduationCap />} label="Formación">
+          <span title={formationTitle}>{formationTitle}</span>
+        </InfoRow>
+        <InfoRow icon={<CalendarDays />} label="Fecha">
+          {formatTimestamp(meta.fechaRealizacion)}
+        </InfoRow>
+        <InfoRow icon={<RotateCcw />} label="Intento">
+          {typeof meta.intentoNumero === "number"
+            ? meta.totalIntentos != null
+              ? `${meta.intentoNumero} de ${meta.totalIntentos}`
+              : meta.intentoNumero
+            : "—"}
+        </InfoRow>
+      </InfoList>
+      <StatGrid
+        stats={[
+          { label: "Nota", value: typeof meta.nota === "number" ? meta.nota : "—" },
+          {
+            label: "Puntos",
+            value:
+              typeof meta.puntosObtenidos === "number"
+                ? `${meta.puntosObtenidos}/${PUNTOS_TOTAL_EXAMEN}`
+                : "—",
+          },
+          {
+            label: "Aciertos",
+            value: typeof meta.porcentajeAciertos === "number" ? `${meta.porcentajeAciertos}%` : "—",
+          },
+        ]}
+      />
+    </ProfileCard>
+  );
+
+  const notice = (text: string) => (
+    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{text}</p>
+  );
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {modoCorreccion
-              ? "Corregir examen realizado"
-              : "Detalle del examen realizado"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div>
-            <span className="text-muted-foreground">Alumno: </span>
-            <span className="font-medium">{meta.nombreAlumno || "—"}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Formación: </span>
-            <span className="font-medium">{formationTitle}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Examen: </span>
-            <span className="font-medium">{examTitle}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Nota: </span>
-            <span className="font-medium">
-              {typeof meta.nota === "number" ? meta.nota : "—"}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Puntos obtenidos: </span>
-            <span className="font-medium">
-              {typeof meta.puntosObtenidos === "number"
-                ? `${meta.puntosObtenidos} / ${PUNTOS_TOTAL_EXAMEN}`
-                : "—"}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Porcentaje de aciertos: </span>
-            <span className="font-medium">
-              {typeof meta.porcentajeAciertos === "number"
-                ? `${meta.porcentajeAciertos}%`
-                : "—"}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Intento: </span>
-            <span className="font-medium">
-              {typeof meta.intentoNumero === "number"
-                ? meta.totalIntentos != null
-                  ? `${meta.intentoNumero} de ${meta.totalIntentos}`
-                  : meta.intentoNumero
-                : "—"}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Estado: </span>
-            {meta.estado === "pendiente_correccion" ? (
-              <Badge variant="secondary">Pendiente de corrección</Badge>
-            ) : (
-              <Badge variant={meta.aprobado ? "default" : "destructive"}>
-                {meta.aprobado ? "Aprobado" : "No aprobado"}
-              </Badge>
-            )}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Fecha: </span>
-            <span className="font-medium">
-              {formatTimestamp(meta.fechaRealizacion)}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+    <DetailLayout aside={aside}>
+      {modoCorreccion &&
+        desarrolloIds.length === 0 &&
+        notice(
+          "Este examen no tiene preguntas de desarrollo. La nota ya está calculada. Al publicarla, el alumno podrá verla."
+        )}
+      {modoCorreccion &&
+        desarrolloIds.length > 0 &&
+        notice(
+          "Asigná el puntaje a cada respuesta de desarrollo (máximo = puntos de la pregunta). El comentario es opcional. Al guardar, el examen pasa a completado y se recalcula la nota final."
+        )}
 
-      {modoCorreccion && desarrolloIds.length === 0 && (
-        <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Este examen no tiene preguntas de desarrollo. La nota ya está calculada. Al publicarla, el alumno podrá verla.
-        </p>
-      )}
-      {modoCorreccion && desarrolloIds.length > 0 && (
-        <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Asigná el puntaje a cada respuesta de desarrollo (máximo = puntos de la
-          pregunta). El comentario es opcional. Al guardar, el examen pasa a
-          completado y se recalcula la nota final.
-        </p>
-      )}
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Preguntas y respuestas
-        </h2>
+      <SectionCard
+        title="Preguntas y respuestas"
+        description={`${preguntas.length} pregunta${preguntas.length !== 1 ? "s" : ""}`}
+      >
         {detalleIncompleto && (
-          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Este intento se rindió antes de que el sistema guardara una copia de
             las preguntas, y el examen se editó después. La nota del encabezado
             es la correcta; el detalle de cada pregunta ya no se puede
@@ -540,238 +588,175 @@ export default function CompletedExamDetail() {
           </p>
         )}
         {preguntas.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
+          <SectionEmpty icon={<ClipboardCheck />}>
             No se pudo reconstruir el detalle de preguntas. Verifica que el
             registro del intento incluya el snapshot de preguntas y respuestas.
-          </p>
+          </SectionEmpty>
         ) : (
-          preguntas.map((q, index) => {
-            const selectedIds = new Set(
-              normalizeAnswerIds(q.respuestasSeleccionadas)
-            );
-            const correctOptions = q.respuestas.filter((r) => r.esCorrecta);
-            const puntosObtenidos =
-              typeof q.puntosObtenidos === "number" ? q.puntosObtenidos : 0;
-            const esDesarrollo = q.tipoPregunta === "desarrollo";
-            const maxPuntos = typeof q.puntos === "number" ? q.puntos : 0;
-            const draft = correcciones[q.id];
+          <ol className="divide-y divide-gray-100">
+            {preguntas.map((q, index) => {
+              const selectedIds = new Set(normalizeAnswerIds(q.respuestasSeleccionadas));
+              const correctOptions = q.respuestas.filter((r) => r.esCorrecta);
+              const puntosObtenidos = typeof q.puntosObtenidos === "number" ? q.puntosObtenidos : 0;
+              const esDesarrollo = q.tipoPregunta === "desarrollo";
+              const maxPuntos = typeof q.puntos === "number" ? q.puntos : 0;
+              const draft = correcciones[q.id];
+              const scored = puntosObtenidos > 0;
 
-            return (
-              <Card key={q.id || index}>
-                <CardHeader className="pb-2 space-y-2">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="text-base leading-snug">
-                        Pregunta {index + 1}
-                      </CardTitle>
-                      <Badge variant="outline">
+              return (
+                <li key={q.id || index} className="space-y-3 px-5 py-4">
+                  <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                    <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+                      {index + 1}
+                    </span>
+                    <p className="min-w-0 flex-1 text-sm text-gray-900">{q.texto}</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-gray-50 px-2 py-0.5 text-[11px] text-gray-500">
                         {esDesarrollo ? "Desarrollo" : "Opción múltiple"}
-                      </Badge>
+                      </span>
+                      {typeof q.puntos === "number" && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums ${
+                            esDesarrollo && modoCorreccion
+                              ? "bg-amber-50 text-amber-700"
+                              : scored
+                                ? "bg-green-50 text-green-700"
+                                : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {esDesarrollo && modoCorreccion
+                            ? `Máx. ${q.puntos} pts`
+                            : `${puntosObtenidos} / ${q.puntos} pts`}
+                        </span>
+                      )}
                     </div>
-                    {typeof q.puntos === "number" && (
-                      <Badge
-                        variant={
-                          modoCorreccion && esDesarrollo
-                            ? "secondary"
-                            : puntosObtenidos > 0
-                              ? "default"
-                              : "secondary"
-                        }
-                      >
-                        {esDesarrollo && modoCorreccion
-                          ? `Máx. ${q.puntos} pts`
-                          : `${puntosObtenidos} / ${q.puntos} pts`}
-                      </Badge>
-                    )}
                   </div>
-                  <p className="text-sm font-normal text-foreground">{q.texto}</p>
+
                   {q.imagenUrl ? (
-                    <div className="rounded-md border bg-muted/20 p-2">
+                    <div className="ml-9 rounded-md border bg-gray-50 p-2">
                       <img
                         src={q.imagenUrl}
                         alt={`Imagen de la pregunta ${index + 1}`}
-                        className="max-h-64 w-full object-contain rounded"
+                        className="max-h-64 w-full rounded object-contain"
                         loading="lazy"
                       />
                     </div>
                   ) : null}
-                </CardHeader>
-                <CardContent>
-                  {esDesarrollo ? (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-muted-foreground">
-                          Respuesta del alumno
-                        </p>
-                        <div className="rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm whitespace-pre-wrap">
-                          {q.respuestaDesarrollo?.trim()
-                            ? q.respuestaDesarrollo
-                            : "Sin respuesta"}
-                        </div>
-                      </div>
 
-                      {modoCorreccion ? (
-                        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-                          <div className="space-y-2">
-                            <Label htmlFor={`pts-${q.id}`}>
-                              Puntaje (0 – {maxPuntos})
-                            </Label>
-                            <Input
-                              id={`pts-${q.id}`}
-                              type="text"
-                              inputMode="decimal"
-                              value={draft?.puntosDraft ?? "0"}
-                              onChange={(e) =>
-                                updatePuntosDraft(q.id, e.target.value, maxPuntos)
-                              }
-                              onBlur={() => commitPuntosDraft(q.id, maxPuntos)}
-                            />
-                            {draft?.error && (
-                              <p className="text-sm text-red-600">{draft.error}</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`obs-${q.id}`}>
-                              Comentario / observación (opcional)
-                            </Label>
-                            <Textarea
-                              id={`obs-${q.id}`}
-                              value={draft?.comentario ?? ""}
-                              onChange={(e) =>
-                                updateComentario(q.id, e.target.value)
-                              }
-                              placeholder="Observaciones para el alumno"
-                              rows={3}
-                              maxLength={2000}
-                            />
+                  <div className="ml-9">
+                    {esDesarrollo ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-500">Respuesta del alumno</p>
+                          <div className="whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm">
+                            {q.respuestaDesarrollo?.trim() ? q.respuestaDesarrollo : "Sin respuesta"}
                           </div>
                         </div>
-                      ) : (
-                        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">
-                              Puntaje asignado
-                            </p>
-                            <p className="font-medium">
-                              {puntosObtenidos} / {maxPuntos} pts
-                            </p>
+
+                        {modoCorreccion ? (
+                          <div className="grid gap-3 sm:grid-cols-[9rem_1fr]">
+                            <div className="space-y-1.5">
+                              <Label htmlFor={`pts-${q.id}`} className="text-xs text-gray-500">
+                                Puntaje (0 – {maxPuntos})
+                              </Label>
+                              <Input
+                                id={`pts-${q.id}`}
+                                type="text"
+                                inputMode="decimal"
+                                value={draft?.puntosDraft ?? "0"}
+                                onChange={(e) => updatePuntosDraft(q.id, e.target.value, maxPuntos)}
+                                onBlur={() => commitPuntosDraft(q.id, maxPuntos)}
+                              />
+                              {draft?.error && <p className="text-xs text-red-600">{draft.error}</p>}
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor={`obs-${q.id}`} className="text-xs text-gray-500">
+                                Comentario (opcional)
+                              </Label>
+                              <Textarea
+                                id={`obs-${q.id}`}
+                                value={draft?.comentario ?? ""}
+                                onChange={(e) => updateComentario(q.id, e.target.value)}
+                                placeholder="Observaciones para el alumno"
+                                rows={2}
+                                maxLength={2000}
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">
-                              Comentario / observación
-                            </p>
-                            <p className="whitespace-pre-wrap">
-                              {q.comentario?.trim() || "—"}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 md:grid-cols-[1fr_minmax(10rem,auto)] md:items-start">
-                      <div className="space-y-2 min-w-0">
-                        {q.respuestas.length > 0 ? (
-                          q.respuestas.map((r) => {
-                            const isSelected = selectedIds.has(r.id);
-                            const isCorrect = r.esCorrecta;
-                            return (
-                              <div
-                                key={r.id}
-                                className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
-                                  isSelected && isCorrect
-                                    ? "border-green-500 bg-green-50"
-                                    : isSelected && !isCorrect
-                                      ? "border-amber-500 bg-amber-50"
-                                      : !isSelected && isCorrect
-                                        ? "border-blue-300 bg-blue-50/80"
-                                        : "border-border bg-muted/30"
-                                }`}
-                              >
-                                {isSelected && isCorrect ? (
-                                  <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                                ) : isSelected && !isCorrect ? (
-                                  <X className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                ) : isCorrect ? (
-                                  <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                                ) : (
-                                  <span className="w-4 h-4 shrink-0" />
-                                )}
-                                <p className="flex-1 min-w-0">
-                                  {r.texto || `(opción ${r.id})`}
-                                </p>
-                              </div>
-                            );
-                          })
                         ) : (
-                          <p className="text-sm text-muted-foreground italic">
-                            Sin opciones cargadas.
-                          </p>
+                          <div className="grid gap-3 text-sm sm:grid-cols-[9rem_1fr]">
+                            <div>
+                              <p className="text-xs text-gray-500">Puntaje asignado</p>
+                              <p className="font-medium tabular-nums">
+                                {puntosObtenidos} / {maxPuntos} pts
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Comentario</p>
+                              <p className="whitespace-pre-wrap">{q.comentario?.trim() || "—"}</p>
+                            </div>
+                          </div>
                         )}
                       </div>
+                    ) : (
+                      <div className="grid gap-3 md:grid-cols-[1fr_minmax(10rem,auto)] md:items-start">
+                        <div className="min-w-0 space-y-1.5">
+                          {q.respuestas.length > 0 ? (
+                            q.respuestas.map((r) => {
+                              const isSelected = selectedIds.has(r.id);
+                              const isCorrect = r.esCorrecta;
+                              return (
+                                <div
+                                  key={r.id}
+                                  className={`flex items-start gap-2 rounded-md border px-3 py-1.5 text-sm ${
+                                    isSelected && isCorrect
+                                      ? "border-green-200 bg-green-50"
+                                      : isSelected && !isCorrect
+                                        ? "border-amber-200 bg-amber-50"
+                                        : !isSelected && isCorrect
+                                          ? "border-blue-200 bg-blue-50/60"
+                                          : "border-gray-100 bg-white"
+                                  }`}
+                                >
+                                  {isSelected && isCorrect ? (
+                                    <Check className="mt-0.5 w-4 h-4 shrink-0 text-green-600" />
+                                  ) : isSelected && !isCorrect ? (
+                                    <X className="mt-0.5 w-4 h-4 shrink-0 text-amber-600" />
+                                  ) : isCorrect ? (
+                                    <Check className="mt-0.5 w-4 h-4 shrink-0 text-blue-600" />
+                                  ) : (
+                                    <span className="w-4 h-4 shrink-0" />
+                                  )}
+                                  <p className="min-w-0 flex-1">{r.texto || `(opción ${r.id})`}</p>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-sm italic text-gray-400">Sin opciones cargadas.</p>
+                          )}
+                        </div>
 
-                      <div className="md:text-right md:border-l md:pl-4 shrink-0">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">
-                          Respuesta correcta
-                        </p>
-                        {correctOptions.length > 0 ? (
-                          <ul className="text-sm text-foreground space-y-1 md:ml-auto md:w-max">
-                            {correctOptions.map((r) => (
-                              <li key={r.id}>{r.texto || `(opción ${r.id})`}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
-                        )}
+                        <div className="shrink-0 md:border-l md:border-gray-100 md:pl-4 md:text-right">
+                          <p className="mb-1 text-xs text-gray-500">Respuesta correcta</p>
+                          {correctOptions.length > 0 ? (
+                            <ul className="space-y-1 text-sm text-gray-900 md:ml-auto md:w-max">
+                              {correctOptions.map((r) => (
+                                <li key={r.id}>{r.texto || `(opción ${r.id})`}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-gray-400">—</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         )}
-      </div>
-
-      {modoCorreccion && desarrolloIds.length > 0 && (
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(returnTo)}
-            disabled={saving}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleGuardarCorreccion}
-            disabled={saving}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Guardando corrección..." : "Guardar corrección"}
-          </Button>
-        </div>
-      )}
-      {modoCorreccion && desarrolloIds.length === 0 && (
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(returnTo)}
-            disabled={saving}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handlePublicarNota}
-            disabled={saving}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Publicando nota..." : "Publicar nota"}
-          </Button>
-        </div>
-      )}
-    </div>
+      </SectionCard>
+    </DetailLayout>
   );
 }
