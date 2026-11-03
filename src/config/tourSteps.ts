@@ -22,12 +22,22 @@ export const dashboardTourSteps: TourStep[] = [
     },
   },
   {
-    element: '[data-tour="recent-courses"]',
+    element: '[data-tour="pending-corrections"]',
     popover: {
-      title: 'Cursos recientes',
+      title: 'Para corregir',
       description:
-        'Estos son los últimos cursos creados. Tocá uno para ver la información.',
-      side: 'top',
+        'Los exámenes con preguntas de desarrollo que esperan tu corrección. Empiezan por los que llevan más tiempo esperando.',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="exam-performance"]',
+    popover: {
+      title: 'Rendimiento',
+      description:
+        'Cómo les está yendo a los alumnos: porcentaje de aprobación, nota promedio y cuántos exámenes se rindieron en el último mes.',
+      side: 'left',
       align: 'start',
     },
   },

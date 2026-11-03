@@ -1,83 +1,54 @@
 // src/components/admin/DashboardStats.tsx
-import { type DashboardStats } from "@/types/types";
-import { Users, BookOpen } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
-interface DashboardStatsProps {
-  stats: DashboardStats;
-}
+const tones = {
+  blue: "bg-blue-50 text-blue-600",
+  violet: "bg-violet-50 text-violet-600",
+  orange: "bg-orange-50 text-orange-600",
+  amber: "bg-amber-50 text-amber-600",
+} as const;
 
-export function DashboardStatsComponent({ stats }: DashboardStatsProps) {
-  const statCards = [
-    {
-      title: "Estudiantes",
-      value: stats.totalUsers.toLocaleString(),
-      subtitle: `${stats.activeUsers.toLocaleString()} activos`,
-      icon: Users,
-      gradient: "from-blue-50 to-blue-50/50",
-      iconBg: "bg-blue-100/80",
-      iconColor: "text-blue-600",
-      borderColor: "border-blue-200/50",
-      hoverShadow: "hover:shadow-blue-100/50",
-      href: "/students",
-    },
-    {
-      title: "Cursos",
-      value: stats.totalProducts.toString(),
-      subtitle: "Total de cursos",
-      icon: BookOpen,
-      gradient: "from-purple-50 to-purple-50/50",
-      iconBg: "bg-purple-100/80",
-      iconColor: "text-purple-600",
-      borderColor: "border-purple-200/50",
-      hoverShadow: "hover:shadow-purple-100/50",
-      href: "/products",
-    },
-  ];
+export type StatCardData = {
+  label: string;
+  value: string;
+  hint: string;
+  icon: LucideIcon;
+  tone: keyof typeof tones;
+  href: string;
+  /** Resalta la tarjeta cuando requiere atención (ej: exámenes por corregir) */
+  highlight?: boolean;
+};
 
+export function DashboardStatsComponent({ cards }: { cards: StatCardData[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {statCards.map((card, index) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {cards.map((card, index) => (
         <Link
-          key={card.title}
+          key={card.label}
           to={card.href}
-          className={`group relative rounded-xl border ${card.borderColor} bg-white hover:shadow-xl ${card.hoverShadow} hover:border-opacity-100 transition-all duration-500 cursor-pointer active:scale-[0.98]`}
-          style={{ 
-            animationDelay: `${index * 100}ms`,
-            animation: 'fadeInUp 0.5s ease-out forwards',
+          className={cn(
+            "group relative rounded-xl border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-200/60",
+            card.highlight ? "border-amber-200 bg-amber-50/30" : "border-gray-200/70"
+          )}
+          style={{
+            animation: "fadeInUp 0.5s ease-out both",
+            animationDelay: `${index * 60}ms`,
           }}
         >
-          {/* Subtle gradient background */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden rounded-xl`}></div>
-          
-          <div className="relative p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                  {card.title}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
-                    {card.value}
-                  </p>
-                </div>
-                <p className="text-sm text-gray-500 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                  {card.subtitle}
-                </p>
-              </div>
-              <div className={`flex-shrink-0 w-14 h-14 rounded-xl ${card.iconBg} ${card.iconColor} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                <card.icon className="w-7 h-7" strokeWidth={2} />
-              </div>
-            </div>
-            
-            {/* Arrow indicator */}
-            <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
+          <div className="flex items-center justify-between">
+            <span className={cn("grid place-items-center w-9 h-9 rounded-lg", tones[card.tone])}>
+              <card.icon className="w-[18px] h-[18px]" />
+            </span>
+            <ChevronRight className="w-4 h-4 text-gray-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
+          <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-500">{card.label}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900 tabular-nums">{card.value}</p>
+          <p className={cn("mt-1 text-xs", card.highlight ? "text-amber-700" : "text-gray-500")}>
+            {card.hint}
+          </p>
         </Link>
       ))}
     </div>
