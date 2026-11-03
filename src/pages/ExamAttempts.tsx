@@ -4,6 +4,8 @@ import { usePageHeader } from "@/context/PageHeaderContext";
 import {
   ArrowLeft,
   ClipboardCheck,
+  Eye,
+  EyeOff,
   Loader,
   Pencil,
   RotateCcw,
@@ -89,7 +91,8 @@ export default function ExamAttempts() {
     fetchData();
   }, [fetchData]);
 
-  const intentosDefault = data?.intentosDefault ?? 3;
+  const intentosDefault = data?.intentosDefault ?? 1;
+  const permitirRevision = data?.permitirRevision !== false;
 
   const alumnos = useMemo(() => data?.alumnos ?? [], [data]);
 
@@ -194,6 +197,26 @@ export default function ExamAttempts() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Error al restablecer intentos"
+      );
+    } finally {
+      setRowSaving(row.idAlumno, false);
+    }
+  };
+
+  const handleToggleRevision = async (row: AlumnoIntentosRow) => {
+    const habilitada = !row.revisionHabilitada;
+    try {
+      setRowSaving(row.idAlumno, true);
+      await ExamsAPI.setRevisionAlumno(examenId, row.idAlumno, habilitada);
+      toast.success(
+        habilitada
+          ? "Revisión habilitada para el alumno"
+          : "Se quitó la habilitación manual de revisión"
+      );
+      await fetchData();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Error al actualizar la revisión"
       );
     } finally {
       setRowSaving(row.idAlumno, false);
@@ -305,6 +328,21 @@ export default function ExamAttempts() {
     );
   };
 
+  const renderRevisionToggle = (row: AlumnoIntentosRow) => (
+    <IconAction
+      label={
+        row.revisionHabilitada
+          ? "Quitar revisión habilitada manualmente"
+          : "Habilitar revisión a este alumno aunque le queden intentos"
+      }
+      disabled={!!saving[row.idAlumno]}
+      onClick={() => handleToggleRevision(row)}
+      className={row.revisionHabilitada ? "text-emerald-600" : undefined}
+    >
+      {row.revisionHabilitada ? <Eye /> : <EyeOff />}
+    </IconAction>
+  );
+
   const aside = (
     <ProfileCard
       media={
@@ -354,6 +392,17 @@ export default function ExamAttempts() {
           </Button>
         </div>
       </form>
+      <div className="space-y-0.5 border-b border-gray-100 px-5 py-4">
+        <p className="text-sm font-medium text-gray-900">
+          Revisión {permitirRevision ? "permitida" : "desactivada"}
+        </p>
+        <p className="text-xs text-gray-500">
+          {permitirRevision
+            ? "Quien aprueba o usa todos sus intentos puede revisar el examen."
+            : "Solo pueden revisar los alumnos habilitados manualmente."}{" "}
+          Se cambia desde "Editar examen".
+        </p>
+      </div>
       <StatGrid
         stats={[
           { label: "Alumnos", value: alumnos.length },
@@ -408,7 +457,10 @@ export default function ExamAttempts() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       {renderUsage(row)}
-                      {renderMaxEditor(row)}
+                      <div className="flex items-center gap-0.5">
+                        {renderRevisionToggle(row)}
+                        {renderMaxEditor(row)}
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -423,6 +475,7 @@ export default function ExamAttempts() {
                       <PlainHeader>Email</PlainHeader>
                       <PlainHeader>Intentos</PlainHeader>
                       <PlainHeader>Límite</PlainHeader>
+                      <PlainHeader>Revisión</PlainHeader>
                       <PlainHeader align="right" className="pl-3 pr-5">
                         Máximo
                       </PlainHeader>
@@ -446,6 +499,16 @@ export default function ExamAttempts() {
                           ) : (
                             <span className="text-xs text-gray-400">General ({intentosDefault})</span>
                           )}
+                        </td>
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            {renderRevisionToggle(row)}
+                            <span
+                              className={`text-xs ${row.revisionHabilitada ? "text-emerald-700" : "text-gray-400"}`}
+                            >
+                              {row.revisionHabilitada ? "Habilitada" : "Automática"}
+                            </span>
+                          </div>
                         </td>
                         <td className="pl-3 pr-5 py-1.5 whitespace-nowrap">{renderMaxEditor(row)}</td>
                       </tr>

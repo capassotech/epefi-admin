@@ -61,6 +61,8 @@ export type AlumnoIntentosRow = {
   intentosMaximos: number;
   esOverride: boolean;
   intentosDefault: number;
+  /** Excepción manual: revisión habilitada aunque le queden intentos. */
+  revisionHabilitada: boolean;
 };
 
 export type ExamenIntentosResponse = {
@@ -71,6 +73,7 @@ export type ExamenIntentosResponse = {
     tituloFormacion?: string;
   };
   intentosDefault: number;
+  permitirRevision: boolean;
   alumnos: AlumnoIntentosRow[];
 };
 
@@ -212,6 +215,23 @@ export const ExamsAPI = {
     } catch (error: unknown) {
       throw new Error(
         getAxiosErrorMessage(error, "Error al actualizar el límite general de intentos")
+      );
+    }
+  },
+
+  setRevisionAlumno: async (
+    examenId: string,
+    idAlumno: string,
+    habilitada: boolean
+  ): Promise<void> => {
+    try {
+      await api.put(
+        `/examenes/${encodeURIComponent(examenId)}/revision-alumnos/${encodeURIComponent(idAlumno)}`,
+        { habilitada }
+      );
+    } catch (error: unknown) {
+      throw new Error(
+        getAxiosErrorMessage(error, "Error al actualizar la revisión del alumno")
       );
     }
   },

@@ -96,6 +96,7 @@ function examToFormState(exam: Examen): {
   notaMinima: number;
   publicacionManualDeNota: boolean;
   intentosMaximos: number;
+  permitirRevision: boolean;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -145,11 +146,11 @@ function examToFormState(exam: Examen): {
         ? exam.notaMinima
         : 70,
     publicacionManualDeNota: exam.publicacionManualDeNota === true,
-    // Exámenes creados antes de este campo usaban 3 intentos fijos
     intentosMaximos:
       typeof exam.intentosMaximos === "number" && exam.intentosMaximos > 0
         ? exam.intentosMaximos
-        : 3,
+        : 1,
+    permitirRevision: exam.permitirRevision !== false,
     questions,
   };
 }
@@ -165,6 +166,7 @@ export default function CreateExam() {
   const [notaMinima, setNotaMinima] = useState(70);
   const [notaMinimaError, setNotaMinimaError] = useState("");
   const [intentosMaximos, setIntentosMaximos] = useState(1);
+  const [permitirRevision, setPermitirRevision] = useState(true);
   const [intentosError, setIntentosError] = useState("");
   const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
   const [publicacionManualDeNota, setPublicacionManualDeNota] = useState(false);
@@ -245,6 +247,7 @@ export default function CreateExam() {
         setDuracionMinutos(form.duracionMinutos);
         setNotaMinima(form.notaMinima);
         setIntentosMaximos(form.intentosMaximos);
+        setPermitirRevision(form.permitirRevision);
         setRequiereCompletarCurso(form.requiereCompletarCurso);
         setPublicacionManualDeNota(form.publicacionManualDeNota);
         setQuestions(form.questions);
@@ -619,6 +622,7 @@ export default function CreateExam() {
       notaMinima,
       publicacionManualDeNota: publicacionManualDeNota,
       intentosMaximos,
+      permitirRevision,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -904,6 +908,23 @@ export default function CreateExam() {
                 checked={publicacionManualDeNota}
                 onCheckedChange={setPublicacionManualDeNota}
                 disabled={tieneDesarrollo}
+              />
+            </label>
+            <label
+              htmlFor="permitir-revision"
+              className="flex cursor-pointer items-center justify-between gap-4 px-5 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900">Permitir revisión del examen</p>
+                <p className="text-xs text-gray-500">
+                  El alumno puede ver sus respuestas corregidas cuando aprueba o usa todos sus intentos.
+                  Podés habilitársela a un alumno puntual desde "Intentos".
+                </p>
+              </div>
+              <Switch
+                id="permitir-revision"
+                checked={permitirRevision}
+                onCheckedChange={setPermitirRevision}
               />
             </label>
           </div>
