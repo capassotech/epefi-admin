@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import { ClipboardList, Edit2, Loader, Loader2, Trash2, Users } from "lucide-react";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
@@ -25,6 +26,7 @@ const isExamEnabled = (exam: Examen) => exam.habilitado !== false;
 
 export default function Exams() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Exámenes" });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [exams, setExams] = useState<Examen[]>([]);
   const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
@@ -190,8 +192,6 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Exámenes</h1>
-
       <SearchAndFilter
         onSearch={handleSearch}
         showStateFilter={false}

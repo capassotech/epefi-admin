@@ -1,12 +1,12 @@
 // src/pages/StudentDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { Switch } from '@/components/ui/switch';
 import {
-    ArrowLeft,
     BookOpen,
     Mail,
     IdCard,
@@ -325,6 +325,11 @@ export const StudentDetail = () => {
         }
     };
 
+    usePageHeader({
+        title: student ? `${student.nombre} ${student.apellido}` : undefined,
+        backTo: -1,
+    });
+
     if (loading) return (
         <InteractiveLoader
             initialMessage="Cargando estudiante"
@@ -336,14 +341,7 @@ export const StudentDetail = () => {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center min-w-0">
-                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Volver
-                    </Button>
-                    <h1 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight break-words min-w-0">{student.nombre} {student.apellido}</h1>
-                </div>
+            <div className="flex justify-end">
                 <div onClick={(e) => e.stopPropagation()}>
                     <CreateUserModal
                         onUserCreated={async () => {

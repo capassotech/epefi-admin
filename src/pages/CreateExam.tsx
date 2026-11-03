@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -667,6 +668,8 @@ export default function CreateExam() {
     }
   };
 
+  usePageHeader({ title: isEditing ? "Editar examen" : "Crear examen", backTo: "/exams" });
+
   if (loadingCourses || loadingExam) {
     return (
       <InteractiveLoader
@@ -693,13 +696,6 @@ export default function CreateExam() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/exams")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver a Exámenes
-        </Button>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>{isEditing ? "Editar examen" : "Crear examen"}</CardTitle>

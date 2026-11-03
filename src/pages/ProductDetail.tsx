@@ -1,13 +1,13 @@
 // src/pages/ProductDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PencilIcon } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { formatCurrency } from '@/utils/currency';
 import {
-  ArrowLeft,
   Clock,
   BookOpen,
   Image as ImageIcon,
@@ -233,6 +233,8 @@ const ProductDetail = () => {
     }
   };
 
+  usePageHeader({ title: curso?.titulo, backTo: -1 });
+
   if (loading) return (
     <InteractiveLoader
       initialMessage="Cargando curso"
@@ -246,14 +248,7 @@ const ProductDetail = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0 flex-1">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words min-w-0">{curso.titulo}</h1>
-        </div>
+      <div className="flex justify-end">
         <Button
           variant="outline"
           className="cursor-pointer w-full sm:w-auto shrink-0"

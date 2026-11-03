@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ClipboardCheck, Download, Eye, FileSpreadsheet } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { ClipboardCheck, Download, Eye, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,7 @@ const EMPTY_PAGINATION: PaginationMeta = {
 
 export default function CompletedExams() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Exámenes realizados", backTo: "/exams" });
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters = readCompletedExamsFilters(searchParams);
   const [pendientes, setPendientes] = useState<ExamenRealizado[]>([]);
@@ -300,21 +302,7 @@ export default function CompletedExams() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto shrink-0"
-            onClick={() => navigate("/exams")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver a Exámenes
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
-            Exámenes realizados
-          </h1>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
           <Button
             type="button"

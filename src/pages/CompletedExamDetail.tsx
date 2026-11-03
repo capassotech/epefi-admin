@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Save, X } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { Check, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -403,6 +404,11 @@ export default function CompletedExamDetail() {
     }
   };
 
+  usePageHeader({
+    title: modoCorreccion ? "Corregir examen realizado" : "Detalle del examen realizado",
+    backTo: returnTo,
+  });
+
   if (loading) {
     return (
       <InteractiveLoader
@@ -429,15 +435,6 @@ export default function CompletedExamDetail() {
 
   return (
     <div className="space-y-6">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => navigate(returnTo)}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Volver a realizados
-      </Button>
-
       <Card>
         <CardHeader>
           <CardTitle>

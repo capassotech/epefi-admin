@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import {
   ArrowLeft,
   ArrowRight,
@@ -48,6 +49,7 @@ import {
 export default function EditProduct() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  usePageHeader({ title: "Editar curso", backTo: "/products" });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -438,18 +440,6 @@ export default function EditProduct() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <Link to="/products" className="shrink-0">
-          <Button variant="outline" size="sm" className="flex items-center space-x-2 cursor-pointer w-full sm:w-auto">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Volver</span>
-          </Button>
-        </Link>
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Editar curso</h1>
-        </div>
-      </div>
-
       {showSaveMessage && lastSaveTime && (
         <Card className="border-l-4 border-l-green-500 bg-green-50">
           <CardContent className="p-4">

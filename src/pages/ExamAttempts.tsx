@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import { ArrowLeft, Loader, RotateCcw, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -185,6 +186,8 @@ export default function ExamAttempts() {
     }
   };
 
+  usePageHeader({ title: data?.examen.titulo || "Examen", backTo: "/exams" });
+
   if (loading && !data) {
     return (
       <InteractiveLoader
@@ -212,29 +215,12 @@ export default function ExamAttempts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1 min-w-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mb-2"
-            onClick={() => navigate("/exams")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
-            {data?.examen.titulo || "Examen"}
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 break-words">
-            Intentos por alumno
-            {data?.examen.tituloFormacion || data?.examen.idFormacion
-              ? ` · ${data?.examen.tituloFormacion || data?.examen.idFormacion}`
-              : ""}
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-gray-500 break-words">
+        Intentos por alumno
+        {data?.examen.tituloFormacion || data?.examen.idFormacion
+          ? ` · ${data?.examen.tituloFormacion || data?.examen.idFormacion}`
+          : ""}
+      </p>
 
       <form
         onSubmit={handleSaveDefault}

@@ -10,7 +10,7 @@ import { User, Mail, IdCard, Loader2, Save, Lock, Eye, EyeOff } from "lucide-rea
 import { toast } from "sonner";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import authService from "@/service/authService";
-import { TourButton } from "@/components/tour/TourButton";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import { profileTourSteps } from "@/config/tourSteps";
 import { extractErrorMessage } from "@/utils/errorMessages";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
@@ -25,6 +25,7 @@ export default function Profile() {
   const { user, refreshUser } = useAuth();
   const { updateUser, isLoading } = useCreateUser();
   const [loading, setLoading] = useState(true);
+  usePageHeader({ title: "Mi perfil", tourSteps: profileTourSteps });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -176,12 +177,6 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mi perfil</h1>
-        <TourButton steps={profileTourSteps} />
-      </div>
-
       {/* Información del Perfil */}
       <Card data-tour="profile-info">
         <CardHeader>

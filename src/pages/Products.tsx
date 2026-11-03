@@ -8,7 +8,7 @@ import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { type Course } from '@/types/types';
 import { toast } from 'sonner';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { productsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
@@ -17,6 +17,7 @@ import { Loader } from 'lucide-react';
 
 export default function Products() {
   const navigate = useNavigate();
+  usePageHeader({ title: 'Cursos', tourSteps: productsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [cursos, setCursos] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,11 +218,6 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cursos</h1>
-        <TourButton steps={productsTourSteps} />
-      </div>
-
       <div data-tour="search-filter">
         <SearchAndFilter
           onSearch={handleSearch}

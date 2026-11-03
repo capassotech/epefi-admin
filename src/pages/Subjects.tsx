@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { subjectsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
@@ -27,6 +27,7 @@ export default function Subjects() {
     const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const navigate = useNavigate();
+    usePageHeader({ title: 'Materias', tourSteps: subjectsTourSteps });
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -214,11 +215,6 @@ export default function Subjects() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Materias</h1>
-                <TourButton steps={subjectsTourSteps} />
-            </div>
-
             <div data-tour="search-filter">
                 <SearchAndFilter
                     onSearch={handleSearch}

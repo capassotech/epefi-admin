@@ -9,7 +9,7 @@ import {
   fetchAllStudentsFromApi,
 } from '@/utils/studentsListClient';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { dashboardTourSteps } from '@/config/tourSteps';
 
 export default function Dashboard() {
@@ -23,6 +23,7 @@ export default function Dashboard() {
   });
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  usePageHeader({ title: 'Panel general', tourSteps: dashboardTourSteps });
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -73,26 +74,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-gray-100">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">Panel general</h1>
-          
-        </div>
-        <div className="flex items-center gap-3 text-right sm:text-left">
-          <TourButton steps={dashboardTourSteps} />
-          <div className="hidden sm:block w-px h-8 bg-gray-200"></div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Última actualización</p>
-            <p className="text-sm font-semibold text-gray-700 mt-0.5">{new Date().toLocaleDateString('es-AR', { 
-              day: 'numeric', 
-              month: 'long', 
-              year: 'numeric' 
-            })}</p>
-          </div>
-        </div>
-      </div>
-
       {/* Stats */}
       <div data-tour="dashboard-stats">
         <DashboardStatsComponent stats={stats} />

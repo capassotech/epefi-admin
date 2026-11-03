@@ -12,7 +12,7 @@ import { type StudentDB } from "@/types/types";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { TourButton } from "@/components/tour/TourButton";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import { studentsTourSteps } from "@/config/tourSteps";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
@@ -35,6 +35,7 @@ const SERVER_PAGE_LIMIT = 200;
 
 export default function Students() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Usuarios", tourSteps: studentsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
@@ -266,11 +267,6 @@ export default function Students() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Usuarios</h1>
-        <TourButton steps={studentsTourSteps} />
-      </div>
-
       <div data-tour="search-filter">
         <SearchAndFilter
           onSearch={handleSearch}

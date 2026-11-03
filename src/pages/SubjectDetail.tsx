@@ -1,12 +1,12 @@
 // src/pages/ProductDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import {
-    ArrowLeft,
     BookOpen,
     Image as ImageIcon,
     Trash,
@@ -215,6 +215,8 @@ export const SubjectDetail = () => {
         }
     };
 
+    usePageHeader({ title: materia?.nombre, backTo: -1 });
+
     if (loading) return (
         <InteractiveLoader
             initialMessage="Cargando materia"
@@ -228,16 +230,6 @@ export const SubjectDetail = () => {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center min-w-0">
-                    <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Volver
-                    </Button>
-                    <h1 className="text-xl sm:text-3xl font-bold text-gray-900 break-words min-w-0">{materia.nombre}</h1>
-                </div>
-            </div>
-
             {materia.imagen && (
                 <Card>
                     <CardHeader>

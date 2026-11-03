@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import {
   ArrowLeft,
   ArrowRight,
@@ -28,6 +29,7 @@ import SubjectCreation from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Crear nuevo curso", backTo: "/products" });
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -314,26 +316,9 @@ export default function CreateProduct() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <Link to="/products" className="shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2 cursor-pointer w-full sm:w-auto"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Volver</span>
-          </Button>
-        </Link>
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Crear nuevo curso
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Completa los datos para crear este curso.
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-gray-500">
+        Completa los datos para crear este curso.
+      </p>
 
       {courseCreated && (
         <Card className="border-l-4 border-l-green-500 bg-green-50">
