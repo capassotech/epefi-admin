@@ -13,7 +13,7 @@ import { productsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { Loader } from 'lucide-react';
+import { ListLoadingPill, listLoadingClass } from '@/components/common/ListLoading';
 
 export default function Products() {
   const navigate = useNavigate();
@@ -249,12 +249,10 @@ export default function Products() {
         </div>
       </div>
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-          </div>
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando cursos…" />
+        {paginationLoading && cursos.length === 0 ? (
+          <div className="h-32" />
         ) : cursos.length > 0 ? (
           <>
           {viewMode === 'cards' ? (

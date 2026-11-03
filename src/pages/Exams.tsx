@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
-import { ClipboardList, Edit2, Loader, Loader2, Trash2, Users } from "lucide-react";
+import { ClipboardList, Edit2, Loader2, Trash2, Users } from "lucide-react";
+import { ListLoadingPill, listLoadingClass } from "@/components/common/ListLoading";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
@@ -225,12 +226,10 @@ export default function Exams() {
         </p>
       </div>
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full py-12">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente página</h1>
-          </div>
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando exámenes…" />
+        {paginationLoading && exams.length === 0 ? (
+          <div className="h-32" />
         ) : exams.length > 0 ? (
           <>
             <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">

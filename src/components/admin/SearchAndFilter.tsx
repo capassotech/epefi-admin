@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, ArrowUpDown, Plus, User } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Plus, User, X } from "lucide-react";
 import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
 import type { StudentDB } from "@/types/types";
@@ -20,6 +20,15 @@ export interface FilterOptions {
   role?: string;
   courseId?: string;
 }
+
+const SORT_LABELS: Record<string, string> = {
+  date: "Fecha de creación",
+  name: "Nombre",
+  email: "Email",
+  title: "Título",
+};
+const ROLE_LABELS: Record<string, string> = { student: "Estudiante", admin: "Administrador" };
+const STATUS_LABELS: Record<string, string> = { active: "Activos", inactive: "Inactivos" };
 
 interface SearchAndFilterProps {
   onSearch: (query: string) => void;
@@ -39,6 +48,8 @@ interface SearchAndFilterProps {
   showClearFilters?: boolean;
   hideUnsortedOption?: boolean;
   showStateFilter?: boolean;
+  /** Oculta el selector de rol (p. ej. cuando el filtro vive en el encabezado de la tabla) */
+  hideRoleFilter?: boolean;
   /** Botones extra junto a la acción principal (p. ej. «Ver realizados») */
   extraActions?: ReactNode;
 }
@@ -56,6 +67,7 @@ export const SearchAndFilter = ({
   showClearFilters = false,
   hideUnsortedOption = false,
   showStateFilter = true,
+  hideRoleFilter = false,
   extraActions,
 }: SearchAndFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -126,7 +138,72 @@ export const SearchAndFilter = ({
     onFilter(next);
   };
 
+  /** Vuelve una o más claves a su valor inicial (o las quita si no tienen) */
+  const resetKeys = (keys: (keyof FilterOptions)[]) => {
+    const next: FilterOptions = { ...currentFilters };
+    for (const key of keys) {
+      const initial = resetFiltersTo?.[key];
+      if (initial === undefined) delete next[key];
+      else (next as Record<string, unknown>)[key] = initial;
+    }
+    setCurrentFilters(next);
+    onFilter(next);
+  };
+
+  // Un badge por cada filtro que difiere del estado inicial
+  const differs = (key: keyof FilterOptions) =>
+    (currentFilters[key] ?? undefined) !== (resetFiltersTo?.[key] ?? undefined);
+
+  const activeChips: { key: string; label: string; onRemove: () => void }[] = [];
+  if (searchQuery.trim()) {
+    activeChips.push({
+      key: "search",
+      label: `“${searchQuery.trim()}”`,
+      onRemove: () => handleSearchChange(""),
+    });
+  }
+  if (differs("sortBy") || differs("sortDirection")) {
+    const sortKey = currentFilters.sortBy;
+    const sortLabel =
+      filterOptions?.sortOptions?.find((o) => o.value === sortKey)?.label ??
+      SORT_LABELS[sortKey ?? ""] ??
+      sortKey;
+    const dir = currentFilters.sortDirection ?? defaultSortDirection(sortKey);
+    activeChips.push({
+      key: "sort",
+      label: `Orden: ${sortLabel} ${dir === "asc" ? "↑" : "↓"}`,
+      onRemove: () => resetKeys(["sortBy", "sortDirection"]),
+    });
+  }
+  if (differs("role") && currentFilters.role) {
+    activeChips.push({
+      key: "role",
+      label: `Rol: ${ROLE_LABELS[currentFilters.role] ?? currentFilters.role}`,
+      onRemove: () => resetKeys(["role"]),
+    });
+  }
+  if (differs("status") && currentFilters.status) {
+    activeChips.push({
+      key: "status",
+      label: `Estado: ${STATUS_LABELS[currentFilters.status] ?? currentFilters.status}`,
+      onRemove: () => resetKeys(["status"]),
+    });
+  }
+  if (differs("courseId") && currentFilters.courseId) {
+    const courseLabel =
+      currentFilters.courseId === "none"
+        ? "Sin curso asignado"
+        : filterOptions?.courses?.find((c) => c.id === currentFilters.courseId)?.titulo ?? "Curso";
+    activeChips.push({
+      key: "course",
+      label: `Curso: ${courseLabel}`,
+      onRemove: () => resetKeys(["courseId"]),
+    });
+  }
+  const showChips = showClearFilters && activeChips.length > 0;
+
   return (
+    <div className="w-full space-y-3">
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
       <div className="flex flex-col w-full gap-3 sm:flex-row sm:flex-1 sm:gap-4 sm:items-center">
         {/* Búsqueda */}
@@ -142,7 +219,12 @@ export const SearchAndFilter = ({
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto sm:flex-1 min-h-10">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+          {(showStateFilter ||
+            (isStudentPage && !hideRoleFilter) ||
+            (isStudentPage && !!filterOptions?.courses?.length) ||
+            !!filterOptions?.sortOptions) && (
+            <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+          )}
 
           {/* Estado */}
           {showStateFilter && (
@@ -162,7 +244,7 @@ export const SearchAndFilter = ({
           )}
 
           {/* Rol - Solo mostrar en la página de estudiantes */}
-          {isStudentPage && (
+          {isStudentPage && !hideRoleFilter && (
             <Select
               value={currentFilters.role || "all"}
               onValueChange={(value) => handleFilterChange("role", value)}
@@ -229,7 +311,6 @@ export const SearchAndFilter = ({
             filterOptions?.sortOptions &&
             (currentFilters.sortBy || (hideUnsortedOption && "date"))
           ) ||
-            showClearFilters ||
             (!hideCreateButton && onCreateNew)) && (
             <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2">
               {filterOptions?.sortOptions &&
@@ -254,17 +335,6 @@ export const SearchAndFilter = ({
                       : "Desc"}
                   </Button>
                 )}
-              {showClearFilters && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="shrink-0 h-10 px-2 sm:px-3"
-                  onClick={handleClearFilters}
-                >
-                  <span className="sm:hidden">Limpiar</span>
-                  <span className="hidden sm:inline">Limpiar filtros</span>
-                </Button>
-              )}
               {!hideCreateButton && onCreateNew && (
                 <div className="sm:hidden flex-1 min-w-0 ml-auto">
                   {isStudentPage ? (
@@ -322,6 +392,35 @@ export const SearchAndFilter = ({
                 </Button>
               )}
             </div>
+          )}
+        </div>
+      )}
+    </div>
+
+      {/* Filtros aplicados: cada badge quita su filtro */}
+      {showChips && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {activeChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.onRemove}
+              className="group inline-flex max-w-full items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-2.5 pr-1.5 text-xs text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 cursor-pointer"
+              title="Quitar filtro"
+              aria-label={`Quitar filtro ${chip.label}`}
+            >
+              <span className="truncate">{chip.label}</span>
+              <X className="w-3 h-3 shrink-0 text-gray-400 group-hover:text-gray-700" />
+            </button>
+          ))}
+          {activeChips.length > 1 && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="px-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+            >
+              Limpiar todo
+            </button>
           )}
         </div>
       )}

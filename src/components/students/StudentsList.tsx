@@ -7,7 +7,18 @@ import {
   Calendar,
   Eye,
   Users,
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+  ListFilter,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { type StudentDB } from "@/types/types";
 import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
@@ -17,17 +28,185 @@ import { BulkAssignCoursesModal } from "./BulkAssignCoursesModal";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
+import { IconAction } from "../ui/icon-action";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { StudentsAPI } from "@/service/students";
 import { toast } from "sonner";
+
+type SortKey = "name" | "email";
+type SortDirection = "asc" | "desc";
 
 interface StudentListProps {
   students: StudentDB[];
   onDelete: (id: string) => void;
   onUserUpdated?: (user?: StudentDB, meta?: { isCreate: boolean }) => void;
   onStatusChange?: () => void;
+  sortBy?: string;
+  sortDirection?: SortDirection;
+  /** Ciclo por columna: asc → desc → sin orden de columna (null) */
+  onSortChange?: (sort: { sortBy: SortKey; sortDirection: SortDirection } | null) => void;
+  role?: string;
+  /** undefined = todos los roles */
+  onRoleChange?: (role: string | undefined) => void;
+  status?: string;
+  /** undefined = activos e inactivos */
+  onStatusFilterChange?: (status: string | undefined) => void;
 }
 
-export function StudentList({ students, onUserUpdated, onStatusChange }: StudentListProps) {
+function SortableHeader({
+  label,
+  column,
+  sortBy,
+  sortDirection,
+  onSortChange,
+}: {
+  label: string;
+  column: SortKey;
+  sortBy?: string;
+  sortDirection?: SortDirection;
+  onSortChange?: StudentListProps["onSortChange"];
+}) {
+  const isActive = sortBy === column;
+  const Icon = !isActive ? ChevronsUpDown : sortDirection === "desc" ? ArrowDown : ArrowUp;
+
+  const handleClick = () => {
+    if (!onSortChange) return;
+    if (!isActive) onSortChange({ sortBy: column, sortDirection: "asc" });
+    else if (sortDirection !== "desc") onSortChange({ sortBy: column, sortDirection: "desc" });
+    else onSortChange(null);
+  };
+
+  // Describe lo que hará el próximo clic
+  const tooltip = !isActive
+    ? `Ordenar por ${label.toLowerCase()} (A → Z)`
+    : sortDirection !== "desc"
+      ? `Ordenar por ${label.toLowerCase()} (Z → A)`
+      : "Quitar orden (volver a fecha de creación)";
+
+  return (
+    <th
+      className="px-3 py-2.5 text-left"
+      aria-sort={isActive ? (sortDirection === "desc" ? "descending" : "ascending") : "none"}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleClick}
+            aria-label={tooltip}
+            className={`group inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors cursor-pointer ${
+              isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            {label}
+            <Icon
+              className={`w-3.5 h-3.5 transition-opacity ${
+                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+              }`}
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </th>
+  );
+}
+
+const ROLE_OPTIONS = [
+  { value: "all", label: "Todos los roles" },
+  { value: "student", label: "Estudiante" },
+  { value: "admin", label: "Administrador" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "active", label: "Activos" },
+  { value: "inactive", label: "Inactivos" },
+];
+
+/** Encabezado de columna que abre un menú para filtrar; "all" = sin filtro */
+function FilterHeader({
+  label,
+  tooltip,
+  value,
+  options,
+  onChange,
+  align = "left",
+  className = "px-3",
+}: {
+  label: string;
+  tooltip: string;
+  value?: string;
+  options: { value: string; label: string }[];
+  onChange?: (value: string | undefined) => void;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const current = value && value !== "all" ? value : "all";
+  const isActive = current !== "all";
+  const activeLabel = options.find((o) => o.value === current)?.label;
+
+  return (
+    <th className={`${className} py-2.5 ${align === "right" ? "text-right" : "text-left"}`}>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={`group inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors cursor-pointer ${
+                  isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {label}
+                {isActive && (
+                  <span className="normal-case tracking-normal font-normal text-gray-500">
+                    · {activeLabel}
+                  </span>
+                )}
+                <ListFilter
+                  className={`w-3.5 h-3.5 transition-opacity ${
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-data-[state=open]:opacity-60"
+                  }`}
+                />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align={align === "right" ? "end" : "start"} className="w-44">
+          <DropdownMenuRadioGroup
+            value={current}
+            onValueChange={(next) => onChange?.(next === "all" ? undefined : next)}
+          >
+            {options.map((option) => (
+              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </th>
+  );
+}
+
+export function StudentList({
+  students,
+  onUserUpdated,
+  onStatusChange,
+  sortBy,
+  sortDirection,
+  onSortChange,
+  role,
+  onRoleChange,
+  status,
+  onStatusFilterChange,
+}: StudentListProps) {
   const navigate = useNavigate();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -100,6 +279,9 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
   //     day: "numeric",
   //   });
   // };
+
+  /** Texto de usuarios deshabilitados: tachado en rojo y atenuado */
+  const inactiveText = "text-gray-400 line-through decoration-red-500 decoration-[1.5px]";
 
   const getFullName = (student: StudentDB) => {
     return (
@@ -279,40 +461,63 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
       </div>
 
       {/* ── Vista desktop: tabla ── */}
+      <TooltipProvider delayDuration={300}>
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="w-12 pl-4 pr-2 py-3 text-left align-middle">
+              <th className="w-10 pl-4 pr-1 py-2.5 text-left align-middle">
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={toggleSelectAll}
                   aria-label="Seleccionar todos los usuarios visibles"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
-              </th>
+              <SortableHeader
+                label="Nombre"
+                column="name"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+              />
+              <SortableHeader
+                label="Email"
+                column="email"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+              />
+              <FilterHeader
+                label="Rol"
+                tooltip="Filtrar por rol"
+                value={role}
+                options={ROLE_OPTIONS}
+                onChange={onRoleChange}
+              />
+              <FilterHeader
+                label="Acciones"
+                tooltip="Filtrar por estado (activos / inactivos)"
+                value={status}
+                options={STATUS_OPTIONS}
+                onChange={onStatusFilterChange}
+                align="right"
+                className="pl-3 pr-4"
+              />
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.map((student, index) => (
+          <tbody className="bg-white divide-y divide-gray-100">
+            {students.map((student, index) => {
+              const isActive = student.activo ?? false;
+              return (
               <tr
                 key={student.id || student.uid || `student-${index}`}
-                className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                className={`transition-colors duration-150 cursor-pointer ${
+                  isActive ? "hover:bg-gray-50" : "bg-red-50/40 hover:bg-red-50/70"
+                }`}
                 onClick={() => navigate(`/students/${student.id}`)}
               >
                 <td
-                  className="w-12 pl-4 pr-2 py-4 align-middle"
+                  className="w-10 pl-4 pr-1 py-1.5 align-middle"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
@@ -322,136 +527,94 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                     aria-label={`Seleccionar ${getFullName(student)}`}
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 font-medium text-sm">
-                          {student.nombre?.charAt(0).toUpperCase() || "?"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="font-medium text-gray-900">
-                        {getFullName(student)}
-                      </div>
-                    </div>
-                  </div>
+                <td className={`px-3 py-1.5 whitespace-nowrap font-medium ${isActive ? "text-gray-900" : inactiveText}`}>
+                  {getFullName(student)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center text-gray-900">
-                    <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                    {student.email || "Sin email"}
-                  </div>
+                <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : inactiveText}`}>
+                  {student.email || "Sin email"}
                 </td>
-                <td className="px-1 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1">
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  <div className={`flex items-center gap-1 ${isActive ? "" : "opacity-50 [&>span]:line-through [&>span]:decoration-red-500"}`}>
                     {student.role?.admin && (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                      <span className="px-2 py-0.5 inline-flex text-xs font-medium rounded-full bg-purple-50 text-purple-700">
                         Admin
                       </span>
                     )}
                     {student.role?.student && (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <span className="px-2 py-0.5 inline-flex text-xs font-medium rounded-full bg-blue-50 text-blue-700">
                         Estudiante
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/students/${student.id}`);
-                      }}
-                      className="h-9 w-[140px] px-3 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 hover:text-green-800 transition-all duration-200 shadow-sm cursor-pointer"
-                      title="Ver detalles del estudiante"
+                <td
+                  className="pl-3 pr-4 py-1.5 whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-end gap-0.5">
+                    <IconAction
+                      label="Ver detalles"
+                      onClick={() => navigate(`/students/${student.id}`)}
                       data-tour="view-student-details"
                     >
-                      <Eye className="w-4 h-4 mr-1.5" />
-                      Ver Detalles
-                    </Button>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <CreateUserModal
-                        onUserCreated={onUserUpdated}
-                        triggerText=""
-                        isEditing={true}
-                        editingUser={student}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
-                          title="Editar usuario"
-                          data-tour="edit-student"
-                        >
-                          <Edit2 className="w-4 h-4 mr-1.5" />
-                          Editar
-                        </Button>
-                      </CreateUserModal>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
+                      <Eye />
+                    </IconAction>
+                    <CreateUserModal
+                      onUserCreated={onUserUpdated}
+                      triggerText=""
+                      isEditing={true}
+                      editingUser={student}
+                    >
+                      <IconAction label="Editar usuario" data-tour="edit-student">
+                        <Edit2 />
+                      </IconAction>
+                    </CreateUserModal>
+                    <IconAction
+                      label={
+                        disableIndividualCursos
+                          ? "Con usuarios seleccionados, usá «Asignar cursos al grupo»"
+                          : "Asignar cursos"
+                      }
                       disabled={disableIndividualCursos}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         setSelectedStudentId(student.id);
                         setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
-                      title={
-                        disableIndividualCursos
-                          ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
-                          : "Asignar cursos"
-                      }
                       data-tour="assign-courses"
                     >
-                      <Calendar className="w-4 h-4 mr-1.5 text-white" />
-                      Cursos
-                    </Button>
-                    <div 
-                      className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors w-[140px] ${
-                        (student.activo ?? false)
-                          ? 'bg-green-50 border-green-200' 
-                          : 'bg-red-50 border-red-200'
-                      }`}
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      data-tour="toggle-student-status"
-                    >
-                      <span className={`text-xs whitespace-nowrap font-medium ${
-                        (student.activo ?? false)
-                          ? 'text-green-700' 
-                          : 'text-red-700'
-                      }`}>
-                        {updatingStatusId === student.id ? 'Actualizando...' : ((student.activo ?? false) ? 'Habilitado' : 'Deshabilitado')}
-                      </span>
-                      {updatingStatusId === student.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                      ) : (
-                        <Switch
-                          checked={student.activo ?? false}
-                          onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          disabled={updatingStatusId !== null}
-                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                        />
-                      )}
-                    </div>
+                      <Calendar />
+                    </IconAction>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="grid place-items-center w-10 h-8" data-tour="toggle-student-status">
+                          {updatingStatusId === student.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                          ) : (
+                            <Switch
+                              checked={isActive}
+                              onCheckedChange={() => handleStatusChange(student.id, isActive)}
+                              disabled={updatingStatusId !== null}
+                              aria-label={isActive ? "Deshabilitar usuario" : "Habilitar usuario"}
+                              className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 disabled:opacity-50"
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{isActive ? "Habilitado" : "Deshabilitado"}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
+      </TooltipProvider>
       <CoursesAsignStudentModal
         id={selectedStudentId}
         assignDialogOpen={assignDialogOpen}

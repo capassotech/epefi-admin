@@ -14,7 +14,7 @@ import { subjectsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { Loader } from 'lucide-react';
+import { ListLoadingPill, listLoadingClass } from '@/components/common/ListLoading';
 
 export default function Subjects() {
     const listTopRef = useRef<HTMLDivElement | null>(null);
@@ -246,12 +246,10 @@ export default function Subjects() {
                 </div>
             </div>
 
-            <div ref={listTopRef}>
-                {paginationLoading ? (
-                    <div className="flex justify-center gap-3 h-full">
-                        <Loader className="animate-spin" />
-                        <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-                    </div>
+            <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+                <ListLoadingPill loading={paginationLoading} label="Cargando materias…" />
+                {paginationLoading && materias.length === 0 ? (
+                    <div className="h-32" />
                 ) : materias.length > 0 ? (
                     <>
                     {viewMode === 'cards' ? (

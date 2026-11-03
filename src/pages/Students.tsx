@@ -17,7 +17,7 @@ import { studentsTourSteps } from "@/config/tourSteps";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
-import { Loader } from "lucide-react";
+import { ListLoadingPill, listLoadingClass } from "@/components/common/ListLoading";
 import { extractStudentsFromResponse } from "@/utils/studentDates";
 import {
   getEffectiveStudentFilters,
@@ -242,13 +242,24 @@ export default function Students() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filterOptions = {
-    types: [],
-    sortOptions: [
-      { value: "date", label: "Fecha de creación" },
-      { value: "name", label: "Nombre" },
-      { value: "email", label: "Email" },
-    ],
+  // El orden se elige desde los encabezados de la tabla (Nombre / Email);
+  // sin columna activa se usa el orden por defecto (fecha de creación, más nuevos primero)
+  const handleSortChange = (
+    sort: { sortBy: "name" | "email"; sortDirection: "asc" | "desc" } | null
+  ) => {
+    handleFilter({
+      ...filters,
+      sortBy: sort?.sortBy ?? DEFAULT_STUDENT_FILTERS.sortBy,
+      sortDirection: sort?.sortDirection ?? DEFAULT_STUDENT_FILTERS.sortDirection,
+    });
+  };
+
+  // Rol y estado se filtran desde los encabezados "Rol" y "Acciones" de la tabla
+  const setHeaderFilter = (key: "role" | "status", value: string | undefined) => {
+    const next = { ...filters };
+    if (value) next[key] = value;
+    else delete next[key];
+    handleFilter(next);
   };
 
   if (loading) {
@@ -274,11 +285,11 @@ export default function Students() {
           isStudentPage={true}
           onCreateNew={handleUserUpdated}
           createButtonText="Crear usuario"
-          filterOptions={filterOptions}
           currentFilters={filters}
           resetFiltersTo={DEFAULT_STUDENT_FILTERS}
           showClearFilters
-          hideUnsortedOption
+          hideRoleFilter
+          showStateFilter={false}
         />
       </div>
 
@@ -288,18 +299,23 @@ export default function Students() {
         </p>
       </div>
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-          </div>
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando usuarios…" />
+        {paginationLoading && students.length === 0 ? (
+          <div className="h-32" />
         ) : students.length > 0 ? (
           <div data-tour="students-list">
             <StudentList
               students={students}
               onDelete={handleDeleteClick}
               onUserUpdated={handleUserUpdated}
+              sortBy={filters.sortBy}
+              sortDirection={filters.sortDirection}
+              onSortChange={handleSortChange}
+              role={filters.role}
+              onRoleChange={(role) => setHeaderFilter("role", role)}
+              status={filters.status}
+              onStatusFilterChange={(status) => setHeaderFilter("status", status)}
               onStatusChange={async () => {
                 try {
                   await fetchStudents();
