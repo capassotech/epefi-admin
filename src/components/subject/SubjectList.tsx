@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { IconAction } from '@/components/ui/icon-action';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FilterHeader, PlainHeader, SortableHeader } from '@/components/common/TableHeaders';
+import { CourseTags } from '@/components/common/CourseTags';
 import {
     INACTIVE_ROW_TEXT,
     STATUS_FILTER_OPTIONS,
@@ -31,7 +32,10 @@ interface SubjectListProps {
   status?: string;
   /** undefined = habilitadas y deshabilitadas */
   onStatusFilterChange?: (status: string | undefined) => void;
+  /** Si se pasa, se muestra la columna "Cursos" con los cursos de cada materia */
+  coursesById?: Record<string, { titulo: string }>;
 }
+
 
 export const SubjectList = ({
   subjects,
@@ -46,6 +50,7 @@ export const SubjectList = ({
   onSortChange,
   status,
   onStatusFilterChange,
+  coursesById,
 }: SubjectListProps) => {
   const navigate = useNavigate();
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
@@ -108,6 +113,12 @@ export const SubjectList = ({
   };
 
   const moduleCount = (m: Subject) => m.modulos?.length ?? 0;
+  const showCourses = !!coursesById;
+  // Ignora ids de cursos eliminados que hayan quedado en la materia
+  const courseTitles = (m: Subject) =>
+    (m.id_cursos ?? [])
+      .map((id) => coursesById?.[id]?.titulo)
+      .filter((title): title is string => !!title);
 
   const renderActions = (m: Subject) => {
     const isActive = isSubjectActive(m);
@@ -185,8 +196,9 @@ export const SubjectList = ({
                       <p className={`truncate text-sm font-medium ${isActive ? 'text-gray-900' : INACTIVE_ROW_TEXT}`}>
                         {m.nombre}
                       </p>
-                      <p className={`text-xs ${isActive ? 'text-gray-500' : INACTIVE_ROW_TEXT}`}>
+                      <p className={`truncate text-xs ${isActive ? 'text-gray-500' : INACTIVE_ROW_TEXT}`}>
                         {moduleCount(m)} {moduleCount(m) === 1 ? 'módulo' : 'módulos'}
+                        {showCourses && courseTitles(m).length > 0 && ` · ${courseTitles(m).join(', ')}`}
                       </p>
                     </div>
                     {renderActions(m)}
@@ -208,6 +220,7 @@ export const SubjectList = ({
                       onSortChange={onSortChange}
                       className="pl-4 pr-3"
                     />
+                    {showCourses && <PlainHeader>Cursos</PlainHeader>}
                     <PlainHeader>Módulos</PlainHeader>
                     <FilterHeader
                       label="Acciones"
@@ -232,6 +245,11 @@ export const SubjectList = ({
                         <td className={`pl-4 pr-3 py-1.5 font-medium ${isActive ? 'text-gray-900' : INACTIVE_ROW_TEXT}`}>
                           <span className="line-clamp-1">{m.nombre}</span>
                         </td>
+                        {showCourses && (
+                          <td className="px-3 py-1.5">
+                            <CourseTags titles={courseTitles(m)} muted={!isActive} />
+                          </td>
+                        )}
                         <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? 'text-gray-600' : INACTIVE_ROW_TEXT}`}>
                           {moduleCount(m)}
                         </td>

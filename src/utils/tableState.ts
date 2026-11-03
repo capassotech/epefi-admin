@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 export type SortDirection = "asc" | "desc";
 export type ColumnSort = { sortBy: string; sortDirection: SortDirection } | null;
 
+/** Límite "Todos" del paginador: suficientemente alto para mostrar el listado completo en una página */
+export const PAGE_LIMIT_ALL = 100_000;
+
 export const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "active", label: "Habilitados" },

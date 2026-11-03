@@ -54,6 +54,8 @@ export function SortableHeader({
   descHint = "Z → A",
   align = "left",
   className = "px-3",
+  trailing,
+  firstDirection = "asc",
 }: {
   label: string;
   column: string;
@@ -65,6 +67,10 @@ export function SortableHeader({
   descHint?: string;
   align?: "left" | "right";
   className?: string;
+  /** Contenido extra junto al encabezado (ej: un FilterMenuButton) */
+  trailing?: ReactNode;
+  /** Dirección del primer clic (ej: "desc" para fechas, más recientes primero) */
+  firstDirection?: SortDirection;
 }) {
   if (!onSortChange) {
     return (
@@ -77,17 +83,22 @@ export function SortableHeader({
   const isActive = sortBy === column;
   const Icon = !isActive ? ChevronsUpDown : sortDirection === "desc" ? ArrowDown : ArrowUp;
 
+  // Ciclo: primera dirección → la opuesta → sin orden de columna
+  const secondDirection: SortDirection = firstDirection === "asc" ? "desc" : "asc";
+  const currentDirection = sortDirection ?? firstDirection;
+  const hint = (dir: SortDirection) => (dir === "asc" ? ascHint : descHint);
+
   const handleClick = () => {
-    if (!isActive) onSortChange({ sortBy: column, sortDirection: "asc" });
-    else if (sortDirection !== "desc") onSortChange({ sortBy: column, sortDirection: "desc" });
+    if (!isActive) onSortChange({ sortBy: column, sortDirection: firstDirection });
+    else if (currentDirection === firstDirection) onSortChange({ sortBy: column, sortDirection: secondDirection });
     else onSortChange(null);
   };
 
   // Describe lo que hará el próximo clic
   const tooltip = !isActive
-    ? `Ordenar por ${label.toLowerCase()} (${ascHint})`
-    : sortDirection !== "desc"
-      ? `Ordenar por ${label.toLowerCase()} (${descHint})`
+    ? `Ordenar por ${label.toLowerCase()} (${hint(firstDirection)})`
+    : currentDirection === firstDirection
+      ? `Ordenar por ${label.toLowerCase()} (${hint(secondDirection)})`
       : `Quitar orden (volver a ${defaultLabel})`;
 
   return (
@@ -95,6 +106,7 @@ export function SortableHeader({
       className={cn(className, "py-2.5", align === "right" ? "text-right" : "text-left")}
       aria-sort={isActive ? (sortDirection === "desc" ? "descending" : "ascending") : "none"}
     >
+      <div className="group/header inline-flex items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -120,7 +132,66 @@ export function SortableHeader({
           <p>{tooltip}</p>
         </TooltipContent>
       </Tooltip>
+      {trailing}
+      </div>
     </th>
+  );
+}
+
+/**
+ * Botón de solo ícono que abre un menú de filtro; va dentro de otro encabezado
+ * (cuando la columna filtrada no tiene encabezado propio). "all" = sin filtro.
+ */
+export function FilterMenuButton({
+  tooltip,
+  value,
+  options,
+  onChange,
+}: {
+  tooltip: string;
+  value?: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string | undefined) => void;
+}) {
+  const current = value && value !== "all" ? value : "all";
+  const isActive = current !== "all";
+
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={tooltip}
+              className={cn(
+                "grid place-items-center rounded p-0.5 transition-all cursor-pointer hover:bg-gray-200/60",
+                isActive
+                  ? "text-gray-900"
+                  : "text-gray-300 hover:text-gray-700 focus-visible:text-gray-700 data-[state=open]:text-gray-700"
+              )}
+            >
+              <ListFilter className="w-3.5 h-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuRadioGroup
+          value={current}
+          onValueChange={(next) => onChange(next === "all" ? undefined : next)}
+        >
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -176,10 +247,10 @@ export function FilterHeader({
                 )}
                 <ListFilter
                   className={cn(
-                    "w-3.5 h-3.5 shrink-0 transition-opacity",
+                    "w-3.5 h-3.5 shrink-0 transition-colors",
                     isActive
-                      ? "opacity-100"
-                      : "opacity-0 group-hover:opacity-60 group-data-[state=open]:opacity-60"
+                      ? "text-gray-900"
+                      : "text-gray-300 group-hover:text-gray-600 group-data-[state=open]:text-gray-600"
                   )}
                 />
               </button>

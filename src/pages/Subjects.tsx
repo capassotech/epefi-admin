@@ -5,7 +5,7 @@ import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAn
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { toast } from 'sonner';
-import { type Subject } from '@/types/types';
+import { type Course, type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
 import { usePageHeader } from '@/context/PageHeaderContext';
@@ -86,6 +86,16 @@ export default function Subjects() {
     useEffect(() => {
         fetchMaterias();
     }, [fetchMaterias]);
+
+    // Cursos para mostrar a cuáles pertenece cada materia
+    const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
+    useEffect(() => {
+        CoursesAPI.getAllList()
+            .then((list) =>
+                setCoursesById(Object.fromEntries(list.map((c) => [String(c.id), c])))
+            )
+            .catch((err) => console.error("Error al cargar cursos:", err));
+    }, []);
 
     const handleDeleteClick = (id: string) => {
         setConfirmDeleteId(id);
@@ -231,6 +241,7 @@ export default function Subjects() {
                                 onDelete={handleDeleteClick} 
                                 onEdit={handleEditClick} 
                                 showTitle={false}
+                                coursesById={coursesById}
                                 sortBy={filters.sortBy}
                                 sortDirection={filters.sortDirection}
                                 onSortChange={handleSortChange}

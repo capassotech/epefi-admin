@@ -8,7 +8,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import { type StudentDB } from "@/types/types";
+import { type Course, type StudentDB } from "@/types/types";
+import { CoursesAPI } from "@/service/courses";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -162,6 +163,14 @@ export default function Students() {
     }
   }, [filters, pagination.limit, pagination.page, searchQuery]);
 
+  // Cursos para mostrar los asignados a cada usuario
+  const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
+  useEffect(() => {
+    CoursesAPI.getAllList()
+      .then((list) => setCoursesById(Object.fromEntries(list.map((c) => [String(c.id), c]))))
+      .catch((err) => console.error("Error al cargar cursos:", err));
+  }, []);
+
   useEffect(() => {
     if (skipNextAutoFetchRef.current) {
       skipNextAutoFetchRef.current = false;
@@ -301,6 +310,7 @@ export default function Students() {
               sortBy={filters.sortBy}
               sortDirection={filters.sortDirection}
               onSortChange={handleSortChange}
+              coursesById={coursesById}
               role={filters.role}
               onRoleChange={(role) => setHeaderFilter("role", role)}
               status={filters.status}
@@ -343,6 +353,7 @@ export default function Students() {
             setPagination((prev) => ({ ...prev, limit, page: 1 }))
           }
           scrollTargetRef={listTopRef}
+          allowAll
         />
       )}
 

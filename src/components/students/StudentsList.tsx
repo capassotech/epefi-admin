@@ -7,8 +7,11 @@ import {
   Calendar,
   Eye,
   Users,
+  ShieldCheck,
+  GraduationCap,
 } from "lucide-react";
-import { FilterHeader, SortableHeader } from "../common/TableHeaders";
+import { FilterHeader, FilterMenuButton, PlainHeader, SortableHeader } from "../common/TableHeaders";
+import { getFechaRegistroSeconds } from "@/utils/studentDates";
 import {
   INACTIVE_ROW_TEXT,
   STATUS_FILTER_OPTIONS,
@@ -45,6 +48,40 @@ interface StudentListProps {
   status?: string;
   /** undefined = activos e inactivos */
   onStatusFilterChange?: (status: string | undefined) => void;
+  /** Para nombrar los cursos asignados (tooltip) e ignorar cursos eliminados */
+  coursesById?: Record<string, { titulo: string }>;
+}
+
+/** Cantidad de cursos; al pasar el mouse lista sus nombres */
+function CourseCount({ titles }: { titles: string[] }) {
+  const named = titles.filter(Boolean);
+  if (named.length === 0) return <span>{titles.length}</span>;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default underline decoration-dotted decoration-gray-300 underline-offset-4">
+          {titles.length}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="space-y-0.5">
+          {named.map((title) => (
+            <p key={title}>{title}</p>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Fecha de registro en formato DD/MM/AA */
+function formatRegistrationDate(student: StudentDB): string {
+  const sec = getFechaRegistroSeconds(student);
+  if (!sec) return "—";
+  const date = new Date(sec * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${String(date.getFullYear()).slice(-2)}`;
 }
 
 const ROLE_OPTIONS = [
@@ -52,6 +89,33 @@ const ROLE_OPTIONS = [
   { value: "student", label: "Estudiante" },
   { value: "admin", label: "Administrador" },
 ];
+
+/** Ícono de rol antes del nombre: escudo para administradores, birrete para estudiantes */
+function RoleIcon({ student, muted }: { student: StudentDB; muted: boolean }) {
+  const isAdmin = Boolean(student.role?.admin);
+  const isStudent = Boolean(student.role?.student);
+  const label =
+    isAdmin && isStudent ? "Administrador y estudiante" : isAdmin ? "Administrador" : "Estudiante";
+  const Icon = isAdmin ? ShieldCheck : GraduationCap;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`grid place-items-center shrink-0 ${
+            muted ? "text-gray-300" : isAdmin ? "text-violet-600" : "text-gray-400"
+          }`}
+          aria-label={label}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function StudentList({
   students,
@@ -64,7 +128,18 @@ export function StudentList({
   onRoleChange,
   status,
   onStatusFilterChange,
+  coursesById,
 }: StudentListProps) {
+  // Con la lista de cursos cargada se ignoran ids de cursos eliminados;
+  // mientras tanto se usan los ids tal cual (sin nombre) para no mostrar 0
+  const courseTitles = (student: StudentDB): string[] => {
+    const ids = student.cursos_asignados ?? [];
+    if (!coursesById || Object.keys(coursesById).length === 0) return ids.map(() => "");
+    return ids
+      .map((id) => coursesById[id]?.titulo)
+      .filter((title): title is string => !!title);
+  };
+
   const navigate = useNavigate();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -201,29 +276,15 @@ export function StudentList({
                   aria-label={`Seleccionar ${getFullName(student)}`}
                 />
               </div>
-              <div className="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-semibold text-sm">
-                  {student.nombre?.charAt(0).toUpperCase() || "?"}
-                </span>
-              </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900 break-words">{getFullName(student)}</p>
+                <p className="flex items-center gap-2 font-semibold text-gray-900 break-words">
+                  <RoleIcon student={student} muted={!(student.activo ?? false)} />
+                  {getFullName(student)}
+                </p>
                 <p className="text-sm text-gray-600 truncate flex items-center gap-1 mt-0.5">
                   <Mail className="w-3.5 h-3.5 flex-shrink-0" />
                   {student.email || "Sin email"}
                 </p>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                  {student.role?.admin && (
-                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-purple-100 text-purple-800">
-                      Admin
-                    </span>
-                  )}
-                  {student.role?.student && (
-                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-blue-100 text-blue-800">
-                      Alumno
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
 
@@ -335,6 +396,16 @@ export function StudentList({
                 sortBy={sortBy}
                 sortDirection={sortDirection}
                 onSortChange={onSortChange}
+                trailing={
+                  onRoleChange && (
+                    <FilterMenuButton
+                      tooltip="Filtrar por rol"
+                      value={role}
+                      options={ROLE_OPTIONS}
+                      onChange={onRoleChange}
+                    />
+                  )
+                }
               />
               <SortableHeader
                 label="Email"
@@ -344,13 +415,18 @@ export function StudentList({
                 sortDirection={sortDirection}
                 onSortChange={onSortChange}
               />
-              <FilterHeader
-                label="Rol"
-                tooltip="Filtrar por rol"
-                value={role}
-                options={ROLE_OPTIONS}
-                onChange={onRoleChange}
+              <SortableHeader
+                label="Inicio"
+                column="date"
+                firstDirection="desc"
+                ascHint="más antiguos primero"
+                descHint="más recientes primero"
+                defaultLabel="más recientes primero"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
               />
+              <PlainHeader>Cursos</PlainHeader>
               <FilterHeader
                 label="Acciones"
                 tooltip="Filtrar por estado (habilitados / deshabilitados)"
@@ -382,25 +458,22 @@ export function StudentList({
                     aria-label={`Seleccionar ${getFullName(student)}`}
                   />
                 </td>
-                <td className={`px-3 py-1.5 whitespace-nowrap font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
-                  {getFullName(student)}
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <RoleIcon student={student} muted={!isActive} />
+                    <span className={`font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                      {getFullName(student)}
+                    </span>
+                  </div>
                 </td>
                 <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
                   {student.email || "Sin email"}
                 </td>
-                <td className="px-3 py-1.5 whitespace-nowrap">
-                  <div className={`flex items-center gap-1 ${isActive ? "" : "opacity-50 [&>span]:line-through [&>span]:decoration-red-500"}`}>
-                    {student.role?.admin && (
-                      <span className="px-2 py-0.5 inline-flex text-xs font-medium rounded-full bg-purple-50 text-purple-700">
-                        Admin
-                      </span>
-                    )}
-                    {student.role?.student && (
-                      <span className="px-2 py-0.5 inline-flex text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-                        Estudiante
-                      </span>
-                    )}
-                  </div>
+                <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                  {formatRegistrationDate(student)}
+                </td>
+                <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                  <CourseCount titles={courseTitles(student)} />
                 </td>
                 <td
                   className="pl-3 pr-4 py-1.5 whitespace-nowrap"
