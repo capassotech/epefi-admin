@@ -1,9 +1,10 @@
 import { Dialog, DialogTrigger } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Loader2, CheckCircle2, PlusCircle, BookOpen, CircleMinus } from "lucide-react";
-import { Badge } from "../ui/badge";
-import { ScrollArea } from "../ui/scroll-area";
+import { Loader2, CheckCircle2, PlusCircle, BookOpen, CircleMinus, Circle, Search } from "lucide-react";
+import { Input } from "../ui/input";
+import { IconAction } from "../ui/icon-action";
+import { TooltipProvider } from "../ui/tooltip";
 import { toast } from "sonner";
 import { type Course, type StudentDB } from "@/types/types";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
@@ -383,188 +384,234 @@ export const CoursesAsignStudentModal = ({
         loadData();
     }, [id, getErrorMessage]);
 
+    const [courseSearch, setCourseSearch] = useState("");
+
+    const toggleSelected = (courseId: string) =>
+        setSelectedCourseIds((prev) =>
+            prev.includes(courseId) ? prev.filter((idCurso: string) => idCurso !== courseId) : [...prev, courseId]
+        );
+
+    const normalizedSearch = courseSearch.trim().toLowerCase();
+    const filteredAvailable = normalizedSearch
+        ? availableCourses.filter((curso) => curso.titulo?.toLowerCase().includes(normalizedSearch))
+        : availableCourses;
+
+    const initials = student ? `${student.nombre?.[0] ?? ""}${student.apellido?.[0] ?? ""}`.toUpperCase() : "";
+
+    /** Estado y precio del curso en una línea discreta */
+    const courseMeta = (curso: Course) => (
+        <p className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span
+                className={`w-1.5 h-1.5 rounded-full ${curso.estado === "activo" ? "bg-green-500" : "bg-gray-300"}`}
+                aria-hidden="true"
+            />
+            {curso.estado === "activo" ? "Habilitado" : "Deshabilitado"}
+            <span className="text-gray-300">·</span>
+            <span className="tabular-nums">{formatCurrency(curso.precio)}</span>
+        </p>
+    );
+
+    const panel = (title: string, count: number, children: React.ReactNode, action?: React.ReactNode) => (
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/70 bg-white">
+            <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    {title}
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
+                        {count}
+                    </span>
+                </h3>
+                {action}
+            </header>
+            {children}
+        </section>
+    );
+
+    const emptyState = (title: string, hint: string) => (
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 py-10 text-center">
+            <BookOpen className="mb-1 w-6 h-6 text-gray-300" />
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="text-xs text-gray-400">{hint}</p>
+        </div>
+    );
 
     return (
-        <Dialog open={assignDialogOpen} onOpenChange={(open) => { setAssignDialogOpen(open); if (!open) setSelectedCourseIds([]); }}>
+        <Dialog
+            open={assignDialogOpen}
+            onOpenChange={(open) => {
+                setAssignDialogOpen(open);
+                if (!open) {
+                    setSelectedCourseIds([]);
+                    setCourseSearch("");
+                }
+            }}
+        >
             {showTrigger && (
                 <DialogTrigger asChild>
                     <Button className="text-zinc-200" variant="outline" onClick={() => setAssignDialogOpen(true)}>Asignar Cursos</Button>
                 </DialogTrigger>
             )}
-            <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] overflow-x-hidden overflow-y-auto flex flex-col min-w-0">
-                <DialogHeader className="min-w-0">
-                    <div className="space-y-1 min-w-0">
-                        <DialogTitle className="text-2xl font-semibold text-gray-900">Asignar cursos</DialogTitle>
-                        <DialogDescription className="text-sm text-gray-500">
-                            Gestiona los cursos asociados al estudiante. Puedes quitar los existentes o sumar nuevos.
-                        </DialogDescription>
-                        {student && (
-                            <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-600 min-w-0">
-                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 max-w-full truncate">
-                                    {student.nombre} {student.apellido}
-                                </Badge>
-                                <span className="text-gray-400 shrink-0">•</span>
-                                <span className="min-w-0 truncate">{student.email}</span>
-                            </div>
-                        )}
-                    </div>
+            <DialogContent className="flex h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-5xl sm:max-w-5xl flex-col gap-0 overflow-hidden p-0">
+                <TooltipProvider delayDuration={300}>
+                <DialogHeader className="shrink-0 border-b border-gray-100 px-5 py-4 text-left sm:px-6">
+                    <DialogTitle className="text-lg font-semibold text-gray-900">Asignar cursos</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Gestioná los cursos del estudiante: quitá los que ya tiene o sumá nuevos.
+                    </DialogDescription>
+                    {student && (
+                        <div className="mt-1 flex min-w-0 items-center gap-2.5">
+                            <span className="grid place-items-center w-7 h-7 shrink-0 rounded-full bg-gray-100 text-[11px] font-semibold text-gray-600">
+                                {initials || "?"}
+                            </span>
+                            <p className="min-w-0 truncate text-sm text-gray-600">
+                                <span className="font-medium text-gray-900">{student.nombre} {student.apellido}</span>
+                                <span className="text-gray-400"> · {student.email}</span>
+                            </p>
+                        </div>
+                    )}
                 </DialogHeader>
-                {/* En mobile el grid pasa a 1 columna; el wrapper scrollea verticalmente.
-                    En desktop cada columna tiene su propio ScrollArea de altura fija. */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden lg:overflow-hidden min-w-0">
+
+                <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50/60 p-4 sm:p-5 lg:overflow-hidden">
                     {loading ? (
-                        <div className="flex items-center justify-center py-10">
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin text-blue-600" />
-                            <span className="text-sm text-gray-500">Cargando cursos...</span>
+                        <div className="flex h-full items-center justify-center gap-2 py-10 text-sm text-gray-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Cargando cursos…
                         </div>
                     ) : (
-                        <div className="grid gap-0 lg:gap-6 lg:grid-cols-2 lg:divide-x lg:divide-gray-100 lg:h-full min-w-0 overflow-x-hidden">
-                            {/* ── Columna izquierda: cursos ya asignados ── */}
-                            <div className="pr-0 lg:pr-6 space-y-3 pb-4 lg:pb-0 min-w-0 overflow-x-hidden">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Cursos asignados</h3>
-                                    <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
-                                        {assignedCourses.length}
-                                    </Badge>
-                                </div>
-                                {/* h-auto en mobile para que no genere doble scroll, fijo en desktop */}
-                                <ScrollArea className="h-auto lg:h-[300px] pr-2">
-                                    {assignedCourses.length === 0 ? (
-                                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center">
-                                            <BookOpen className="w-6 h-6 mx-auto mb-2 text-gray-300" />
-                                            <p className="text-sm text-gray-500">El estudiante aún no tiene cursos asignados.</p>
-                                            <p className="text-xs text-gray-400 mt-1">Selecciona cursos desde abajo.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {assignedCourses.map((curso) => (
-                                                <div
-                                                    key={`assigned-${curso.id}`}
-                                                    className="group border border-gray-200 bg-white rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-200 min-w-0 max-w-full overflow-hidden"
-                                                >
-                                                    <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0">
-                                                        <div className="min-w-0 flex-1 overflow-hidden">
-                                                            <h4 className="text-sm font-semibold text-gray-900 truncate">
-                                                                {curso.titulo}
-                                                            </h4>
-                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
-                                                                {curso.descripcion || 'Sin descripción'}
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => unassignCourse(curso.id)}
-                                                            disabled={assigning}
-                                                            className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 shrink-0"
-                                                        >
-                                                            <CircleMinus className="w-3.5 h-3.5" />
-                                                            Quitar
-                                                        </button>
-                                                    </div>
+                        <div className="grid min-h-0 gap-4 lg:h-full lg:grid-cols-2">
+                            {/* ── Cursos ya asignados ── */}
+                            {panel(
+                                "Asignados",
+                                assignedCourses.length,
+                                assignedCourses.length === 0 ? (
+                                    emptyState("Todavía no tiene cursos asignados.", "Elegí cursos de la lista de disponibles.")
+                                ) : (
+                                    <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
+                                        {assignedCourses.map((curso) => (
+                                            <li key={`assigned-${curso.id}`} className="flex items-center gap-3 px-4 py-2.5">
+                                                <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-medium text-gray-900" title={curso.titulo}>
+                                                        {curso.titulo}
+                                                    </p>
+                                                    {courseMeta(curso)}
                                                 </div>
-                                            ))}
+                                                <IconAction
+                                                    label="Quitar curso"
+                                                    onClick={() => unassignCourse(curso.id)}
+                                                    disabled={assigning}
+                                                    className="hover:bg-red-50 hover:text-red-600"
+                                                >
+                                                    <CircleMinus />
+                                                </IconAction>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )
+                            )}
+
+                            {/* ── Cursos disponibles para sumar ── */}
+                            {panel(
+                                "Disponibles",
+                                availableCourses.length,
+                                <>
+                                    {availableCourses.length > 0 && (
+                                        <div className="border-b border-gray-100 px-4 py-2.5">
+                                            <div className="relative">
+                                                <Search className="pointer-events-none absolute left-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-gray-400" />
+                                                <Input
+                                                    value={courseSearch}
+                                                    onChange={(e) => setCourseSearch(e.target.value)}
+                                                    placeholder="Buscar curso..."
+                                                    className="h-8 pl-8 text-sm"
+                                                />
+                                            </div>
                                         </div>
                                     )}
-                                </ScrollArea>
-                            </div>
-
-                            {/* Separador horizontal visible solo en mobile */}
-                            <div className="block lg:hidden border-t border-gray-200 my-2" />
-
-                            {/* ── Columna derecha: cursos disponibles ── */}
-                            <div className="pl-0 lg:pl-6 space-y-3 pt-2 lg:pt-0 min-w-0 overflow-x-hidden">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <PlusCircle className="w-4 h-4 text-blue-600 shrink-0" />
-                                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide truncate">Agregar cursos</h3>
-                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 shrink-0">
-                                        {availableCourses.length}
-                                    </Badge>
-                                </div>
-                                <ScrollArea className="h-auto lg:h-[300px] pr-2 max-w-full overflow-x-hidden">
                                     {availableCourses.length === 0 ? (
-                                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-6 text-center">
-                                            <BookOpen className="w-6 h-6 mx-auto mb-2 text-gray-300" />
-                                            <p className="text-sm text-gray-500">No hay cursos disponibles para asignar.</p>
-                                            <p className="text-xs text-gray-400 mt-1">Todos los cursos ya están asociados a este estudiante.</p>
-                                        </div>
+                                        emptyState("No hay cursos para sumar.", "Ya tiene asignados todos los cursos.")
+                                    ) : filteredAvailable.length === 0 ? (
+                                        emptyState("Ningún curso coincide con la búsqueda.", "Probá con otro nombre.")
                                     ) : (
-                                        <div className="space-y-3 min-w-0">
-                                            {availableCourses.map((curso: Course) => {
+                                        <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
+                                            {filteredAvailable.map((curso: Course) => {
                                                 const isSelected = selectedCourseIds.includes(curso.id);
                                                 return (
-                                                    <button
-                                                        key={`available-${curso.id}`}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSelectedCourseIds((prev) =>
-                                                                prev.includes(curso.id)
-                                                                    ? prev.filter((idCurso: string) => idCurso !== curso.id)
-                                                                    : [...prev, curso.id]
-                                                            );
-                                                        }}
-                                                        className={`w-full max-w-full min-w-0 box-border text-left border rounded-lg p-3 sm:p-4 transition-all duration-200 flex items-start justify-between gap-2 sm:gap-3 overflow-hidden ${isSelected ? 'border-blue-500 outline outline-2 outline-blue-100 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/60'}`}
-                                                    >
-                                                        <div className="min-w-0 flex-1 overflow-hidden">
-                                                            <h4 className="text-sm font-semibold text-gray-900 truncate">
-                                                                {curso.titulo}
-                                                            </h4>
-                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
-                                                                {curso.descripcion || 'Sin descripción'}
-                                                            </p>
-                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                                <Badge variant="outline" className="text-[0.7rem] border-gray-200 text-gray-600">
-                                                                    {curso.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                                                                </Badge>
-                                                                <Badge variant="outline" className="text-[0.7rem] border-gray-200 text-gray-600">
-                                                                    {formatCurrency(curso.precio)}
-                                                                </Badge>
+                                                    <li key={`available-${curso.id}`}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleSelected(curso.id)}
+                                                            aria-pressed={isSelected}
+                                                            className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
+                                                                isSelected ? "bg-blue-50/60" : "hover:bg-gray-50"
+                                                            }`}
+                                                        >
+                                                            {isSelected ? (
+                                                                <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
+                                                            ) : (
+                                                                <Circle className="w-4 h-4 shrink-0 text-gray-300" />
+                                                            )}
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-medium text-gray-900" title={curso.titulo}>
+                                                                    {curso.titulo}
+                                                                </p>
+                                                                {courseMeta(curso)}
                                                             </div>
-                                                        </div>
-                                                        <div className="flex flex-col items-end gap-2 shrink-0">
-                                                            <Badge className={`transition-colors text-xs whitespace-nowrap ${isSelected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}>
-                                                                {isSelected ? (
-                                                                    <span className="inline-flex items-center gap-1">
-                                                                        <CheckCircle2 className="w-3 h-3" />
-                                                                        Listo
-                                                                    </span>
-                                                                ) : (
-                                                                    'Asignar'
-                                                                )}
-                                                            </Badge>
-                                                        </div>
-                                                    </button>
+                                                        </button>
+                                                    </li>
                                                 );
                                             })}
-                                        </div>
+                                        </ul>
                                     )}
-                                </ScrollArea>
-                            </div>
+                                </>,
+                                selectedCourseIds.length > 0 ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedCourseIds([])}
+                                        className="text-xs text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                                    >
+                                        Limpiar selección
+                                    </button>
+                                ) : undefined
+                            )}
                         </div>
                     )}
                 </div>
-                <DialogFooter className="border-t border-gray-100 pt-3 mt-2">
+
+                <DialogFooter className="shrink-0 border-t border-gray-100 px-5 py-3 sm:px-6">
                     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-sm text-gray-500">
-                            {selectedCourseIds.length === 0 ? (
-                                <span>No has seleccionado cursos nuevos.</span>
-                            ) : (
-                                <span>
-                                    {selectedCourseIds.length} curso{selectedCourseIds.length > 1 ? 's' : ''} seleccionado{selectedCourseIds.length > 1 ? 's' : ''} para asignar
-                                </span>
-                            )}
+                        <p className="text-sm text-gray-500">
+                            {selectedCourseIds.length === 0
+                                ? "Seleccioná cursos disponibles para asignarlos."
+                                : `${selectedCourseIds.length} curso${selectedCourseIds.length > 1 ? "s" : ""} seleccionado${selectedCourseIds.length > 1 ? "s" : ""}`}
+                        </p>
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-gray-500"
+                                onClick={() => setAssignDialogOpen(false)}
+                                disabled={assigning}
+                            >
+                                Cerrar
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={selectedCourseIds.length === 0 || assigning || !student}
+                                onClick={assignCourse}
+                            >
+                                {assigning ? (
+                                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                                ) : (
+                                    <PlusCircle className="w-4 h-4 mr-1.5" />
+                                )}
+                                {selectedCourseIds.length > 1
+                                    ? `Asignar ${selectedCourseIds.length} cursos`
+                                    : "Asignar curso"}
+                            </Button>
                         </div>
-                        <Button
-                            type="button"
-                            className="w-full sm:w-auto"
-                            disabled={selectedCourseIds.length === 0 || assigning || !student}
-                            onClick={assignCourse}
-                        >
-                            {assigning ? <Loader2 className="w-4 h-4 mr-2 animate-spin cursor-pointer" /> : null}
-                            {selectedCourseIds.length > 1 ? 'Asignar cursos seleccionados' : 'Asignar curso seleccionado'}
-                        </Button>
                     </div>
                 </DialogFooter>
+                </TooltipProvider>
             </DialogContent>
         </Dialog>
     )
