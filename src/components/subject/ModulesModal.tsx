@@ -32,6 +32,14 @@ interface ModulesModalProps {
     courseId?: string | null;
     editingModule?: Module | null;
     onModuleUpdated?: (subjectData: Module) => Promise<void>;
+    /**
+     * "page": dibuja solo el formulario (sin diálogo ni botones) para usarlo dentro de una página;
+     * las acciones las pone la página con un botón submit apuntando a `formId`.
+     */
+    variant?: "dialog" | "page";
+    formId?: string;
+    /** Avisa a la página cuando empieza/termina el guardado (subida de archivos incluida) */
+    onLoadingChange?: (loading: boolean) => void;
 }
 
 
@@ -42,8 +50,16 @@ const ModulesModal = ({
     onModuleCreated,
     editingModule,
     onModuleUpdated,
+    variant = "dialog",
+    formId,
+    onLoadingChange,
 }: ModulesModalProps) => {
     const [loading, setLoading] = useState(false);
+    const isPage = variant === "page";
+
+    useEffect(() => {
+        onLoadingChange?.(loading);
+    }, [loading, onLoadingChange]);
     const [moduleForm, setModuleForm] = useState<Module>({
         id: "",
         titulo: "",
@@ -539,53 +555,8 @@ const ModulesModal = ({
         }
     };
 
-    // Mantener el Dialog montado aunque esté cerrado evita "ghost clicks" en mobile:
-    // el unmount instantáneo deja pasar el toque al modal de debajo.
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => {
-            if (!open) onCancel();
-        }}>
-            <DialogContent
-                className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                onCloseAutoFocus={(e) => {
-                    // Evita que el foco vuelva al padre y dispare dismiss en cascada
-                    e.preventDefault();
-                }}
-                onInteractOutside={(e) => {
-                    // Evitar cerrar al interactuar con overlays/diálogos anidados (p. ej. vista previa de video)
-                    if (isVideoModalOpen) e.preventDefault();
-                }}
-                onPointerDownOutside={(e) => {
-                    if (isVideoModalOpen) e.preventDefault();
-                }}
-                onEscapeKeyDown={(e) => {
-                    if (isVideoModalOpen) {
-                        e.preventDefault();
-                        setIsVideoModalOpen(false);
-                        setSelectedVideoUrl(null);
-                    }
-                }}
-            >
-                <DialogTitle className="sr-only">
-                    {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
-                </DialogTitle>
-                <DialogDescription className="sr-only">
-                    {editingModule 
-                        ? 'Formulario para editar los datos del módulo' 
-                        : 'Formulario para crear un nuevo módulo'}
-                </DialogDescription>
-                <div
-                    className="w-full min-w-0 overflow-x-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className="flex items-center justify-between p-4 sm:p-6 border-b">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 break-words pr-8">
-                            {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
-                        </h2>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
+    const formContent = (
+                    <form id={formId} onSubmit={handleSubmit} className={isPage ? "space-y-6" : "p-4 sm:p-6 space-y-6"}>
                         <div className='flex gap-4 w-full'>
                             <div className='w-full'>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1083,6 +1054,8 @@ const ModulesModal = ({
                             )}
                         </div>
 
+                        {/* En modo página las acciones viven en la ficha lateral */}
+                        {!isPage && (
                         <div className="flex flex-col-reverse gap-2 pt-4 border-t sm:flex-row sm:justify-end sm:space-x-3">
                             <Button
                                 type="button"
@@ -1106,11 +1079,11 @@ const ModulesModal = ({
                                 )}
                             </Button>
                         </div>
+                        )}
                     </form>
-                </div>
-            </DialogContent>
-            
-            {/* Modal para ver video */}
+    );
+
+    const videoPreviewDialog = (
             <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
                 <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl overflow-x-hidden p-4 sm:p-6 [&>button]:hidden">
                     <DialogTitle className="sr-only">
@@ -1333,6 +1306,69 @@ const ModulesModal = ({
                     </div>
                 </DialogContent>
             </Dialog>
+    );
+
+    if (isPage) {
+        return (
+            <>
+                {formContent}
+                {videoPreviewDialog}
+            </>
+        );
+    }
+
+    // Mantener el Dialog montado aunque esté cerrado evita "ghost clicks" en mobile:
+    // el unmount instantáneo deja pasar el toque al modal de debajo.
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) onCancel();
+        }}>
+            <DialogContent
+                className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => {
+                    // Evita que el foco vuelva al padre y dispare dismiss en cascada
+                    e.preventDefault();
+                }}
+                onInteractOutside={(e) => {
+                    // Evitar cerrar al interactuar con overlays/diálogos anidados (p. ej. vista previa de video)
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onPointerDownOutside={(e) => {
+                    if (isVideoModalOpen) e.preventDefault();
+                }}
+                onEscapeKeyDown={(e) => {
+                    if (isVideoModalOpen) {
+                        e.preventDefault();
+                        setIsVideoModalOpen(false);
+                        setSelectedVideoUrl(null);
+                    }
+                }}
+            >
+                <DialogTitle className="sr-only">
+                    {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    {editingModule
+                        ? 'Formulario para editar los datos del módulo'
+                        : 'Formulario para crear un nuevo módulo'}
+                </DialogDescription>
+                <div
+                    className="w-full min-w-0 overflow-x-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 break-words pr-8">
+                            {editingModule ? 'Editar Módulo' : 'Crear Nuevo Módulo'}
+                        </h2>
+                    </div>
+
+                    {formContent}
+                </div>
+            </DialogContent>
+
+            {/* Modal para ver video */}
+            {videoPreviewDialog}
         </Dialog>
     );
 };

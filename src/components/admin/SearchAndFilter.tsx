@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, ArrowUpDown, Plus, User } from "lucide-react";
 import { FilterChips, type FilterChip } from "@/components/common/FilterChips";
-import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
 import type { StudentDB } from "@/types/types";
 
@@ -339,15 +338,14 @@ export const SearchAndFilter = ({
               {!hideCreateButton && onCreateNew && (
                 <div className="sm:hidden flex-1 min-w-0 ml-auto">
                   {isStudentPage ? (
-                    <CreateUserModal onUserCreated={onCreateNew}>
-                      <Button
-                        className="cursor-pointer w-full justify-center px-4"
-                        data-tour="create-user"
-                      >
-                        <User className="w-4 h-4 mr-2" />
-                        Crear usuario
-                      </Button>
-                    </CreateUserModal>
+                    <Button
+                      onClick={() => onCreateNew?.()}
+                      className="cursor-pointer w-full justify-center px-4"
+                      data-tour="create-user"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Crear usuario
+                    </Button>
                   ) : (
                     <Button
                       onClick={() => onCreateNew?.()}
@@ -378,10 +376,14 @@ export const SearchAndFilter = ({
           {!hideCreateButton && onCreateNew && (
             <div className={extraActions ? "hidden sm:block" : undefined}>
               {isStudentPage ? (
-                <CreateUserModal
-                  onUserCreated={onCreateNew}
-                  triggerText={createButtonText}
-                />
+                <Button
+                  onClick={() => onCreateNew?.()}
+                  className="cursor-pointer"
+                  data-tour="create-user"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  {createButtonText}
+                </Button>
               ) : (
                 <Button
                   onClick={() => onCreateNew?.()}

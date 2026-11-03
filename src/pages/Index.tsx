@@ -12,7 +12,9 @@ import CreateModule from "./CreateModule";
 import Students from "./Students";
 import { SubjectDetail } from "./SubjectDetail";
 import { StudentDetail } from "./StudentDetail";
-import StudentEdit from "./StudentEdit";
+import StudentForm from "./StudentForm";
+import ModuleForm from "./ModuleForm";
+import SubjectForm from "./SubjectForm";
 import Profile from "./Profile";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
 import { SidebarLayoutProvider } from "@/context/SidebarLayoutContext";
@@ -44,11 +46,16 @@ const Index = () => {
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/products/:id/edit" element={<EditProduct />} />
           <Route path="/subjects" element={<Subjects />} />
+          <Route path="/subjects/new" element={<SubjectForm />} />
           <Route path="/subjects/:id" element={<SubjectDetail />} />
+          <Route path="/subjects/:id/edit" element={<SubjectForm />} />
+          <Route path="/subjects/:subjectId/modules/new" element={<ModuleForm />} />
+          <Route path="/subjects/:subjectId/modules/:moduleId/edit" element={<ModuleForm />} />
           <Route path="/modules/create" element={<CreateModule />} />
           <Route path="/students" element={<Students />} />
+          <Route path="/students/new" element={<StudentForm />} />
           <Route path="/students/:id" element={<StudentDetail />} />
-          <Route path="/students/:id/edit" element={<StudentEdit />} />
+          <Route path="/students/:id/edit" element={<StudentForm />} />
           <Route path="/exams" element={<Exams />} />
           <Route path="/exams/create" element={<CreateExam />} />
           <Route path="/exams/completed" element={<CompletedExams />} />

@@ -22,7 +22,6 @@ import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject, Module } from '@/types/types';
 import { formatDictadoDateForDisplay } from '@/utils/courseDates';
 import ModulesList from '@/components/subject/ModulesList';
-import ModulesModal from '@/components/subject/ModulesModal';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import {
   DetailLayout,
@@ -68,9 +67,6 @@ const ProductDetail = () => {
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewImageOpen, setPreviewImageOpen] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
-  const [editingModuleMateriaId, setEditingModuleMateriaId] = useState<string | null>(null);
-  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [confirmDeleteModuleId, setConfirmDeleteModuleId] = useState<string | null>(null);
   const [confirmDeleteMateriaId, setConfirmDeleteMateriaId] = useState<string | null>(null);
   const [isDeleteModuleModalOpen, setIsDeleteModuleModalOpen] = useState(false);
@@ -157,10 +153,12 @@ const ProductDetail = () => {
     });
   };
 
+  // La edición del módulo se hace en su propia página y vuelve a este curso al guardar
   const handleEditModule = (module: Module, materiaId: string) => {
-    setEditingModule(module);
-    setEditingModuleMateriaId(materiaId);
-    setIsModuleModalOpen(true);
+    navigate(
+      `/subjects/${encodeURIComponent(materiaId)}/modules/${encodeURIComponent(module.id)}/edit`,
+      { state: { returnTo: `/products/${encodeURIComponent(id || '')}` } }
+    );
   };
 
   const handleDeleteModuleClick = (moduleId: string, materiaId: string) => {
@@ -200,48 +198,6 @@ const ProductDetail = () => {
     } finally {
       setDeleteModuleLoading(false);
       setIsDeleteModuleModalOpen(false);
-    }
-  };
-
-  const handleCancelModuleModal = () => {
-    setIsModuleModalOpen(false);
-    setEditingModule(null);
-    setEditingModuleMateriaId(null);
-  };
-
-  const handleModuleUpdated = async (moduleData: Module): Promise<void> => {
-    try {
-      await CoursesAPI.updateModule(moduleData.id, {
-        id: moduleData.id,
-        titulo: moduleData.titulo,
-        descripcion: moduleData.descripcion,
-        id_materia: moduleData.id_materia,
-        tipo_contenido: moduleData.tipo_contenido,
-        bibliografia: moduleData.bibliografia,
-        url_miniatura: moduleData.url_miniatura,
-        url_archivo: moduleData.url_archivo,
-        url_video: moduleData.url_video,
-        nombres_archivos: moduleData.nombres_archivos || "",
-        nombres_videos: moduleData.nombres_videos || "",
-      });
-
-      const materiaId = editingModuleMateriaId || moduleData.id_materia;
-      if (materiaId) {
-        setModulosPorMateria(prev => ({
-          ...prev,
-          [materiaId]: (prev[materiaId] || []).map(m =>
-            m.id === moduleData.id ? { ...m, ...moduleData } : m
-          ),
-        }));
-      }
-
-      toast.success('Módulo actualizado con éxito');
-      setEditingModule(null);
-      setEditingModuleMateriaId(null);
-      setIsModuleModalOpen(false);
-    } catch (e) {
-      console.error('Error al actualizar módulo:', e);
-      throw e as Error;
     }
   };
 
@@ -430,14 +386,6 @@ const ProductDetail = () => {
         </DialogContent>
       </Dialog>
 
-      <ModulesModal
-        isOpen={isModuleModalOpen}
-        onCancel={handleCancelModuleModal}
-        onModuleCreated={async () => ({ id: '' })}
-        courseId={editingModuleMateriaId}
-        editingModule={editingModule}
-        onModuleUpdated={handleModuleUpdated}
-      />
 
       <ConfirmDeleteModal
         isOpen={isDeleteModuleModalOpen}

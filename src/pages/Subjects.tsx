@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SubjectList } from '../components/subject/SubjectList';
-import SubjectModal from '../components/subject/SubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
-import { toast } from 'sonner';
 import { type Course, type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
@@ -29,8 +27,6 @@ export default function Subjects() {
     usePageHeader({ title: 'Materias', tourSteps: subjectsTourSteps });
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [pagination, setPagination] = useState<PaginationMeta>({
         page: 1,
         limit: 10,
@@ -125,67 +121,9 @@ export default function Subjects() {
         setConfirmDeleteId(null);
     };
 
-    const handleCreateSubject = async (subjectData: { nombre: string, id_cursos: string[], modulos: string[] }): Promise<Subject> => {
-        try {
-            const payload = {
-                nombre: subjectData.nombre,
-                id_cursos: subjectData.id_cursos,
-                modulos: subjectData.modulos || [],
-            };
-
-            const response = await CoursesAPI.createMateria({
-                nombre: payload.nombre,
-                id_cursos: payload.id_cursos,
-                modulos: payload.modulos,
-            });
-
-            // La respuesta del backend puede incluir todos los campos, usarla directamente si está disponible
-            const newSubject: Subject = {
-                id: response.id,
-                nombre: response.nombre || payload.nombre,
-                id_cursos: response.id_cursos || payload.id_cursos,
-                modulos: response.modulos || payload.modulos,
-            };
-
-            setMaterias(prev => [newSubject, ...prev]);
-
-            // No mostrar toast aquí: SubjectModal muestra el mensaje del backend
-            return newSubject;
-        } catch (err: unknown) {
-            throw err;
-        }
-    };
-
-    const handleCancelCreate = () => {
-        setIsCreateModalOpen(false);
-        setEditingSubject(null);
-    };
-
-    const handleEditClick = (subject: Subject) => {
-        setEditingSubject(subject);
-        setIsCreateModalOpen(true);
-    };
-
-    const handleUpdateSubject = async (subjectData: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }): Promise<void> => {
-        try {
-            await CoursesAPI.updateMateria(subjectData.id, {
-                id: subjectData.id,
-                nombre: subjectData.nombre,
-                id_cursos: subjectData.id_cursos,
-                modulos: subjectData.modulos,
-            });
-
-            // Actualizar el estado local
-            setMaterias(prev => prev.map(m => 
-                m.id === subjectData.id 
-                    ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
-                    : m
-            ));
-            toast.success("Materia actualizada exitosamente");
-        } catch (err: unknown) {
-            throw err;
-        }
-    };
+    // Crear y editar materias se hace en su propia página
+    const goToCreate = () => navigate('/subjects/new');
+    const handleEditClick = (subject: Subject) => navigate(`/subjects/${encodeURIComponent(subject.id)}/edit`);
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
@@ -221,7 +159,7 @@ export default function Subjects() {
                 <SearchAndFilter
                     onSearch={handleSearch}
                     onFilter={handleFilter}
-                    onCreateNew={() => setIsCreateModalOpen(true)}
+                    onCreateNew={goToCreate}
                     createButtonText="Crear materia"
                     showStateFilter={false}
                     currentFilters={filters}
@@ -288,7 +226,7 @@ export default function Subjects() {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron materias</h3>
                     <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear una nueva materia.</p>
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={goToCreate}
                         className="admin-button cursor-pointer"
                     >
                         Crear primera materia
@@ -315,23 +253,6 @@ export default function Subjects() {
                 deleteLoading={deleteLoading}
                 itemName={materias.find(m => m.id === confirmDeleteId)?.nombre || "esta materia"}
                 id={confirmDeleteId || ""}
-            />
-
-            <SubjectModal
-                isOpen={isCreateModalOpen}
-                onCancel={handleCancelCreate}
-                onSubjectCreated={handleCreateSubject}
-                courseId={null} 
-                editingSubject={editingSubject}
-                onSubjectUpdated={handleUpdateSubject}
-                onGoToModules={async (subjectId: string) => {
-                    navigate(`/modules/create?subjectId=${subjectId}`);
-                }}
-                onSubjectDeleted={async (subjectId: string) => {
-                    // Actualizar el estado local removiendo la materia eliminada
-                    setMaterias(prev => prev.filter(m => m.id !== subjectId));
-                    setEditingSubject(null);
-                }}
             />
         </div>
     );

@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { usePageHeader } from '@/context/PageHeaderContext';
 import { Button } from '@/components/ui/button';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { BookOpen, GraduationCap, Loader2, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, GraduationCap, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Course, Module, Subject } from '@/types/types';
 import {
@@ -19,7 +19,6 @@ import {
 } from '@/components/common/DetailLayout';
 import ModulesList from '@/components/subject/ModulesList';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
-import ModulesModal from '@/components/subject/ModulesModal';
 import { toast } from 'sonner';
 import {
     AlertDialog,
@@ -44,8 +43,6 @@ export const SubjectDetail = () => {
     const [error, setError] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingSubject, setEditingSubject] = useState<Module | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [isDeletingMateria, setIsDeletingMateria] = useState(false);
@@ -111,9 +108,9 @@ export const SubjectDetail = () => {
         setIsDeleteModalOpen(true);
     };
 
+    // Crear/editar módulo se hace en su propia página y vuelve acá al guardar
     const handleEditClick = (module: Module) => {
-        setEditingSubject(module);
-        setIsCreateModalOpen(true);
+        navigate(`/subjects/${encodeURIComponent(id || '')}/modules/${encodeURIComponent(module.id)}/edit`);
     };
 
     const handleCancelDelete = () => {
@@ -146,86 +143,6 @@ export const SubjectDetail = () => {
         }
       };
 
-    const handleCancelCreate = () => {
-        setIsCreateModalOpen(false);
-        setEditingSubject(null);
-    };
-
-    const handleModuleCreated = async (subjectData: Module): Promise<{ id: string }> => {
-        try {
-            // Remover el campo 'id' al crear un nuevo módulo
-            // El backend espera tipo_contenido en minúsculas: "pdf", "video", etc.
-            // Siempre usar "pdf" (minúsculas) ya que es el único tipo permitido ahora
-            const { id, ...moduleDataWithoutId } = subjectData;
-            
-            const modulePayload = {
-                ...moduleDataWithoutId,
-                tipo_contenido: "pdf" as any, // Siempre "pdf" en minúsculas
-            } as Omit<Module, "id">;
-            
-            console.log("Payload en SubjectDetail:", modulePayload);
-            const created = await CoursesAPI.createModule(modulePayload);
-            const newModuleId: string = created.id;
-
-            // Actualizar la materia con el nuevo módulo
-            if (materia) {
-                const updatedMateria: Subject = {
-                    ...materia,
-                    modulos: [...(materia.modulos || []), newModuleId],
-                };
-                await CoursesAPI.updateMateria(materia.id, updatedMateria);
-                setMateria(updatedMateria);
-            }
-
-            // Actualizar la lista local de módulos
-            const newModule: Module = { ...subjectData, id: newModuleId } as Module;
-            setModulos((prev) => [...prev, newModule]);
-
-            // Refetch estado y excepciones para el nuevo módulo (el backend ya creó modulos_estado vía syncModulosEstado)
-            if (id) {
-                try {
-                    const estado = await CoursesAPI.getModulosHabilitadosEstado(id);
-                    setModulosHabilitadosEstado(estado);
-                } catch {
-                    // Si falla, el usuario puede recargar
-                }
-            }
-
-            setIsCreateModalOpen(false);
-            return { id: newModuleId };
-        } catch (e) {
-            console.error('Error al crear módulo:', e);
-            throw e as Error;
-        }
-    };
-
-    const handleModuleUpdated = async (subjectData: Module): Promise<void> => {
-        try {
-            await CoursesAPI.updateModule(subjectData.id, {
-                id: subjectData.id,
-                titulo: subjectData.titulo,
-                descripcion: subjectData.descripcion,
-                id_materia: subjectData.id_materia,
-                tipo_contenido: subjectData.tipo_contenido,
-                bibliografia: subjectData.bibliografia,
-                url_miniatura: subjectData.url_miniatura,
-                url_archivo: subjectData.url_archivo,
-                url_video: subjectData.url_video,
-                nombres_archivos: subjectData.nombres_archivos || "",
-                nombres_videos: subjectData.nombres_videos || "",
-            });
-
-            // Refrescar el módulo en el estado local
-            setModulos((prev) => prev.map((m) => (m.id === subjectData.id ? { ...m, ...subjectData } : m)));
-
-            setEditingSubject(null);
-            setIsCreateModalOpen(false);
-        } catch (e) {
-            console.error('Error al actualizar módulo:', e);
-            throw e as Error;
-        }
-    };
-
     usePageHeader({ title: materia?.nombre, breadcrumbs: [{ label: "Materias", to: "/subjects" }] });
 
     if (loading) return (
@@ -243,10 +160,7 @@ export const SubjectDetail = () => {
     const materiaCourses = (materia.id_cursos ?? [])
         .map((courseId) => coursesById[courseId])
         .filter((course): course is Course => !!course);
-    const openCreateModule = () => {
-        setEditingSubject(null);
-        setIsCreateModalOpen(true);
-    };
+    const openCreateModule = () => navigate(`/subjects/${encodeURIComponent(materia.id)}/modules/new`);
 
     const aside = (
         <ProfileCard
@@ -261,6 +175,16 @@ export const SubjectDetail = () => {
             subtitle="Materia"
             badge={<StatusPill active={isActive} activeLabel="Habilitada" inactiveLabel="Deshabilitada" />}
             footer={
+                <>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 cursor-pointer"
+                    onClick={() => navigate(`/subjects/${encodeURIComponent(materia.id)}/edit`)}
+                >
+                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                    Editar materia
+                </Button>
                 <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
                     <AlertDialogTrigger asChild>
                         <button
@@ -309,6 +233,7 @@ export const SubjectDetail = () => {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                </>
             }
         >
             <InfoList>
@@ -380,16 +305,6 @@ export const SubjectDetail = () => {
                     </SectionEmpty>
                 )}
             </SectionCard>
-
-
-            <ModulesModal
-                isOpen={isCreateModalOpen}
-                onCancel={handleCancelCreate}
-                onModuleCreated={handleModuleCreated}
-                courseId={materia.id}
-                editingModule={editingSubject}
-                onModuleUpdated={handleModuleUpdated}
-            />
 
             <ConfirmDeleteModal
                 isOpen={isDeleteModalOpen}

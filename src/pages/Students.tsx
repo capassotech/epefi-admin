@@ -287,7 +287,7 @@ export default function Students() {
           onSearch={handleSearch}
           onFilter={handleFilter}
           isStudentPage={true}
-          onCreateNew={handleUserUpdated}
+          onCreateNew={() => navigate("/students/new")}
           createButtonText="Crear usuario"
           currentFilters={filters}
           resetFiltersTo={DEFAULT_STUDENT_FILTERS}
