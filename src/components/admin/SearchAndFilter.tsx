@@ -7,7 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, ArrowUpDown, Plus, User, X } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Plus, User } from "lucide-react";
+import { FilterChips, type FilterChip } from "@/components/common/FilterChips";
 import { CreateUserModal } from "../students/CreateUserModal";
 import { Button } from "@/components/ui/button";
 import type { StudentDB } from "@/types/types";
@@ -155,7 +156,7 @@ export const SearchAndFilter = ({
   const differs = (key: keyof FilterOptions) =>
     (currentFilters[key] ?? undefined) !== (resetFiltersTo?.[key] ?? undefined);
 
-  const activeChips: { key: string; label: string; onRemove: () => void }[] = [];
+  const activeChips: FilterChip[] = [];
   if (searchQuery.trim()) {
     activeChips.push({
       key: "search",
@@ -201,7 +202,6 @@ export const SearchAndFilter = ({
       onRemove: () => resetKeys(["courseId"]),
     });
   }
-  const showChips = showClearFilters && activeChips.length > 0;
 
   return (
     <div className="w-full space-y-3">
@@ -399,32 +399,7 @@ export const SearchAndFilter = ({
     </div>
 
       {/* Filtros aplicados: cada badge quita su filtro */}
-      {showChips && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {activeChips.map((chip) => (
-            <button
-              key={chip.key}
-              type="button"
-              onClick={chip.onRemove}
-              className="group inline-flex max-w-full items-center gap-1 rounded-full border border-gray-200 bg-white py-0.5 pl-2.5 pr-1.5 text-xs text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 cursor-pointer"
-              title="Quitar filtro"
-              aria-label={`Quitar filtro ${chip.label}`}
-            >
-              <span className="truncate">{chip.label}</span>
-              <X className="w-3 h-3 shrink-0 text-gray-400 group-hover:text-gray-700" />
-            </button>
-          ))}
-          {activeChips.length > 1 && (
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="px-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-            >
-              Limpiar todo
-            </button>
-          )}
-        </div>
-      )}
+      {showClearFilters && <FilterChips chips={activeChips} onClearAll={handleClearFilters} />}
     </div>
   );
 };
