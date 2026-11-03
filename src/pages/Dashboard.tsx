@@ -191,12 +191,12 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div data-tour="dashboard-stats">
         <DashboardStatsComponent cards={cards} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <PendingCorrectionsPanel
           rows={pendingPreview}
           total={pendingTotal}
@@ -206,7 +206,7 @@ export default function Dashboard() {
         <PerformancePanel performance={performance} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <RecentActivityPanel rows={recentActivity} />
         <HardestExamsPanel exams={hardestExams} />
         <CourseSchedulePanel schedules={schedules} />

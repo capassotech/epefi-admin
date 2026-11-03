@@ -30,14 +30,14 @@ function Panel({
 }) {
   return (
     <section className={cn("flex flex-col rounded-xl border border-gray-200/70 bg-white", className)} {...rest}>
-      <header className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
+      <header className="flex items-start justify-between gap-4 px-4 pt-4 pb-3 sm:px-5 sm:pt-5">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
           {description && <p className="mt-0.5 text-xs text-gray-500">{description}</p>}
         </div>
         {action}
       </header>
-      <div className="flex-1 px-5 pb-5">{children}</div>
+      <div className="flex-1 px-4 pb-4 sm:px-5 sm:pb-5">{children}</div>
     </section>
   );
 }

@@ -24,13 +24,14 @@ export type StatCardData = {
 
 export function DashboardStatsComponent({ cards }: { cards: StatCardData[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    // En mobile, 2×2 compacto para ver las cuatro métricas sin scroll
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((card, index) => (
         <Link
           key={card.label}
           to={card.href}
           className={cn(
-            "group relative rounded-xl border bg-white p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-200/60",
+            "group relative rounded-xl border bg-white p-3.5 sm:p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-200/60",
             card.highlight ? "border-amber-200 bg-amber-50/30" : "border-gray-200/70"
           )}
           style={{
@@ -38,15 +39,26 @@ export function DashboardStatsComponent({ cards }: { cards: StatCardData[] }) {
             animationDelay: `${index * 60}ms`,
           }}
         >
-          <div className="flex items-center justify-between">
-            <span className={cn("grid place-items-center w-9 h-9 rounded-lg", tones[card.tone])}>
-              <card.icon className="w-[18px] h-[18px]" />
-            </span>
-            <ChevronRight className="w-4 h-4 text-gray-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+          {/* En mobile el ícono va junto al título para ahorrar alto */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 sm:block">
+              <span
+                className={cn(
+                  "grid place-items-center w-7 h-7 sm:w-9 sm:h-9 shrink-0 rounded-lg [&_svg]:w-4 [&_svg]:h-4 sm:[&_svg]:w-[18px] sm:[&_svg]:h-[18px]",
+                  tones[card.tone]
+                )}
+              >
+                <card.icon />
+              </span>
+              <p className="truncate text-[11px] sm:hidden font-medium uppercase tracking-wide text-gray-500">
+                {card.label}
+              </p>
+            </div>
+            <ChevronRight className="hidden sm:block w-4 h-4 text-gray-300 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
-          <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-500">{card.label}</p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900 tabular-nums">{card.value}</p>
-          <p className={cn("mt-1 text-xs", card.highlight ? "text-amber-700" : "text-gray-500")}>
+          <p className="hidden sm:block mt-4 text-xs font-medium uppercase tracking-wide text-gray-500">{card.label}</p>
+          <p className="mt-2 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 tabular-nums">{card.value}</p>
+          <p className={cn("mt-0.5 sm:mt-1 truncate text-xs", card.highlight ? "text-amber-700" : "text-gray-500")}>
             {card.hint}
           </p>
         </Link>
