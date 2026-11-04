@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DetailLayout, ProfileCard, SectionCard, StatGrid } from "@/components/common/DetailLayout";
 import { FormField } from "@/components/common/FormField";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -843,24 +844,19 @@ export default function CreateExam() {
 
             <div ref={setFieldRef("formation")} className="sm:col-span-3">
               <FormField id="exam-formation" label="Curso asociado" error={formationError}>
-                <Select
+                <SearchableSelect
+                  id="exam-formation"
                   value={idFormacion}
-                  onValueChange={(value) => {
+                  options={courses.map((course) => ({ value: course.id, label: course.titulo }))}
+                  onChange={(value) => {
                     setIdFormacion(value);
                     if (formationError) setFormationError("");
                   }}
-                >
-                  <SelectTrigger id="exam-formation" className={`w-full ${formationError ? "border-red-500" : ""}`}>
-                    <SelectValue placeholder="Selecciona un curso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.titulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Selecciona un curso"
+                  searchPlaceholder="Buscar curso…"
+                  emptyText="Ningún curso coincide con la búsqueda"
+                  invalid={!!formationError}
+                />
               </FormField>
             </div>
 
