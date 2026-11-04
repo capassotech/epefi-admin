@@ -1,7 +1,5 @@
 // src/components/student/StudentList.tsx
 import {
-  Mail,
-  // Calendar,
   Edit2,
   Loader2,
   Calendar,
@@ -252,23 +250,18 @@ export function StudentList({
         </div>
       )}
 
-      {/* ── Vista mobile: tarjetas ── */}
-      <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm overflow-hidden">
-        {students.map((student, index) => (
-          <div
-            key={student.id || student.uid || `student-mobile-${index}`}
-            className="p-4 bg-white hover:bg-gray-50 transition-colors"
-          >
-            {/* Cabecera: avatar + nombre + rol */}
-            <div
-              className="flex items-start gap-3 cursor-pointer"
+      <TooltipProvider delayDuration={300}>
+      {/* ── Vista mobile: filas compactas, igual que el resto de los listados ── */}
+      <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
+        {students.map((student, index) => {
+          const isActive = student.activo ?? false;
+          return (
+            <li
+              key={student.id || student.uid || `student-mobile-${index}`}
+              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer ${inactiveRowClass(isActive)}`}
               onClick={() => navigate(`/students/${student.id}`)}
             >
-              <div
-                className="flex-shrink-0 pt-1"
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
+              <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={selectedRowIds.includes(student.id)}
                   onCheckedChange={() => toggleRow(student.id)}
@@ -276,99 +269,65 @@ export function StudentList({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 font-semibold text-gray-900 break-words">
-                  <RoleIcon student={student} muted={!(student.activo ?? false)} />
-                  {getFullName(student)}
+                <p className="flex min-w-0 items-center gap-1.5">
+                  <RoleIcon student={student} muted={!isActive} />
+                  <span className={`truncate text-sm font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                    {getFullName(student)}
+                  </span>
                 </p>
-                <p className="text-sm text-gray-600 truncate flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                  {student.email || "Sin email"}
+                <p className={`truncate text-xs ${isActive ? "text-gray-500" : INACTIVE_ROW_TEXT}`}>
+                  {student.email || "Sin email"} · {courseTitles(student).length} curso
+                  {courseTitles(student).length !== 1 ? "s" : ""}
                 </p>
               </div>
-            </div>
-
-            {/* Acciones */}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/students/${student.id}`)}
-                className="h-9 w-full justify-center border-green-200 text-green-700 hover:bg-green-50 cursor-pointer"
-                data-tour="view-student-details"
-              >
-                <Eye className="w-3.5 h-3.5 mr-1" />
-                Ver
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-full justify-center border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
-                onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
-                data-tour="edit-student"
-              >
-                <Edit2 className="w-3.5 h-3.5 mr-1" />
-                Editar
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={disableIndividualCursos}
-                onClick={() => {
-                  setSelectedStudentId(student.id);
-                  setSelectedCourseIds([]);
-                  setAssignDialogOpen(true);
-                }}
-                className="h-9 w-full justify-center bg-blue-600 text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
-                title={
-                  disableIndividualCursos
-                    ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
-                    : "Asignar cursos a este usuario"
-                }
-                data-tour="assign-courses"
-              >
-                <Calendar className="w-3.5 h-3.5 mr-1 text-white" />
-                Cursos
-              </Button>
-
-              {/* Toggle estado */}
               <div
-                className={`flex items-center justify-between gap-2 px-3 py-1.5 border rounded-lg transition-colors min-h-9 ${
-                  (student.activo ?? false)
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-red-50 border-red-200'
-                }`}
+                className="flex shrink-0 items-center gap-0.5"
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
-                data-tour="toggle-student-status"
               >
-                <span className={`text-sm font-medium ${
-                  (student.activo ?? false) ? 'text-green-700' : 'text-red-700'
-                }`}>
-                  {updatingStatusId === student.id
-                    ? '...'
-                    : (student.activo ?? false) ? 'Activo' : 'Inactivo'}
-                </span>
-                {updatingStatusId === student.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
-                ) : (
-                  <Switch
-                    checked={student.activo ?? false}
-                    onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
-                    onClick={(e) => e.stopPropagation()}
-                    disabled={updatingStatusId !== null}
-                    className="shrink-0 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                  />
-                )}
+                <IconAction
+                  label="Editar usuario"
+                  onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+                  data-tour="edit-student"
+                >
+                  <Edit2 />
+                </IconAction>
+                <IconAction
+                  label={
+                    disableIndividualCursos
+                      ? "Con usuarios seleccionados, usá «Asignar cursos al grupo»"
+                      : "Asignar cursos"
+                  }
+                  disabled={disableIndividualCursos}
+                  onClick={() => {
+                    setSelectedStudentId(student.id);
+                    setSelectedCourseIds([]);
+                    setAssignDialogOpen(true);
+                  }}
+                  data-tour="assign-courses"
+                >
+                  <Calendar />
+                </IconAction>
+                <div className="grid place-items-center w-11 h-8" data-tour="toggle-student-status">
+                  {updatingStatusId === student.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={() => handleStatusChange(student.id, isActive)}
+                      disabled={updatingStatusId !== null}
+                      aria-label={isActive ? "Deshabilitar usuario" : "Habilitar usuario"}
+                      className="data-[state=checked]:bg-green-600 disabled:opacity-50"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          );
+        })}
+      </ul>
 
       {/* ── Vista desktop: tabla ── */}
-      <TooltipProvider delayDuration={300}>
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
