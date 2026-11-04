@@ -204,8 +204,8 @@ export const completedExamsTourSteps: TourStep[] = [
   {
     element: '[data-tour="completed-search"]',
     popover: {
-      title: 'Buscar alumno',
-      description: 'Escribí el nombre de un alumno para ver solo sus exámenes.',
+      title: 'Buscar',
+      description: 'Escribí el nombre de un alumno, un curso o un examen para ver solo esos resultados.',
       side: 'bottom',
       align: 'start',
     },

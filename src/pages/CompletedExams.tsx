@@ -15,7 +15,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { IconAction } from "@/components/ui/icon-action";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { PaginationControls } from "@/components/common/PaginationControls";
-import { FilterHeader, PlainHeader } from "@/components/common/TableHeaders";
+import { FilterMenuButton, PlainHeader, SortableHeader } from "@/components/common/TableHeaders";
 import { FilterChips, type FilterChip } from "@/components/common/FilterChips";
 import { ListLoadingPill } from "@/components/common/ListLoading";
 import { MobileListControls } from "@/components/common/MobileListControls";
@@ -25,7 +25,7 @@ import { CoursesAPI } from "@/service/courses";
 import type { Course, Examen, ExamenRealizado, PaginationMeta } from "@/types/types";
 import { formatTimestamp } from "@/utils/formatTimestamp";
 import { downloadCsvExport, downloadExcelExport } from "@/utils/exportData";
-import { listLoadingClass } from "@/utils/tableState";
+import { listLoadingClass, type ColumnSort } from "@/utils/tableState";
 import {
   buildCompletedExamsListPath,
   buildCompletedExamsSearchParams,
@@ -129,6 +129,8 @@ export default function CompletedExams() {
   const [filterFormacion, setFilterFormacion] = useState(initialFilters.formacion);
   const [filterExamen, setFilterExamen] = useState(initialFilters.examen);
   const [filterAlumno, setFilterAlumno] = useState(initialFilters.alumno);
+  /** Orden elegido en los encabezados; null = más recientes primero */
+  const [sort, setSort] = useState<ColumnSort>(null);
 
   const coursesById = useMemo(
     () =>
@@ -166,9 +168,16 @@ export default function CompletedExams() {
       idFormacion: filterFormacion || undefined,
       idExamen: filterExamen || undefined,
       search: filterAlumno.trim() || undefined,
+      sortBy: sort?.sortBy,
+      sortDirection: sort?.sortDirection,
     }),
-    [filterFormacion, filterExamen, filterAlumno]
+    [filterFormacion, filterExamen, filterAlumno, sort]
   );
+
+  const handleSortChange = (next: ColumnSort) => {
+    setSort(next);
+    resetPages();
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -364,6 +373,13 @@ export default function CompletedExams() {
     });
   }
 
+  const sortProps = {
+    sortBy: sort?.sortBy,
+    sortDirection: sort?.sortDirection,
+    onSortChange: handleSortChange,
+    defaultLabel: "más recientes primero",
+  };
+
   const renderTable = (rows: ExamenRealizado[], pending: boolean) => (
     <div className="admin-card overflow-hidden">
       {/* ── Vista mobile: filas compactas ── */}
@@ -390,23 +406,54 @@ export default function CompletedExams() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <PlainHeader className="pl-4 pr-3">Alumno</PlainHeader>
-              <FilterHeader
+              <SortableHeader
+                label="Alumno"
+                column="alumno"
+                {...sortProps}
+                className="pl-4 pr-3"
+              />
+              <SortableHeader
                 label="Curso"
-                tooltip="Filtrar por curso"
-                value={filterFormacion || undefined}
-                options={courseOptions}
-                onChange={changeFormacion}
+                column="curso"
+                {...sortProps}
+                trailing={
+                  <FilterMenuButton
+                    tooltip="Filtrar por curso"
+                    value={filterFormacion || undefined}
+                    options={courseOptions}
+                    onChange={changeFormacion}
+                  />
+                }
               />
-              <FilterHeader
+              <SortableHeader
                 label="Examen"
-                tooltip="Filtrar por examen"
-                value={filterExamen || undefined}
-                options={examOptions}
-                onChange={changeExamen}
+                column="examen"
+                {...sortProps}
+                trailing={
+                  <FilterMenuButton
+                    tooltip="Filtrar por examen"
+                    value={filterExamen || undefined}
+                    options={examOptions}
+                    onChange={changeExamen}
+                  />
+                }
               />
-              <PlainHeader>Nota</PlainHeader>
-              <PlainHeader>Fecha</PlainHeader>
+              <SortableHeader
+                label="Nota"
+                column="nota"
+                {...sortProps}
+                firstDirection="desc"
+                ascHint="menor a mayor"
+                descHint="mayor a menor"
+              />
+              <SortableHeader
+                label="Fecha"
+                column="fecha"
+                {...sortProps}
+                firstDirection="desc"
+                ascHint="más antiguos primero"
+                descHint="más recientes primero"
+              />
               <PlainHeader align="right" className="pl-3 pr-4">
                 Acciones
               </PlainHeader>
@@ -476,12 +523,12 @@ export default function CompletedExams() {
     <div className="space-y-6">
       <div className="w-full space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:w-72" data-tour="completed-search">
+          <div className="relative w-full sm:w-80" data-tour="completed-search">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             <Input
               value={filterAlumno}
               onChange={(e) => changeAlumno(e.target.value)}
-              placeholder="Buscar alumno..."
+              placeholder="Buscar alumno, curso o examen..."
               className="pl-10"
             />
           </div>
@@ -505,6 +552,19 @@ export default function CompletedExams() {
           </DropdownMenu>
         </div>
         <MobileListControls
+          sort={{
+            fields: [
+              { key: "alumno", label: "Alumno" },
+              { key: "curso", label: "Curso" },
+              { key: "examen", label: "Examen" },
+              { key: "nota", label: "Nota", ascLabel: "Nota: menor a mayor", descLabel: "Nota: mayor a menor" },
+              { key: "fecha", label: "Fecha", ascLabel: "Más antiguos", descLabel: "Más recientes" },
+            ],
+            sortBy: sort?.sortBy,
+            sortDirection: sort?.sortDirection,
+            onChange: handleSortChange,
+            defaultLabel: "Más recientes",
+          }}
           filters={[
             { id: "formacion", label: "Curso", value: filterFormacion || undefined, options: courseOptions, onChange: changeFormacion },
             { id: "examen", label: "Examen", value: filterExamen || undefined, options: examOptions, onChange: changeExamen },

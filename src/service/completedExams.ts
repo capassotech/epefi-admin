@@ -93,6 +93,9 @@ export type CompletedExamsListQuery = {
   idAlumno?: string;
   search?: string;
   estado?: "completado" | "pendiente_correccion";
+  /** alumno · curso · examen · nota · fecha; sin valor, los más recientes primero */
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
   page?: number;
   limit?: number;
 };
@@ -118,6 +121,8 @@ export const CompletedExamsAPI = {
         idAlumno: params?.idAlumno,
         search: params?.search?.trim(),
         estado: params?.estado,
+        sortBy: params?.sortBy,
+        sortDirection: params?.sortDirection,
         page: String(page),
         limit: String(limit),
       });
