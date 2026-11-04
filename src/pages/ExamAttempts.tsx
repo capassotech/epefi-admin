@@ -437,7 +437,7 @@ export default function ExamAttempts() {
           <ListLoadingPill loading={loading} label="Actualizando alumnos…" />
           {alumnos.length === 0 ? (
             <SectionEmpty icon={<Users />}>
-              No hay alumnos asignados a la formación de este examen
+              No hay alumnos asignados al curso de este examen
               {searchQuery ? " con ese criterio de búsqueda" : ""}.
             </SectionEmpty>
           ) : (

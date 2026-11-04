@@ -527,7 +527,7 @@ export default function CompletedExamDetail() {
         <InfoRow icon={<ClipboardCheck />} label="Examen">
           <span title={examTitle}>{examTitle}</span>
         </InfoRow>
-        <InfoRow icon={<GraduationCap />} label="Formación">
+        <InfoRow icon={<GraduationCap />} label="Curso">
           <span title={formationTitle}>{formationTitle}</span>
         </InfoRow>
         <InfoRow icon={<CalendarDays />} label="Fecha">

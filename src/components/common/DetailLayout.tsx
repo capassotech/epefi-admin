@@ -141,7 +141,8 @@ export function SectionCard({
   className,
   tourId,
 }: {
-  title: ReactNode;
+  /** Sin título ni acción, la tarjeta se muestra sin encabezado */
+  title?: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
@@ -151,13 +152,15 @@ export function SectionCard({
 }) {
   return (
     <section data-tour={tourId} className={cn("admin-card overflow-hidden min-w-0", className)}>
-      <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-          {description && <p className="text-xs text-gray-500">{description}</p>}
-        </div>
-        {action}
-      </header>
+      {(title || action) && (
+        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+          <div className="min-w-0">
+            {title && <h2 className="text-sm font-semibold text-gray-900">{title}</h2>}
+            {description && <p className="text-xs text-gray-500">{description}</p>}
+          </div>
+          {action}
+        </header>
+      )}
       {children}
     </section>
   );

@@ -80,7 +80,7 @@ export const examFormTourSteps: TourStep[] = [
     element: '[data-tour="exam-config"]',
     popover: {
       title: 'Configuración',
-      description: 'Título, formación, duración, nota de aprobación e intentos. También si exige completar el curso y si la nota se publica a mano.',
+      description: 'Título, curso, duración, nota de aprobación e intentos. También si exige completar el curso y si la nota se publica a mano.',
       side: 'left',
       align: 'start',
     },
@@ -193,7 +193,7 @@ export const examsTourSteps: TourStep[] = [
     popover: {
       title: 'Lista de exámenes',
       description:
-        'Tocá "Título" para ordenar o "Formación" para filtrar. Con los íconos editás, ves los intentos por alumno o eliminás, y con el interruptor habilitás o deshabilitás el examen.',
+        'Tocá "Título" para ordenar o "Curso" para filtrar. Con los íconos editás, ves los intentos por alumno o eliminás, y con el interruptor habilitás o deshabilitás el examen.',
       side: 'top',
       align: 'start',
     },
@@ -224,7 +224,7 @@ export const completedExamsTourSteps: TourStep[] = [
     popover: {
       title: 'Resultados',
       description:
-        'Arriba están los exámenes por corregir y debajo los ya corregidos. Filtrá por formación o examen desde los encabezados y tocá una fila para ver el detalle o corregir.',
+        'Arriba están los exámenes por corregir y debajo los ya corregidos. Filtrá por curso o examen desde los encabezados y tocá una fila para ver el detalle o corregir.',
       side: 'top',
       align: 'start',
     },

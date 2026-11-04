@@ -99,7 +99,7 @@ export default function Exams() {
       setCoursesById(mapped);
     } catch (err) {
       console.error("Error al cargar formaciones:", err);
-      toast.error("No se pudieron cargar las formaciones para filtros");
+      toast.error("No se pudieron cargar los cursos para filtros");
     }
   }, []);
 
@@ -182,7 +182,7 @@ export default function Exams() {
 
   const courseList = Object.values(coursesById);
   const courseFilterOptions = [
-    { value: "all", label: "Todas las formaciones" },
+    { value: "all", label: "Todos los cursos" },
     ...courseList.map((c) => ({ value: c.id, label: c.titulo })),
   ];
 
@@ -290,7 +290,7 @@ export default function Exams() {
         filters={[
           {
             id: "course",
-            label: "Formación",
+            label: "Curso",
             value: filters.courseId,
             options: courseFilterOptions,
             onChange: (courseId) => handleFilter(applyColumnFilter(filters, "courseId", courseId)),
@@ -344,8 +344,8 @@ export default function Exams() {
                       className="pl-4 pr-3"
                     />
                     <FilterHeader
-                      label="Formación"
-                      tooltip="Filtrar por formación"
+                      label="Curso"
+                      tooltip="Filtrar por curso"
                       value={filters.courseId}
                       options={courseFilterOptions}
                       onChange={(courseId) =>

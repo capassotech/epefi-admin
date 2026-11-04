@@ -35,7 +35,7 @@ import { toast } from "sonner";
 
 const EXPORT_HEADERS = [
   "Alumno",
-  "Formación",
+  "Curso",
   "Examen",
   "Nota",
   "Estado",
@@ -235,7 +235,7 @@ export default function CompletedExams() {
         setExams(examList);
       } catch (err) {
         console.error("Error al cargar filtros:", err);
-        toast.error("No se pudieron cargar formaciones o exámenes para filtros");
+        toast.error("No se pudieron cargar cursos o exámenes para filtros");
       }
     };
     loadMeta();
@@ -337,7 +337,7 @@ export default function CompletedExams() {
     row.tituloExamen || examsById[row.idExamen]?.titulo || row.idExamen;
 
   const courseOptions = [
-    { value: "all", label: "Todas las formaciones" },
+    { value: "all", label: "Todos los cursos" },
     ...courses.map((c) => ({ value: c.id, label: c.titulo })),
   ];
   const examOptions = [
@@ -352,7 +352,7 @@ export default function CompletedExams() {
   if (filterFormacion) {
     chips.push({
       key: "formacion",
-      label: `Formación: ${coursesById[filterFormacion]?.titulo ?? "…"}`,
+      label: `Curso: ${coursesById[filterFormacion]?.titulo ?? "…"}`,
       onRemove: () => changeFormacion(undefined),
     });
   }
@@ -392,8 +392,8 @@ export default function CompletedExams() {
             <tr>
               <PlainHeader className="pl-4 pr-3">Alumno</PlainHeader>
               <FilterHeader
-                label="Formación"
-                tooltip="Filtrar por formación"
+                label="Curso"
+                tooltip="Filtrar por curso"
                 value={filterFormacion || undefined}
                 options={courseOptions}
                 onChange={changeFormacion}
@@ -506,7 +506,7 @@ export default function CompletedExams() {
         </div>
         <MobileListControls
           filters={[
-            { id: "formacion", label: "Formación", value: filterFormacion || undefined, options: courseOptions, onChange: changeFormacion },
+            { id: "formacion", label: "Curso", value: filterFormacion || undefined, options: courseOptions, onChange: changeFormacion },
             { id: "examen", label: "Examen", value: filterExamen || undefined, options: examOptions, onChange: changeExamen },
           ]}
         />

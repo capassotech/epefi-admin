@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
 import { examFormTourSteps } from "@/config/tourSteps";
-import { CheckCircle2, Circle, ClipboardCheck, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, CircleHelp, ClipboardCheck, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,56 @@ const createEmptyQuestion = (): QuestionForm => ({
   tipoPregunta: "opcion_multiple",
   respuestas: [createEmptyOption(), createEmptyOption()],
 });
+
+/** Título de un ajuste con su explicación en un tooltip (ícono "?") */
+function SettingTitle({ children, help }: { children: React.ReactNode; help: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <p className="text-sm font-medium text-gray-900">{children}</p>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* span y no button: está dentro del label del switch; se frena el clic para no cambiarlo */}
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Ayuda: ${help}`}
+              onClick={(e) => e.preventDefault()}
+              className="inline-flex shrink-0 cursor-help rounded-full text-gray-400 transition-colors hover:text-gray-600"
+            >
+              <CircleHelp className="h-4 w-4" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+            {help}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
+/** Errores del contenido de una pregunta (texto y respuestas); los puntos se validan aparte al guardar */
+const getQuestionContentError = (question: QuestionForm): QuestionError => {
+  const error: QuestionError = {};
+  if (!question.texto.trim()) {
+    error.texto = "La pregunta no puede estar vacía";
+  }
+  if (question.tipoPregunta !== "desarrollo") {
+    const filledOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
+    const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
+    const hasCorrect = question.respuestas.some((r) => r.esCorrecta && r.texto.trim().length > 0);
+
+    if (hasEmptyOption) {
+      error.respuestas = "Todas las respuestas deben tener texto";
+    } else if (filledOptions.length < 2) {
+      error.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
+    } else if (!hasCorrect) {
+      error.respuestas = "Debes marcar al menos una respuesta correcta";
+    }
+  }
+  return error;
+};
 
 const applyEqualPuntos = (questions: QuestionForm[]): QuestionForm[] => {
   const distribution = distributePuntosEqually(questions.length);
@@ -226,7 +277,7 @@ export default function CreateExam() {
         setCourses(data);
       } catch (error) {
         console.error("Error al cargar formaciones:", error);
-        toast.error("No se pudieron cargar las formaciones");
+        toast.error("No se pudieron cargar los cursos");
       } finally {
         setLoadingCourses(false);
       }
@@ -287,12 +338,36 @@ export default function CreateExam() {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
   };
 
+  /** Preguntas agregadas en esta edición (todavía sin guardar): se resaltan para distinguirlas */
+  const [newQuestionIds, setNewQuestionIds] = useState<Set<string>>(() => new Set());
+
   const addQuestion = () => {
+    // No se agrega otra pregunta mientras haya alguna anterior sin completar (los puntos se pueden repartir al final)
+    const incomplete = questions
+      .map((question, index) => ({ question, index, error: getQuestionContentError(question) }))
+      .filter(({ error }) => error.texto || error.respuestas);
+    if (incomplete.length > 0) {
+      setQuestionErrors((prev) => {
+        const next = { ...prev };
+        incomplete.forEach(({ question, error }) => {
+          next[question.id] = { ...next[question.id], ...error };
+        });
+        return next;
+      });
+      const first = incomplete[0];
+      toast.error(
+        incomplete.length === 1
+          ? `Completá la pregunta ${first.index + 1} antes de agregar otra`
+          : `Completá las preguntas ${incomplete.map(({ index }) => index + 1).join(", ")} antes de agregar otra`
+      );
+      scrollToFirstError(`question-${first.question.id}`);
+      return;
+    }
+
     scrollToNewQuestion.current = true;
-    setQuestions((prev) => [
-      ...prev,
-      { ...createEmptyQuestion(), puntos: 0 },
-    ]);
+    const question = { ...createEmptyQuestion(), puntos: 0 };
+    setQuestions((prev) => [...prev, question]);
+    setNewQuestionIds((prev) => new Set(prev).add(question.id));
     setPuntosError("");
   };
 
@@ -516,7 +591,7 @@ export default function CreateExam() {
     }
 
     if (!idFormacion) {
-      setFormationError("Debes seleccionar una formación");
+      setFormationError("Debes seleccionar un curso");
       markInvalid("formation");
     }
 
@@ -555,40 +630,14 @@ export default function CreateExam() {
     }
 
     questions.forEach((question) => {
-      const qError: QuestionError = {};
+      const qError: QuestionError = getQuestionContentError(question);
 
-      if (!question.texto.trim()) {
-        qError.texto = "La pregunta no puede estar vacía";
-        markInvalid(`question-${question.id}`);
-      }
       if (!(question.puntos > 0)) {
         qError.puntos = "La pregunta debe tener más de 0 puntos";
-        markInvalid(`question-${question.id}`);
-      }
-
-      if (question.tipoPregunta !== "desarrollo") {
-        const filledOptions = question.respuestas.filter(
-          (r) => r.texto.trim().length > 0
-        );
-        const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
-        const hasCorrect = question.respuestas.some(
-          (r) => r.esCorrecta && r.texto.trim().length > 0
-        );
-
-        if (hasEmptyOption) {
-          qError.respuestas = "Todas las respuestas deben tener texto";
-          markInvalid(`question-${question.id}`);
-        } else if (filledOptions.length < 2) {
-          qError.respuestas =
-            "Cada pregunta debe tener al menos 2 respuestas con texto";
-          markInvalid(`question-${question.id}`);
-        } else if (!hasCorrect) {
-          qError.respuestas = "Debes marcar al menos una respuesta correcta";
-          markInvalid(`question-${question.id}`);
-        }
       }
 
       if (qError.texto || qError.respuestas || qError.puntos) {
+        markInvalid(`question-${question.id}`);
         nextQuestionErrors[question.id] = qError;
       }
     });
@@ -684,7 +733,7 @@ export default function CreateExam() {
         delayedMessage={
           isEditing
             ? "Obteniendo datos del examen"
-            : "Trayendo formaciones disponibles"
+            : "Trayendo cursos disponibles"
         }
       />
     );
@@ -730,16 +779,12 @@ export default function CreateExam() {
         </span>
       }
       title={title.trim() || (isEditing ? "Examen sin título" : "Nuevo examen")}
-      subtitle={selectedCourse?.titulo || "Sin formación asignada"}
+      subtitle={selectedCourse?.titulo || "Sin curso asignado"}
       footer={
         <>
           <Button type="submit" form="exam-form" size="sm" className="h-8 cursor-pointer" disabled={!canSave}>
             <Save className="w-3.5 h-3.5 mr-1.5" />
             {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar examen"}
-          </Button>
-          <Button type="button" variant="outline" size="sm" className="h-8 cursor-pointer" onClick={addQuestion}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Agregar pregunta
           </Button>
           <Button
             type="button"
@@ -779,7 +824,7 @@ export default function CreateExam() {
   return (
     <DetailLayout aside={aside}>
       <form id="exam-form" className="space-y-6" onSubmit={handleSave}>
-        <SectionCard tourId="exam-config" title="Configuración" description="Datos generales y reglas del examen">
+        <SectionCard tourId="exam-config">
           <div className="grid gap-4 px-5 py-5 sm:grid-cols-3">
             <div ref={setFieldRef("title")} className="sm:col-span-3">
               <FormField id="exam-title" label="Título del examen" error={titleError}>
@@ -797,7 +842,7 @@ export default function CreateExam() {
             </div>
 
             <div ref={setFieldRef("formation")} className="sm:col-span-3">
-              <FormField id="exam-formation" label="Formación asociada" error={formationError}>
+              <FormField id="exam-formation" label="Curso asociado" error={formationError}>
                 <Select
                   value={idFormacion}
                   onValueChange={(value) => {
@@ -806,7 +851,7 @@ export default function CreateExam() {
                   }}
                 >
                   <SelectTrigger id="exam-formation" className={`w-full ${formationError ? "border-red-500" : ""}`}>
-                    <SelectValue placeholder="Selecciona una formación" />
+                    <SelectValue placeholder="Selecciona un curso" />
                   </SelectTrigger>
                   <SelectContent>
                     {courses.map((course) => (
@@ -824,7 +869,6 @@ export default function CreateExam() {
                 id="exam-duration"
                 label="Duración (minutos)"
                 error={duracionError}
-                hint="Valor base: 90 minutos."
               >
                 <Input
                   id="exam-duration"
@@ -843,7 +887,6 @@ export default function CreateExam() {
                 id="nota-minima"
                 label="Nota de aprobación (%)"
                 error={notaMinimaError}
-                hint="Mínimo de aciertos. Base: 70%."
               >
                 <Input
                   id="nota-minima"
@@ -862,7 +905,6 @@ export default function CreateExam() {
                 id="intentos-maximos"
                 label="Intentos por alumno"
                 error={intentosError}
-                hint='Base: 1. Personalizable desde "Intentos".'
               >
                 <Input
                   id="intentos-maximos"
@@ -882,12 +924,9 @@ export default function CreateExam() {
               htmlFor="requiere-completar-curso"
               className="flex cursor-pointer items-center justify-between gap-4 px-5 py-3"
             >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">Requiere completar el curso</p>
-                <p className="text-xs text-gray-500">
-                  Si está desactivado, el alumno puede rendir sin haber completado todos los módulos.
-                </p>
-              </div>
+              <SettingTitle help="Si está desactivado, el alumno puede rendir sin haber completado todos los módulos.">
+                Requiere completar el curso
+              </SettingTitle>
               <Switch
                 id="requiere-completar-curso"
                 checked={requiereCompletarCurso}
@@ -898,14 +937,15 @@ export default function CreateExam() {
               htmlFor="publicacion-manual"
               className={`flex items-center justify-between gap-4 px-5 py-3 ${tieneDesarrollo ? "" : "cursor-pointer"}`}
             >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">Publicación manual de nota</p>
-                <p className="text-xs text-gray-500">
-                  {tieneDesarrollo
+              <SettingTitle
+                help={
+                  tieneDesarrollo
                     ? "No disponible para exámenes con preguntas de desarrollo."
-                    : "El alumno no verá su nota hasta que un administrador la publique."}
-                </p>
-              </div>
+                    : "El alumno no verá su nota hasta que un administrador la publique."
+                }
+              >
+                Publicación manual de nota
+              </SettingTitle>
               <Switch
                 id="publicacion-manual"
                 checked={publicacionManualDeNota}
@@ -917,13 +957,9 @@ export default function CreateExam() {
               htmlFor="permitir-revision"
               className="flex cursor-pointer items-center justify-between gap-4 px-5 py-3"
             >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">Permitir revisión del examen</p>
-                <p className="text-xs text-gray-500">
-                  El alumno puede ver sus respuestas corregidas cuando aprueba o usa todos sus intentos.
-                  Podés habilitársela a un alumno puntual desde "Intentos".
-                </p>
-              </div>
+              <SettingTitle help='El alumno puede ver sus respuestas corregidas cuando aprueba o usa todos sus intentos. Podés habilitársela a un alumno puntual desde "Intentos".'>
+                Permitir revisión del examen
+              </SettingTitle>
               <Switch
                 id="permitir-revision"
                 checked={permitirRevision}
@@ -933,45 +969,65 @@ export default function CreateExam() {
           </div>
         </SectionCard>
 
-        <div ref={setFieldRef("questions")}>
-          <SectionCard
-            tourId="exam-questions"
-            title="Preguntas"
-            description={`${questions.length} pregunta${questions.length !== 1 ? "s" : ""}`}
-            action={
-              <div className="flex items-center gap-2" ref={setFieldRef("puntos-total")}>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-                    puntosValidos ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                  }`}
-                >
-                  {totalPuntos} / {PUNTOS_TOTAL_EXAMEN} pts
-                </span>
-                <Button type="button" variant="ghost" size="sm" className="h-8 text-gray-600" onClick={redistributePuntos}>
-                  Distribuir equitativamente
-                </Button>
-              </div>
-            }
-          >
+        {/* Preguntas: sección propia, separada de la configuración, con una tarjeta por pregunta */}
+        <div ref={setFieldRef("questions")} data-tour="exam-questions" className="space-y-3 pt-4">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200 px-1 pb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Preguntas</h2>
+              <p className="text-sm text-gray-500">
+                {questions.length} pregunta{questions.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2" ref={setFieldRef("puntos-total")}>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+                  puntosValidos ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                }`}
+              >
+                {totalPuntos} / {PUNTOS_TOTAL_EXAMEN} pts
+              </span>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-gray-600" onClick={redistributePuntos}>
+                Distribuir equitativamente
+              </Button>
+            </div>
+          </div>
+
             {(questionsError || puntosError) && (
-              <div className="space-y-1 px-5 pt-4">
+              <div className="space-y-1 px-1">
                 {questionsError && <p className="text-xs text-red-600">{questionsError}</p>}
                 {puntosError && <p className="text-xs text-red-600">{puntosError}</p>}
               </div>
             )}
 
-            <div className="divide-y divide-gray-100">
-              {questions.map((question, index) => (
+            <div className="space-y-4">
+              {questions.map((question, index) => {
+                const isNew = isEditing && newQuestionIds.has(question.id);
+                return (
                 <div
                   key={question.id}
                   ref={setQuestionCardRef(question.id, index === questions.length - 1)}
-                  className="space-y-4 px-5 py-5"
+                  className={`overflow-hidden rounded-xl border bg-white shadow-sm ${
+                    isNew ? "border-orange-300 ring-2 ring-orange-100" : "border-gray-200"
+                  }`}
                 >
                   {/* Encabezado: número, tipo, puntos y eliminar */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="grid place-items-center w-6 h-6 shrink-0 rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+                  <div
+                    className={`flex flex-wrap items-center gap-2 border-b px-4 py-2.5 sm:px-5 ${
+                      isNew ? "border-orange-100 bg-orange-50/70" : "border-gray-100 bg-gray-50/80"
+                    }`}
+                  >
+                    <span
+                      className={`grid place-items-center w-7 h-7 shrink-0 rounded-full text-xs font-semibold ${
+                        isNew ? "bg-orange-500 text-white" : "bg-gray-900 text-white"
+                      }`}
+                    >
                       {index + 1}
                     </span>
+                    {isNew && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+                        Nueva
+                      </span>
+                    )}
                     <Select
                       value={question.tipoPregunta}
                       onValueChange={(value) =>
@@ -1014,10 +1070,10 @@ export default function CreateExam() {
                     </div>
                   </div>
                   {questionErrors[question.id]?.puntos && (
-                    <p className="text-xs text-red-600 break-words">{questionErrors[question.id]?.puntos}</p>
+                    <p className="px-4 pt-3 text-xs text-red-600 break-words sm:px-5">{questionErrors[question.id]?.puntos}</p>
                   )}
 
-                  <div className="space-y-4 pl-8">
+                  <div className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
                     <FormField
                       id={`texto-${question.id}`}
                       label="Texto de la pregunta"
@@ -1160,20 +1216,18 @@ export default function CreateExam() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
-            <div className="border-t border-gray-100 p-3">
-              <button
-                type="button"
-                onClick={addQuestion}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 py-2.5 text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Agregar pregunta
-              </button>
-            </div>
-          </SectionCard>
+            <button
+              type="button"
+              onClick={addQuestion}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 py-4 text-sm font-medium text-gray-600 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-700 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar pregunta
+            </button>
         </div>
       </form>
     </DetailLayout>
