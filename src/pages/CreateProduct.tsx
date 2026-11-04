@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import { dictadoDateToIsoPayload } from "@/utils/courseDates";
 
 // Form components
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
-import SubjectCreation from "@/components/product/SubjectCreation";
+import SubjectCreation, { type SubjectCreationHandle } from "@/components/product/SubjectCreation";
 
 export default function CreateProduct() {
   const navigate = useNavigate();
@@ -42,6 +42,8 @@ export default function CreateProduct() {
 
   const [courseCreated, setCourseCreated] = useState(false);
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+  /** Para guardar las materias agregadas/quitadas al finalizar */
+  const subjectsRef = useRef<SubjectCreationHandle>(null);
 
   const [courseAlreadyCreatedInSession, setCourseAlreadyCreatedInSession] = useState(false);
 
@@ -195,8 +197,11 @@ export default function CreateProduct() {
 
     setLoading(true);
     try {
+      // Primero se aplican las materias agregadas/quitadas en el paso "Materias"
+      await subjectsRef.current?.savePendingChanges();
+
       const currentFormData = form.getValues();
-      
+
       // Obtener el curso actual para obtener la imagen existente y las materias
       const course = await CoursesAPI.getById(createdCourseId);
       
@@ -512,12 +517,16 @@ export default function CreateProduct() {
                   currentFechasDeExamenesUrl={currentFechasDeExamenesUrl}
                 />
               )}
-              {currentTab === 1 && (
-                <SubjectCreation
-                  courseId={createdCourseId}
-                  control={form.control}
-                  courseTitle={form.getValues("titulo") || null}
-                />
+              {/* Montado desde que existe el curso (oculto en el otro paso) para no perder materias pendientes */}
+              {createdCourseId && (
+                <div className={currentTab === 1 ? undefined : "hidden"}>
+                  <SubjectCreation
+                    handleRef={subjectsRef}
+                    courseId={createdCourseId}
+                    control={form.control}
+                    courseTitle={form.getValues("titulo") || null}
+                  />
+                </div>
               )}
             </div>
           </SectionCard>

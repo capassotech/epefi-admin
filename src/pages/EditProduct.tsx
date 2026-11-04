@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import {
 } from "@/utils/courseDates";
 
 import GeneralInfoForm from "@/components/product/GeneralInfoForm";
-import SubjectCreation from "@/components/product/SubjectCreation";
+import SubjectCreation, { type SubjectCreationHandle } from "@/components/product/SubjectCreation";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import {
   AlertDialog,
@@ -56,6 +56,8 @@ export default function EditProduct() {
     tourSteps: editProductTourSteps,
     breadcrumbs: [{ label: "Cursos", to: "/products" }],
   });
+  /** Para guardar las materias agregadas/quitadas al tocar "Guardar cambios" */
+  const subjectsRef = useRef<SubjectCreationHandle>(null);
   // ?tab=materias abre directo el paso de materias (ej: al volver de editar una materia)
   const [searchParams] = useSearchParams();
   const [currentTab, setCurrentTab] = useState(() => (searchParams.get("tab") === "materias" ? 1 : 0));
@@ -263,7 +265,6 @@ export default function EditProduct() {
         precio: data.precio,
         estado: data.estado,
         imagen: imageUrl,
-        materias: data.materias || [],
       };
 
       payload.fechaInicioDictado = dictadoDateToIsoPayload(data.fechaInicioDictado);
@@ -271,6 +272,8 @@ export default function EditProduct() {
 
       // Obtener el curso actual para mantener PDFs existentes si no se suben nuevos
       const course = await CoursesAPI.getById(id);
+      // Las materias las maneja el paso "Materias": se conservan las guardadas para no pisarlas
+      payload.materias = Array.isArray(course?.materias) ? course.materias : data.materias || [];
 
       // Manejar Plan de Estudios
       let newPlanDeEstudiosUrl: string | null = null;
@@ -497,6 +500,17 @@ export default function EditProduct() {
   };
 
   const handleSaveSubjects = async () => {
+    // Primero se aplican las materias agregadas/quitadas en el paso "Materias"
+    try {
+      setLoading(true);
+      await subjectsRef.current?.savePendingChanges();
+    } catch (err) {
+      console.error("Error al guardar las materias del curso:", err);
+      toast.error("No se pudieron guardar las materias del curso");
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
     // Si hay cambios en los campos del formulario, guardarlos
     if (hasChanges(form.getValues())) {
       await form.handleSubmit(onSubmit)();
@@ -719,15 +733,18 @@ export default function EditProduct() {
                   planDeEstudiosDeleted={planDeEstudiosDeleted}
                   fechasDeExamenesDeleted={fechasDeExamenesDeleted}
                 />
-              ) : (
+              ) : null}
+              {/* Siempre montado (oculto en el otro paso) para no perder materias pendientes de guardar */}
+              <div className={currentTab < 1 ? "hidden" : undefined}>
                 <SubjectCreation
+                  handleRef={subjectsRef}
                   courseId={createdCourseId}
                   courseTitle={form.getValues("titulo")}
                   onBeforeOpenSubject={async () => {
                     if (hasChanges(form.getValues())) await form.handleSubmit(onSubmit)();
                   }}
                 />
-              )}
+              </div>
             </div>
           </SectionCard>
         </form>

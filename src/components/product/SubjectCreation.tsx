@@ -3,7 +3,7 @@
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import SubjectModal from "../subject/SubjectModal";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { type Subject, type Module } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
@@ -43,24 +43,33 @@ interface SubjectCreationProps {
     courseTitle?: string | null; // Título del curso para pasar al modal
     /** Guarda los cambios pendientes del curso antes de salir a editar una materia */
     onBeforeOpenSubject?: () => Promise<void>;
+    /** Permite a la pantalla del curso guardar las materias agregadas/quitadas al tocar "Guardar cambios" */
+    handleRef?: React.Ref<SubjectCreationHandle>;
+}
+
+/** Agregar y quitar materias queda pendiente hasta que la pantalla del curso guarde */
+export interface SubjectCreationHandle {
+    hasPendingChanges: () => boolean;
+    savePendingChanges: () => Promise<void>;
 }
 
 
-export default function SubjectCreation({ courseId, control, courseTitle, onBeforeOpenSubject }: SubjectCreationProps) {
+export default function SubjectCreation({ courseId, control, courseTitle, onBeforeOpenSubject, handleRef }: SubjectCreationProps) {
     const navigate = useNavigate();
+    /** Materias elegidas para agregar o quitar que todavía no se guardaron en el curso */
+    const [pendingAdds, setPendingAdds] = useState<Subject[]>([]);
+    const [pendingRemovals, setPendingRemovals] = useState<Subject[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     /** Materia elegida para editar: se pide confirmación antes de salir del curso */
     const [subjectToOpen, setSubjectToOpen] = useState<Subject | null>(null);
     const [openingSubject, setOpeningSubject] = useState(false);
-    /** Materia a quitar del curso: se confirma antes, porque el cambio se aplica en el momento */
+    /** Materia a quitar del curso: se confirma antes de marcarla */
     const [subjectToUnassign, setSubjectToUnassign] = useState<Subject | null>(null);
-    const [unassigning, setUnassigning] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
     const [courseSubjectIds, setCourseSubjectIds] = useState<string[]>([]);
     const [courseSubjects, setCourseSubjects] = useState<Subject[]>([]); // Materias completas asociadas al curso
-    const [loading, setLoading] = useState(false);
     const [loadingSubjects, setLoadingSubjects] = useState(false); // Estado de carga para el listado de materias
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -188,9 +197,61 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
         return new Set<string>(courseSubjectIds);
     }, [courseSubjectIds]);
 
+    const removedIds = useMemo(() => new Set(pendingRemovals.map((s) => s.id)), [pendingRemovals]);
+
+    /** Materias como van a quedar al guardar: las guardadas menos las quitadas, más las agregadas */
+    const displayedSubjects = useMemo(
+        () => [...courseSubjects.filter((s) => !removedIds.has(s.id)), ...pendingAdds],
+        [courseSubjects, removedIds, pendingAdds]
+    );
+
     const selectableSubjects = useMemo(() => {
-        return allSubjects.filter((s) => !subjectsAlreadyInCourse.has(s.id));
-    }, [allSubjects, subjectsAlreadyInCourse]);
+        const inCourse = new Set(displayedSubjects.map((s) => s.id));
+        return allSubjects.filter(
+            (s) => (!subjectsAlreadyInCourse.has(s.id) || removedIds.has(s.id)) && !inCourse.has(s.id)
+        );
+    }, [allSubjects, subjectsAlreadyInCourse, removedIds, displayedSubjects]);
+
+    const hasPendingChanges = pendingAdds.length > 0 || pendingRemovals.length > 0;
+
+    /** Aplica en el curso las materias agregadas y quitadas (se llama al guardar el curso) */
+    const savePendingChanges = useCallback(async () => {
+        if (!courseId || (pendingAdds.length === 0 && pendingRemovals.length === 0)) return;
+        const course = await CoursesAPI.getById(String(courseId));
+        const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
+        const removed = new Set(pendingRemovals.map((s) => s.id));
+        const updatedIds = Array.from(
+            new Set([...existingIds.filter((sid) => !removed.has(sid)), ...pendingAdds.map((s) => s.id)])
+        );
+        await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
+        setCourseSubjectIds(updatedIds);
+        setCourseSubjects((prev) => [...prev.filter((s) => !removed.has(s.id)), ...pendingAdds]);
+        setPendingAdds([]);
+        setPendingRemovals([]);
+    }, [courseId, pendingAdds, pendingRemovals]);
+
+    useImperativeHandle(
+        handleRef,
+        () => ({ hasPendingChanges: () => hasPendingChanges, savePendingChanges }),
+        [hasPendingChanges, savePendingChanges]
+    );
+
+    // Avisar antes de cerrar o recargar la página con materias sin guardar
+    useEffect(() => {
+        if (!hasPendingChanges) return;
+        const onBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = "";
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    }, [hasPendingChanges]);
+
+    const discardPendingChanges = () => {
+        setPendingAdds([]);
+        setPendingRemovals([]);
+        setSelectedSubjects([]);
+    };
 
     const handleCancelCreate = () => {
         setIsCreateModalOpen(false);
@@ -413,27 +474,6 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
         }
     };
 
-    const handleUnassignSubject = async (id: string) => {
-        if (!id || !courseId) return;
-        setLoadingSubjects(true);
-        try {
-            // Remover la materia del curso (desasignar)
-            const course = await CoursesAPI.getById(String(courseId));
-            const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
-            const updatedIds = existingIds.filter(pid => pid !== id);
-            
-            await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
-            setCourseSubjectIds(updatedIds);
-            setCourseSubjects(prev => prev.filter(s => s.id !== id));
-            toast.success("Materia desasignada del curso exitosamente");
-        } catch (e) {
-            console.error(e);
-            toast.error("Error al desasignar la materia del curso");
-        } finally {
-            setLoadingSubjects(false);
-        }
-    };
-
     /** Editar una materia abre su página: antes se confirma y se guardan los cambios del curso */
     const handleOnEditSubjectClick = (subject: Subject) => {
         setSubjectToOpen(subject);
@@ -443,6 +483,7 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
         if (!subjectToOpen || !courseId) return;
         setOpeningSubject(true);
         try {
+            await savePendingChanges();
             await onBeforeOpenSubject?.();
             navigate(`/subjects/${encodeURIComponent(subjectToOpen.id)}`, {
                 state: fromCourseState({
@@ -509,47 +550,30 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
         setSelectedSubjects((prev) => prev.filter((s) => s.id !== subjectId));
     };
 
-    const handleConfirmAssociation = async () => {
-        if (!courseId) {
-            toast.error("Primero debes crear/guardar el curso");
-            return;
-        }
+    /** Suma las materias elegidas como cambio pendiente: se guardan con "Guardar cambios" */
+    const handleConfirmAssociation = () => {
         if (selectedSubjects.length === 0) {
             toast.error("Selecciona al menos una materia");
             return;
         }
-        setLoading(true);
-        try {
-            const course = await CoursesAPI.getById(String(courseId));
-            const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
-            const toAdd = selectedSubjects.map((s) => s.id);
-            const updatedIds = Array.from(new Set([...existingIds, ...toAdd]));
-            await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
-                    setCourseSubjectIds(updatedIds);
-                    
-                    // Cargar las materias asociadas y actualizar la lista
-                    setLoadingSubjects(true);
-                    try {
-                        const associatedSubjects = await CoursesAPI.getMateriasByIds(updatedIds);
-                        setCourseSubjects(Array.isArray(associatedSubjects) ? associatedSubjects : []);
-                    } catch (e) {
-                        console.error("Error al cargar materias asociadas:", e);
-                        // Si falla, agregar manualmente las seleccionadas
-                        setCourseSubjects(prev => {
-                            const newSubjects = selectedSubjects.filter(s => !prev.some(p => p.id === s.id));
-                            return [...prev, ...newSubjects];
-                        });
-                    } finally {
-                        setLoadingSubjects(false);
-                    }
-                    
-            toast.success("Materias asociadas al curso");
-            setSelectedSubjects([]);
-        } catch (e) {
-            console.error(e);
-            toast.error("Error al asociar materias");
-        } finally {
-            setLoading(false);
+        const selectedIds = new Set(selectedSubjects.map((s) => s.id));
+        // Si estaba marcada para quitar, alcanza con deshacer la quita
+        setPendingRemovals((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+        setPendingAdds((prev) => [
+            ...prev,
+            ...selectedSubjects.filter(
+                (s) => !subjectsAlreadyInCourse.has(s.id) && !prev.some((p) => p.id === s.id)
+            ),
+        ]);
+        setSelectedSubjects([]);
+    };
+
+    /** Marca una materia para quitar del curso (o deshace un agregado todavía sin guardar) */
+    const markSubjectForRemoval = (subject: Subject) => {
+        if (pendingAdds.some((s) => s.id === subject.id)) {
+            setPendingAdds((prev) => prev.filter((s) => s.id !== subject.id));
+        } else {
+            setPendingRemovals((prev) => (prev.some((s) => s.id === subject.id) ? prev : [...prev, subject]));
         }
     };
 
@@ -561,7 +585,7 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                     Materias del curso
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
-                        {courseSubjects.length}
+                        {displayedSubjects.length}
                     </span>
                 </h3>
                 <Button
@@ -593,18 +617,10 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                             variant="outline"
                             className="h-9 cursor-pointer"
                             onClick={handleConfirmAssociation}
-                            disabled={loading || !courseId || selectedSubjects.length === 0}
+                            disabled={!courseId || selectedSubjects.length === 0}
                         >
-                            {loading ? (
-                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                            ) : (
-                                <Link2 className="w-4 h-4 mr-1.5" />
-                            )}
-                            {loading
-                                ? "Asociando…"
-                                : selectedSubjects.length > 0
-                                    ? `Asociar ${selectedSubjects.length}`
-                                    : "Asociar"}
+                            <Link2 className="w-4 h-4 mr-1.5" />
+                            {selectedSubjects.length > 0 ? `Agregar ${selectedSubjects.length}` : "Agregar"}
                         </Button>
                     </div>
 
@@ -632,20 +648,51 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                 </div>
             )}
 
-            {/* Lista de materias asociadas al curso */}
+            {/* Cambios de materias pendientes: se aplican al tocar "Guardar cambios" */}
+            {hasPendingChanges && (
+                <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <p className="font-medium text-amber-900">Cambios sin guardar</p>
+                        {pendingAdds.length > 0 && (
+                            <p className="text-xs text-amber-800">
+                                Se agregará{pendingAdds.length > 1 ? "n" : ""}:{" "}
+                                {pendingAdds.map((s) => s.nombre).join(", ")}
+                            </p>
+                        )}
+                        {pendingRemovals.length > 0 && (
+                            <p className="text-xs text-amber-800">
+                                Se quitará{pendingRemovals.length > 1 ? "n" : ""}:{" "}
+                                {pendingRemovals.map((s) => s.nombre).join(", ")}
+                            </p>
+                        )}
+                        <p className="text-xs text-amber-700">Tocá “Guardar cambios” para aplicarlos al curso.</p>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 shrink-0 text-amber-800 hover:bg-amber-100"
+                        onClick={discardPendingChanges}
+                    >
+                        Descartar
+                    </Button>
+                </div>
+            )}
+
+            {/* Lista de materias del curso (como va a quedar al guardar) */}
             {loadingSubjects ? (
                 <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 py-10 text-sm text-gray-500">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Cargando materias…
                 </div>
-            ) : courseSubjects.length > 0 ? (
+            ) : displayedSubjects.length > 0 ? (
                 <SubjectList
-                    subjects={courseSubjects}
+                    subjects={displayedSubjects}
                     onDelete={handleOnDeleteSubject}
                     onEdit={handleOnEditSubjectClick}
                     onUnassign={async (id) => {
                         // Se pide confirmación antes de quitarla del curso
-                        setSubjectToUnassign(courseSubjects.find((s) => s.id === id) ?? null);
+                        setSubjectToUnassign(displayedSubjects.find((s) => s.id === id) ?? null);
                     }}
                     showUnassign={true}
                     showTitle={false}
@@ -680,7 +727,7 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
             <AlertDialog
                 open={subjectToUnassign !== null}
                 onOpenChange={(open) => {
-                    if (!open && !unassigning) setSubjectToUnassign(null);
+                    if (!open) setSubjectToUnassign(null);
                 }}
             >
                 <AlertDialogContent>
@@ -695,30 +742,23 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                                 <strong className="font-semibold text-gray-900">
                                     “{subjectToUnassign?.nombre}”
                                 </strong>{" "}
-                                de este curso y los alumnos dejarán de verla.
+                                de este curso al tocar “Guardar cambios”.
                             </span>
                             <span className="block">
                                 La materia y sus módulos no se eliminan: podés volver a agregarla cuando quieras.
-                                El cambio se aplica en el momento.
                             </span>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={unassigning}>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                            disabled={unassigning}
                             className="bg-red-600 text-white hover:bg-red-700"
-                            onClick={async (e) => {
-                                e.preventDefault();
-                                if (!subjectToUnassign) return;
-                                setUnassigning(true);
-                                await handleUnassignSubject(subjectToUnassign.id);
-                                setUnassigning(false);
+                            onClick={() => {
+                                if (subjectToUnassign) markSubjectForRemoval(subjectToUnassign);
                                 setSubjectToUnassign(null);
                             }}
                         >
-                            {unassigning && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
-                            {unassigning ? "Quitando…" : "Quitar del curso"}
+                            Quitar del curso
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -825,6 +865,8 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                     setAllSubjects(prev => prev.filter(s => s.id !== subjectId));
                     setCourseSubjects(prev => prev.filter(s => s.id !== subjectId));
                     setCourseSubjectIds(prev => prev.filter(id => id !== subjectId));
+                    setPendingAdds(prev => prev.filter(s => s.id !== subjectId));
+                    setPendingRemovals(prev => prev.filter(s => s.id !== subjectId));
                     setEditingSubject(null);
                     
                     // Si hay courseId, actualizar el curso para remover la referencia a la materia
