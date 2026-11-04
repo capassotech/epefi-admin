@@ -1,6 +1,6 @@
 // src/pages/SubjectForm.tsx — alta (/subjects/new) y edición (/subjects/:id/edit) de materias
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { BookOpen, GraduationCap, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/context/PageHeaderContext";
@@ -13,6 +13,7 @@ import { FormField } from "@/components/common/FormField";
 import { CoursesAPI } from "@/service/courses";
 import type { Course, Subject } from "@/types/types";
 import { extractErrorMessage } from "@/utils/errorMessages";
+import { courseBreadcrumbs, fromCourseState, readFromCourse } from "@/utils/fromCourse";
 
 export default function SubjectForm() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,9 @@ export default function SubjectForm() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Si se llegó desde la edición de un curso, se conserva para la ruta de navegación y el "volver"
+  const fromCourse = readFromCourse(useLocation().state);
+  const navState = fromCourseState(fromCourse);
   const detailPath = id ? `/subjects/${encodeURIComponent(id)}` : "/subjects";
 
   useEffect(() => {
@@ -65,7 +69,7 @@ export default function SubjectForm() {
     title: isEditing ? "Editar" : "Nueva materia",
     tourSteps: subjectFormTourSteps,
     breadcrumbs: [
-      { label: "Materias", to: "/subjects" },
+      ...(fromCourse ? courseBreadcrumbs(fromCourse) : [{ label: "Materias", to: "/subjects" }]),
       ...(isEditing && materia ? [{ label: materia.nombre, to: detailPath }] : []),
     ],
   });
@@ -83,7 +87,7 @@ export default function SubjectForm() {
       if (isEditing && materia) {
         await CoursesAPI.updateMateria(materia.id, { ...materia, nombre: nombre.trim() });
         toast.success("Materia actualizada exitosamente");
-        navigate(detailPath);
+        navigate(detailPath, { state: navState });
       } else {
         // Las materias nuevas se crean sin curso: se asocian desde la edición del curso
         const created = await CoursesAPI.createMateria({ nombre: nombre.trim(), id_cursos: [], modulos: [] });
@@ -135,7 +139,7 @@ export default function SubjectForm() {
             variant="ghost"
             size="sm"
             className="h-8 text-gray-500 cursor-pointer"
-            onClick={() => navigate(detailPath)}
+            onClick={() => navigate(detailPath, { state: navState })}
             disabled={saving}
           >
             Cancelar

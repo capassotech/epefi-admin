@@ -497,14 +497,8 @@ export default function CreateProduct() {
         )}
 
         <form onSubmit={(e) => e.preventDefault()}>
-          <SectionCard
-            title={tabs[currentTab]?.label}
-            description={
-              currentTab === 0
-                ? "Completá los datos para crear este curso"
-                : "Asociá materias existentes o creá nuevas para este curso"
-            }
-          >
+          {/* Sin encabezado: el paso actual ya se ve en la ficha lateral */}
+          <SectionCard>
             <div className="px-5 py-5">
               {currentTab === 0 && (
                 <GeneralInfoForm

@@ -1,6 +1,7 @@
 // src/pages/SubjectDetail.tsx
 import { useEffect, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import { courseBreadcrumbs, fromCourseState, readFromCourse } from '@/utils/fromCourse';
 import { usePageHeader } from '@/context/PageHeaderContext';
 import { subjectDetailTourSteps } from '@/config/tourSteps';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,9 @@ import {
 export const SubjectDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    // Si se llegó desde la edición de un curso, se conserva para la ruta de navegación y los "volver"
+    const fromCourse = readFromCourse(useLocation().state);
+    const navState = fromCourseState(fromCourse);
     const [materia, setMateria] = useState<Subject | null>(null);
     const [modulos, setModulos] = useState<Module[]>([]);
     const [loading, setLoading] = useState(true);
@@ -111,7 +115,7 @@ export const SubjectDetail = () => {
 
     // Crear/editar módulo se hace en su propia página y vuelve acá al guardar
     const handleEditClick = (module: Module) => {
-        navigate(`/subjects/${encodeURIComponent(id || '')}/modules/${encodeURIComponent(module.id)}/edit`);
+        navigate(`/subjects/${encodeURIComponent(id || '')}/modules/${encodeURIComponent(module.id)}/edit`, { state: navState });
     };
 
     const handleCancelDelete = () => {
@@ -147,7 +151,7 @@ export const SubjectDetail = () => {
     usePageHeader({
         title: materia?.nombre,
         tourSteps: subjectDetailTourSteps,
-        breadcrumbs: [{ label: "Materias", to: "/subjects" }],
+        breadcrumbs: fromCourse ? courseBreadcrumbs(fromCourse) : [{ label: "Materias", to: "/subjects" }],
     });
 
     if (loading) return (
@@ -165,7 +169,8 @@ export const SubjectDetail = () => {
     const materiaCourses = (materia.id_cursos ?? [])
         .map((courseId) => coursesById[courseId])
         .filter((course): course is Course => !!course);
-    const openCreateModule = () => navigate(`/subjects/${encodeURIComponent(materia.id)}/modules/new`);
+    const openCreateModule = () =>
+        navigate(`/subjects/${encodeURIComponent(materia.id)}/modules/new`, { state: navState });
 
     const aside = (
         <ProfileCard
@@ -185,7 +190,7 @@ export const SubjectDetail = () => {
                     variant="outline"
                     size="sm"
                     className="h-8 cursor-pointer"
-                    onClick={() => navigate(`/subjects/${encodeURIComponent(materia.id)}/edit`)}
+                    onClick={() => navigate(`/subjects/${encodeURIComponent(materia.id)}/edit`, { state: navState })}
                 >
                     <Pencil className="w-3.5 h-3.5 mr-1.5" />
                     Editar materia
@@ -223,7 +228,7 @@ export const SubjectDetail = () => {
                                         await CoursesAPI.deleteMateria(id);
                                         toast.success('Materia eliminada exitosamente');
                                         setDeleteConfirmOpen(false);
-                                        navigate('/subjects');
+                                        navigate(fromCourse?.to ?? '/subjects');
                                     } catch (err) {
                                         toast.error('Error al eliminar la materia');
                                         console.error('Error al eliminar:', err);

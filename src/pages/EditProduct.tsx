@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/DetailLayout";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
 import { editProductTourSteps } from "@/config/tourSteps";
 import {
@@ -56,7 +56,9 @@ export default function EditProduct() {
     tourSteps: editProductTourSteps,
     breadcrumbs: [{ label: "Cursos", to: "/products" }],
   });
-  const [currentTab, setCurrentTab] = useState(0);
+  // ?tab=materias abre directo el paso de materias (ej: al volver de editar una materia)
+  const [searchParams] = useSearchParams();
+  const [currentTab, setCurrentTab] = useState(() => (searchParams.get("tab") === "materias" ? 1 : 0));
   const [loading, setLoading] = useState(false);
 
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
@@ -698,14 +700,8 @@ export default function EditProduct() {
             form.handleSubmit(onSubmit);
           }}
         >
-          <SectionCard
-            title={tabs[currentTab]?.label}
-            description={
-              currentTab === 0
-                ? "Datos generales, portada, fechas y documentos del curso"
-                : "Asociá, desasigná o creá materias para este curso"
-            }
-          >
+          {/* Sin encabezado: el paso actual ya se ve en la ficha lateral */}
+          <SectionCard>
             <div className="px-5 py-5">
               {currentTab < 1 ? (
                 <GeneralInfoForm
@@ -724,7 +720,13 @@ export default function EditProduct() {
                   fechasDeExamenesDeleted={fechasDeExamenesDeleted}
                 />
               ) : (
-                <SubjectCreation courseId={createdCourseId} />
+                <SubjectCreation
+                  courseId={createdCourseId}
+                  courseTitle={form.getValues("titulo")}
+                  onBeforeOpenSubject={async () => {
+                    if (hasChanges(form.getValues())) await form.handleSubmit(onSubmit)();
+                  }}
+                />
               )}
             </div>
           </SectionCard>

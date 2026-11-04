@@ -128,9 +128,12 @@ export const SubjectList = ({
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <IconAction label="Ver materia" onClick={() => goToDetail(m)}>
-          <Eye />
-        </IconAction>
+        {/* Dentro de un curso el lápiz ya abre la materia (con confirmación): el ojo sobra */}
+        {!showUnassign && (
+          <IconAction label="Ver materia" onClick={() => goToDetail(m)}>
+            <Eye />
+          </IconAction>
+        )}
         <IconAction label="Editar materia" onClick={() => onEdit?.(m)}>
           <Edit2 />
         </IconAction>

@@ -12,9 +12,10 @@ import { DetailLayout, ProfileCard, SectionCard } from "@/components/common/Deta
 import ModulesModal from "@/components/subject/ModulesModal";
 import { CoursesAPI } from "@/service/courses";
 import type { Module, Subject } from "@/types/types";
+import { courseBreadcrumbs, fromCourseState, readFromCourse, type FromCourse } from "@/utils/fromCourse";
 
-/** Estado de navegación opcional: a dónde volver al guardar o cancelar */
-export type ModuleFormLocationState = { returnTo?: string };
+/** Estado de navegación opcional: a dónde volver al guardar o cancelar, y el curso de origen */
+export type ModuleFormLocationState = { returnTo?: string; fromCourse?: FromCourse };
 
 const FORM_ID = "module-form";
 
@@ -25,6 +26,8 @@ export default function ModuleForm() {
   const location = useLocation();
   const subjectPath = `/subjects/${encodeURIComponent(subjectId ?? "")}`;
   const returnTo = (location.state as ModuleFormLocationState | null)?.returnTo || subjectPath;
+  // Si la materia se abrió desde un curso, se conserva para la ruta de navegación y el "volver"
+  const fromCourse = readFromCourse(location.state);
 
   const [materia, setMateria] = useState<Subject | null>(null);
   const [module, setModule] = useState<Module | null>(null);
@@ -60,12 +63,17 @@ export default function ModuleForm() {
     title: isEditing ? module?.titulo || "Editar módulo" : "Nuevo módulo",
     tourSteps: moduleFormTourSteps,
     breadcrumbs: [
-      { label: "Materias", to: "/subjects" },
+      ...(fromCourse ? courseBreadcrumbs(fromCourse) : [{ label: "Materias", to: "/subjects" }]),
       ...(materia ? [{ label: materia.nombre, to: subjectPath }] : []),
     ],
   });
 
-  const goBack = useCallback(() => navigate(returnTo), [navigate, returnTo]);
+  const goBack = useCallback(
+    () => navigate(returnTo, { state: fromCourseState(fromCourse) }),
+    // fromCourse se recalcula en cada render; alcanza con su destino para detectar cambios
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate, returnTo, fromCourse?.to]
+  );
 
   // Misma lógica que usaban las pantallas que abrían el modal
   const handleCreated = async (data: Module): Promise<{ id: string }> => {

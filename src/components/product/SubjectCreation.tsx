@@ -12,7 +12,20 @@ import { useWatch } from "react-hook-form";
 import type { ProductFormData } from "@/schemas/product-schema";
 import { SubjectList } from "../subject/SubjectList";
 import ConfirmDeleteModal from "../product/ConfirmDeleteModal";
-import { Loader2, Plus } from "lucide-react";
+import { BookOpen, Link2, Loader2, Pencil, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { fromCourseState } from "@/utils/fromCourse";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
 import ModulesModal from "../subject/ModulesModal";
 import ModulesList from "../subject/ModulesList";
 import {
@@ -22,24 +35,23 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from "@/components/ui/select"
 import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
 interface SubjectCreationProps {
     courseId?: string | null;
     control?: Control<ProductFormData>;
     courseTitle?: string | null; // Título del curso para pasar al modal
+    /** Guarda los cambios pendientes del curso antes de salir a editar una materia */
+    onBeforeOpenSubject?: () => Promise<void>;
 }
 
 
-export default function SubjectCreation({ courseId, control, courseTitle }: SubjectCreationProps) {
+export default function SubjectCreation({ courseId, control, courseTitle, onBeforeOpenSubject }: SubjectCreationProps) {
+    const navigate = useNavigate();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    /** Materia elegida para editar: se pide confirmación antes de salir del curso */
+    const [subjectToOpen, setSubjectToOpen] = useState<Subject | null>(null);
+    const [openingSubject, setOpeningSubject] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
@@ -419,9 +431,28 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
         }
     };
 
+    /** Editar una materia abre su página: antes se confirma y se guardan los cambios del curso */
     const handleOnEditSubjectClick = (subject: Subject) => {
-        setEditingSubject(subject);
-        setIsEditModalOpen(true);
+        setSubjectToOpen(subject);
+    };
+
+    const confirmOpenSubject = async () => {
+        if (!subjectToOpen || !courseId) return;
+        setOpeningSubject(true);
+        try {
+            await onBeforeOpenSubject?.();
+            navigate(`/subjects/${encodeURIComponent(subjectToOpen.id)}`, {
+                state: fromCourseState({
+                    // Volver lleva directo al paso "Materias" del curso
+                    to: `/products/${encodeURIComponent(courseId)}/edit?tab=materias`,
+                    label: currentCourseTitle || "Curso",
+                }),
+            });
+        } catch (error) {
+            console.error("Error al guardar el curso antes de abrir la materia:", error);
+            toast.error("No se pudieron guardar los cambios del curso");
+            setOpeningSubject(false);
+        }
     };
 
     const handleCancelEditSubject = () => {
@@ -522,187 +553,162 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
 
     return (
         <div className="space-y-4">
-            {/* Card unificado para agregar y crear materias */}
-            <Card>
-                <CardContent className="p-6">
-                    <div className="space-y-6">
-                        {/* Sección: Agregar materias existentes - Solo se muestra si hay materias disponibles */}
-                        {selectableSubjects.length > 0 && (
-                            <>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                        </div>
-                    <div>
-                                            <h4 className="text-sm font-semibold text-gray-900">Agregar Materias Existentes</h4>
-                                            <p className="text-xs text-gray-500">Selecciona materias que ya están creadas en el sistema</p>
-                        </div>
-                    </div>
+            {/* Encabezado: cantidad de materias y acción principal */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    Materias del curso
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
+                        {courseSubjects.length}
+                    </span>
+                </h3>
+                <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 cursor-pointer"
+                    onClick={() => setIsCreateModalOpen(true)}
+                >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Nueva materia
+                </Button>
+            </div>
 
-                                    <div className="pl-0 sm:pl-10 space-y-3">
-                        <Select onValueChange={handleSelectSubject}>
-                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Buscar y seleccionar materia..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {selectableSubjects.map((s) => (
-                                    <SelectItem key={s.id} value={s.id}>
-                                        {s.nombre}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                    {selectedSubjects.length > 0 && (
-                        <div className="space-y-2">
-                                                <div className="text-xs font-medium text-gray-700">Materias seleccionadas ({selectedSubjects.length}):</div>
-                            <div className="flex flex-wrap gap-2">
-                                {selectedSubjects.map((s) => (
-                                                        <Badge key={s.id} variant="secondary" className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200">
-                                        {s.nombre}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveSelected(s.id)}
-                                                                className="rounded-full hover:bg-blue-200 p-0.5 transition-colors"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                                        <div className="flex justify-end pt-2">
+            {/* Sumar materias que ya existen en el sistema */}
+            {selectableSubjects.length > 0 && (
+                <div className="space-y-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <SearchableSelect
+                            value=""
+                            options={selectableSubjects.map((s) => ({ value: s.id, label: s.nombre }))}
+                            onChange={handleSelectSubject}
+                            placeholder="Agregar materia existente…"
+                            searchPlaceholder="Buscar materia…"
+                            emptyText="Ninguna materia coincide con la búsqueda"
+                            className="sm:flex-1"
+                        />
                         <Button
                             type="button"
-                            className="cursor-pointer"
+                            variant="outline"
+                            className="h-9 cursor-pointer"
                             onClick={handleConfirmAssociation}
                             disabled={loading || !courseId || selectedSubjects.length === 0}
                         >
-                                                {loading ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                        Asociando...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                        Asociar {selectedSubjects.length > 0 ? `${selectedSubjects.length} materia${selectedSubjects.length > 1 ? 's' : ''}` : 'materias'}
-                                                    </>
-                                                )}
+                            {loading ? (
+                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                            ) : (
+                                <Link2 className="w-4 h-4 mr-1.5" />
+                            )}
+                            {loading
+                                ? "Asociando…"
+                                : selectedSubjects.length > 0
+                                    ? `Asociar ${selectedSubjects.length}`
+                                    : "Asociar"}
                         </Button>
                     </div>
-                                    </div>
-                                </div>
 
-                                {/* Divider - Solo se muestra si hay materias disponibles */}
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-200"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-white px-2 text-gray-500">O</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Sección: Crear nueva materia */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Crear Nueva Materia</h4>
-                                    <p className="text-xs text-gray-500">Crea una materia nueva que se asociará automáticamente a este curso</p>
-                                </div>
-                            </div>
-                            
-                            <div className="pl-0 sm:pl-10">
-                                <Button 
-                                    type="button" 
-                                    className="cursor-pointer w-full sm:w-auto"
-                                    onClick={() => setIsCreateModalOpen(true)}
+                    {selectedSubjects.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {selectedSubjects.map((s) => (
+                                <Badge
+                                    key={s.id}
+                                    variant="secondary"
+                                    className="flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700"
                                 >
-                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Crear Nueva Materia
-                                </Button>
-                            </div>
+                                    {s.nombre}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveSelected(s.id)}
+                                        className="rounded-full p-0.5 transition-colors hover:bg-blue-200"
+                                        aria-label={`Quitar ${s.nombre}`}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </Badge>
+                            ))}
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
-
+                    )}
+                </div>
+            )}
 
             {/* Lista de materias asociadas al curso */}
             {loadingSubjects ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-center py-12">
-                            <div className="flex flex-col items-center space-y-3">
-                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                                <p className="text-sm text-gray-500 font-medium">Cargando materias...</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 py-10 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Cargando materias…
+                </div>
             ) : courseSubjects.length > 0 ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <SubjectList
-                            subjects={courseSubjects}
-                            onDelete={handleOnDeleteSubject}
-                            onEdit={handleOnEditSubjectClick}
-                            onUnassign={handleUnassignSubject}
-                            showUnassign={true}
-                            showTitle={true}
-                            onSubjectStatusUpdated={(id, newEstado) => {
-                                const newActivo = newEstado === "activo";
-                                const normalizedId = String(id);
-                                setCourseSubjects((prev) =>
-                                    prev.map((m) =>
-                                        String(m.id) === normalizedId
-                                            ? { ...m, activo: newActivo, estado: newEstado }
-                                            : m
-                                    )
-                                );
-                                setAllSubjects((prev) =>
-                                    prev.map((m) =>
-                                        String(m.id) === normalizedId
-                                            ? { ...m, activo: newActivo, estado: newEstado }
-                                            : m
-                                    )
-                                );
-                            }}
-                        />
-                    </CardContent>
-                </Card>
+                <SubjectList
+                    subjects={courseSubjects}
+                    onDelete={handleOnDeleteSubject}
+                    onEdit={handleOnEditSubjectClick}
+                    onUnassign={handleUnassignSubject}
+                    showUnassign={true}
+                    showTitle={false}
+                    onSubjectStatusUpdated={(id, newEstado) => {
+                        const newActivo = newEstado === "activo";
+                        const normalizedId = String(id);
+                        setCourseSubjects((prev) =>
+                            prev.map((m) =>
+                                String(m.id) === normalizedId
+                                    ? { ...m, activo: newActivo, estado: newEstado }
+                                    : m
+                            )
+                        );
+                        setAllSubjects((prev) =>
+                            prev.map((m) =>
+                                String(m.id) === normalizedId
+                                    ? { ...m, activo: newActivo, estado: newEstado }
+                                    : m
+                            )
+                        );
+                    }}
+                />
             ) : courseId ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="text-center py-8">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </div>
-                            <p className="text-gray-500 font-medium">No hay materias asociadas a este curso</p>
-                            <p className="text-sm text-gray-400 mt-1">Agrega materias existentes o crea una nueva</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-gray-200 px-6 py-8 text-center">
+                    <BookOpen className="mb-1 w-6 h-6 text-gray-300" />
+                    <p className="text-sm text-gray-500">Este curso todavía no tiene materias.</p>
+                    <p className="text-xs text-gray-400">Creá una nueva o agregá una existente.</p>
+                </div>
             ) : null}
+
+            {/* Confirmación antes de salir a editar una materia */}
+            <AlertDialog
+                open={subjectToOpen !== null}
+                onOpenChange={(open) => {
+                    if (!open && !openingSubject) setSubjectToOpen(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Pencil className="w-5 h-5 text-gray-700" />
+                            Editar materia
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                Se guardarán los cambios del curso y se abrirá la materia{" "}
+                                <strong className="font-semibold text-gray-900">
+                                    “{subjectToOpen?.nombre}”
+                                </strong>{" "}
+                                con sus módulos.
+                            </span>
+                            <span className="block">¿Deseás continuar?</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={openingSubject}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={openingSubject}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                void confirmOpenSubject();
+                            }}
+                        >
+                            {openingSubject && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                            {openingSubject ? "Guardando…" : "Guardar y abrir"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <SubjectModal
                 isOpen={isCreateModalOpen || isEditModalOpen}

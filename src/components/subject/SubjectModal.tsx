@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, Settings, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FormField } from '@/components/common/FormField';
+import { Loader2, BookOpen, Save, Settings, Trash2 } from 'lucide-react';
 import { safeSetItem } from '@/utils/storage';
 import { toast } from 'sonner';
 import { extractErrorMessage } from '@/utils/errorMessages';
@@ -311,7 +312,7 @@ const SubjectModal = ({
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogTrigger></DialogTrigger>
             <DialogContent
-                className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
+                className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 gap-0"
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <DialogTitle className="sr-only">
@@ -326,129 +327,122 @@ const SubjectModal = ({
                     className="w-full min-w-0 overflow-x-hidden"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-center justify-between p-4 sm:p-6 border-b">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 break-words pr-8">
-                            {editingSubject ? 'Editar Materia' : 'Crear Nueva Materia'}
+                    {/* Encabezado compacto: título y curso al que pertenece */}
+                    <div className="border-b border-gray-100 px-5 py-4 pr-12">
+                        <h2 className="text-base font-semibold text-gray-900 break-words">
+                            {editingSubject ? 'Editar materia' : 'Nueva materia'}
                         </h2>
+                        {courseId && (
+                            <p className="mt-0.5 truncate text-xs text-gray-500">
+                                {currentCourseTitle || getCourseName(courseId)}
+                            </p>
+                        )}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nombre de la Materia *
-                            </label>
-                            <input
-                                type="text"
-                                value={subjectForm.nombre}
-                                onChange={(e) =>
-                                    setSubjectForm((prev) => ({
-                                        ...prev,
-                                        nombre: e.target.value,
-                                    }))
-                                }
-                                placeholder="Ej: Fundamentos del Liderazgo"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                required
-                            />
+                    <form onSubmit={handleSubmit}>
+                        <div className="space-y-4 px-5 py-5">
+                            <FormField id="subject-name" label="Nombre de la materia">
+                                <Input
+                                    id="subject-name"
+                                    value={subjectForm.nombre}
+                                    onChange={(e) =>
+                                        setSubjectForm((prev) => ({
+                                            ...prev,
+                                            nombre: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="Ej: Fundamentos del Liderazgo"
+                                    required
+                                />
+                            </FormField>
+
+                            {/* Módulos: fila simple con la cantidad y el acceso a gestionarlos */}
+                            {(editingSubject || (fromCourseCreation && subjectForm.nombre.trim())) && (
+                                <div className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3">
+                                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gray-100 text-gray-600">
+                                        <BookOpen className="h-4 w-4" />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-gray-900">
+                                            Módulos
+                                            <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
+                                                {subjectForm.modulos.length}
+                                            </span>
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {editingSubject
+                                                ? 'Agregá, editá o eliminá los módulos de esta materia.'
+                                                : 'Se guarda la materia y después cargás sus módulos.'}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 shrink-0 cursor-pointer"
+                                        onClick={() => {
+                                            const error = validateForm();
+                                            if (error) {
+                                                toast.error(error);
+                                                return;
+                                            }
+                                            setShowConfirmSaveDialog(true);
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        <Settings className="w-4 h-4 mr-1.5" />
+                                        {editingSubject ? 'Gestionar' : 'Guardar y gestionar'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
-                        {fromCourseCreation && courseId && (
-                            <div>
-                                <h1 className="text-sm font-medium text-gray-700 mb-2">Esta materia se asociará al curso:</h1>
-                                <Badge key={courseId} variant="default" className="flex items-center gap-1 w-fit mt-3">
-                                    {currentCourseTitle || (courseId ? getCourseName(courseId) : 'Sin curso')}
-                                </Badge>
-                            </div>
-                        )}
-
-                        {/* Sección para gestionar módulos - Parte del contenido del modal */}
-                        {(editingSubject || (fromCourseCreation && subjectForm.nombre.trim())) && (
-                            <div className="pt-6 border-t border-gray-200">
-                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                                                <BookOpen className="w-6 h-6 text-blue-600" />
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-base font-semibold text-gray-900 mb-1">
-                                                Gestión de Módulos
-                                            </h3>
-                                            <p className="text-sm text-gray-600 mb-4">
-                                                {editingSubject 
-                                                    ? "Gestiona los módulos de esta materia. Puedes agregar, editar o eliminar módulos."
-                                                    : "Guarda esta materia para comenzar a gestionar sus módulos. Podrás agregar, editar o eliminar módulos después de guardar."
-                                                }
-                                            </p>
-                                            <Button
-                                                type="button"
-                                                className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                                                onClick={() => {
-                                                    const error = validateForm();
-                                                    if (error) {
-                                                        toast.error(error);
-                                                        return;
-                                                    }
-                                                    setShowConfirmSaveDialog(true);
-                                                }}
-                                                disabled={loading}
-                                            >
-                                                <Settings className="w-4 h-4 mr-2" />
-                                                {editingSubject ? "Gestionar Módulos" : "Guardar y Gestionar Módulos"}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex flex-col gap-3 pt-4 border-t sm:flex-row sm:items-center sm:justify-between">
+                        {/* Pie: eliminar discreto a la izquierda, acciones principales a la derecha */}
+                        <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/60 px-5 py-3 sm:flex-row sm:items-center">
                             {editingSubject && (
                                 <Button
                                     type="button"
-                                    variant="destructive"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setShowConfirmDeleteDialog(true)}
                                     disabled={loading || deleteLoading}
-                                    className="cursor-pointer text-white w-full sm:w-auto"
+                                    className="h-9 cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
                                 >
                                     {deleteLoading ? (
-                                        <>
-                                            <Loader2 className='h-4 w-4 animate-spin mr-2' />
-                                            Eliminando...
-                                        </>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
                                     ) : (
-                                        <>
-                                            <Trash2 className='h-4 w-4 mr-2' />
-                                            Eliminar Materia
-                                        </>
+                                        <Trash2 className="h-4 w-4 mr-1.5" />
                                     )}
+                                    {deleteLoading ? 'Eliminando…' : 'Eliminar materia'}
                                 </Button>
                             )}
-                            <div className="flex flex-col-reverse gap-2 w-full sm:flex-row sm:justify-end sm:space-x-3 sm:ml-auto sm:w-auto">
+                            <div className="flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row">
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={onCancel}
                                     disabled={loading || deleteLoading}
-                                    className="w-full sm:w-auto"
+                                    className="h-9 text-gray-600"
                                 >
                                     Cancelar
                                 </Button>
                                 <Button
-                                    className="cursor-pointer w-full sm:w-auto"
+                                    className="h-9 cursor-pointer"
+                                    size="sm"
                                     type="submit"
                                     disabled={loading || deleteLoading}
                                 >
                                     {loading ? (
-                                        <Loader2 className='h-4 w-4 animate-spin' />
-                                    ) : editingSubject ? (
-                                        'Guardar Cambios'
-                                    ) : fromCourseCreation ? (
-                                        'Crear Materia'
+                                        <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                        'Continuar con Módulos'
+                                        <Save className="h-4 w-4 mr-1.5" />
                                     )}
+                                    {editingSubject
+                                        ? 'Guardar cambios'
+                                        : fromCourseCreation
+                                            ? 'Crear materia'
+                                            : 'Continuar con módulos'}
                                 </Button>
                             </div>
                         </div>
