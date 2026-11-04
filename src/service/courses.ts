@@ -293,6 +293,14 @@ export const CoursesAPI = {
     return res.data;
   },
 
+  /** Todas las materias como lista simple (el endpoint responde paginado: { data, pagination }) */
+  getAllMateriasList: async (): Promise<Subject[]> => {
+    const res = await api.get("/materias", { params: { limit: 100_000 } });
+    const body = res.data;
+    if (Array.isArray(body)) return body;
+    return Array.isArray(body?.data) ? body.data : [];
+  },
+
   createMateria: async (data: Omit<Subject, "id">) => {
     try {
       const res = await api.post("/materias", data);

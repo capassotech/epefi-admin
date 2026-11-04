@@ -12,7 +12,7 @@ import { useWatch } from "react-hook-form";
 import type { ProductFormData } from "@/schemas/product-schema";
 import { SubjectList } from "../subject/SubjectList";
 import ConfirmDeleteModal from "../product/ConfirmDeleteModal";
-import { BookOpen, Link2, Loader2, Pencil, Plus } from "lucide-react";
+import { BookOpen, Link2, Loader2, Pencil, Plus, Unlink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fromCourseState } from "@/utils/fromCourse";
 import {
@@ -52,6 +52,9 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
     /** Materia elegida para editar: se pide confirmación antes de salir del curso */
     const [subjectToOpen, setSubjectToOpen] = useState<Subject | null>(null);
     const [openingSubject, setOpeningSubject] = useState(false);
+    /** Materia a quitar del curso: se confirma antes, porque el cambio se aplica en el momento */
+    const [subjectToUnassign, setSubjectToUnassign] = useState<Subject | null>(null);
+    const [unassigning, setUnassigning] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
@@ -134,10 +137,10 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
             setLoadingSubjects(true);
             try {
                 const [subjectsList, course] = await Promise.all([
-                    CoursesAPI.getMaterias(),
+                    CoursesAPI.getAllMateriasList(),
                     courseId ? CoursesAPI.getById(String(courseId)) : Promise.resolve(null),
                 ]);
-                setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                setAllSubjects(subjectsList);
                 const existingIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
                 setCourseSubjectIds(existingIds);
                 
@@ -232,8 +235,8 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                         setCourseSubjectIds(updatedIds);
                         
                         // Recargar las materias disponibles
-                        const subjectsList = await CoursesAPI.getMaterias();
-                        setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                        const subjectsList = await CoursesAPI.getAllMateriasList();
+                        setAllSubjects(subjectsList);
                         
                         // Cargar y agregar la nueva materia a la lista de materias del curso
                         try {
@@ -263,8 +266,8 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                     } else {
                         console.log("La materia ya estaba asociada al curso");
                         // La materia ya está asociada, pero asegurémonos de que esté en la lista visual
-                        const subjectsList = await CoursesAPI.getMaterias();
-                        setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                        const subjectsList = await CoursesAPI.getAllMateriasList();
+                        setAllSubjects(subjectsList);
                         
                         // Verificar si la materia está en courseSubjects y agregarla si no está
                         setCourseSubjects(prev => {
@@ -305,8 +308,8 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
         setLoadingSubjects(true);
         try {
             // Refrescar todas las materias
-            const subjectsList = await CoursesAPI.getMaterias();
-            setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+            const subjectsList = await CoursesAPI.getAllMateriasList();
+            setAllSubjects(subjectsList);
             
             // Si hay courseId, recargar el curso y las materias asociadas para asegurar que todo esté sincronizado
             if (courseId) {
@@ -640,7 +643,10 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                     subjects={courseSubjects}
                     onDelete={handleOnDeleteSubject}
                     onEdit={handleOnEditSubjectClick}
-                    onUnassign={handleUnassignSubject}
+                    onUnassign={async (id) => {
+                        // Se pide confirmación antes de quitarla del curso
+                        setSubjectToUnassign(courseSubjects.find((s) => s.id === id) ?? null);
+                    }}
                     showUnassign={true}
                     showTitle={false}
                     onSubjectStatusUpdated={(id, newEstado) => {
@@ -669,6 +675,54 @@ export default function SubjectCreation({ courseId, control, courseTitle, onBefo
                     <p className="text-xs text-gray-400">Creá una nueva o agregá una existente.</p>
                 </div>
             ) : null}
+
+            {/* Confirmación antes de quitar una materia del curso */}
+            <AlertDialog
+                open={subjectToUnassign !== null}
+                onOpenChange={(open) => {
+                    if (!open && !unassigning) setSubjectToUnassign(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Unlink className="w-5 h-5 text-red-600" />
+                            Quitar materia del curso
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                Se quitará{" "}
+                                <strong className="font-semibold text-gray-900">
+                                    “{subjectToUnassign?.nombre}”
+                                </strong>{" "}
+                                de este curso y los alumnos dejarán de verla.
+                            </span>
+                            <span className="block">
+                                La materia y sus módulos no se eliminan: podés volver a agregarla cuando quieras.
+                                El cambio se aplica en el momento.
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={unassigning}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={unassigning}
+                            className="bg-red-600 text-white hover:bg-red-700"
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                if (!subjectToUnassign) return;
+                                setUnassigning(true);
+                                await handleUnassignSubject(subjectToUnassign.id);
+                                setUnassigning(false);
+                                setSubjectToUnassign(null);
+                            }}
+                        >
+                            {unassigning && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                            {unassigning ? "Quitando…" : "Quitar del curso"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Confirmación antes de salir a editar una materia */}
             <AlertDialog
