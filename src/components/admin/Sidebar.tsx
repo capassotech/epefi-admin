@@ -214,7 +214,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
                   )}
                 >
                   <item.icon
-                    className={cn("w-[18px] h-[18px] flex-shrink-0", isActive && "text-[#7a1a3a]")}
+                    className={cn("w-[18px] h-[18px] flex-shrink-0", isActive && "text-[#f96015]")}
                   />
                   {isExpanded && <span className="truncate">{item.name}</span>}
                 </Link>

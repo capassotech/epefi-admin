@@ -188,7 +188,7 @@ export default function Profile() {
     <ProfileCard
       mobileActionBar
       media={
-        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#7a1a3a]/10 text-sm font-semibold text-[#7a1a3a]">
+        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-[#f96015]/10 text-sm font-semibold text-orange-700">
           {initials || "?"}
         </span>
       }
