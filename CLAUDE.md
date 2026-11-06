@@ -16,6 +16,12 @@ Las reglas generales de UI están en `../CLAUDE.md`.
 - `SearchableSelect` (`src/components/common/SearchableSelect.tsx`, Popover + cmdk) para los selects con buscador.
 - En mobile, las listas se ven como filas compactas con acciones con ícono, por ejemplo `StudentsList`: checkbox, ícono de rol, nombre, "email · N cursos" y las acciones.
 
+## Tema oscuro
+- El botón está abajo en el menú lateral (`src/components/admin/Sidebar.tsx`). Estado en `src/context/ThemeContext.tsx`; por defecto, claro.
+- No se usan variantes `dark:`: las clases fijas (`bg-white`, `text-gray-*`, `bg-red-50`...) funcionan porque `src/index.css` reasigna la paleta de Tailwind bajo `.dark`.
+- Al usar un color o tono que todavía no esté reasignado, agregarlo ahí. Lo mismo para un fondo fuerte nuevo con texto blanco (`bg-*-600/700`), que se restaura en ese mismo bloque.
+- Para mostrar el logo usar `BrandLogo` (`src/components/common/BrandLogo.tsx`).
+
 ## Crear examen — `src/pages/CreateExam.tsx`
 - La configuración y las preguntas van en secciones separadas, una card por pregunta. La pregunta nueva se resalta.
 - No se puede agregar una pregunta si alguna anterior está incompleta: sale un toast de error (`getQuestionContentError`).

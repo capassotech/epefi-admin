@@ -1,14 +1,16 @@
 import { Toaster as Sonner, toast } from "sonner"
 import { CircleCheck, CircleX, TriangleAlert, Info, Loader2 } from "lucide-react"
+import { useTheme } from "@/context/ThemeContext"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-// El admin no tiene modo oscuro: forzamos "light" para que los toasts no
-// se pongan oscuros cuando el sistema operativo del usuario lo está.
+// Los toasts siguen el tema elegido en el admin, no el del sistema operativo.
 const Toaster = ({ ...props }: ToasterProps) => {
+  const { theme } = useTheme()
+
   return (
     <Sonner
-      theme="light"
+      theme={theme}
       position="bottom-right"
       gap={10}
       offset={20}

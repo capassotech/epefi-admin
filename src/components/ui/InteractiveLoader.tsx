@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BrandLogo } from "@/components/common/BrandLogo";
 
 interface InteractiveLoaderProps {
   initialMessage: string;
@@ -42,7 +43,7 @@ export function InteractiveLoader({
         <div className="relative flex w-[340px] max-w-[calc(100vw-2rem)] flex-col items-center gap-6 rounded-3xl bg-white/95 px-10 pt-10 pb-8 shadow-[0_30px_80px_-20px_rgb(15_23_42/0.45)] ring-1 ring-white/60">
           {/* Logo con un brillo que lo recorre */}
           <div className="loader-logo relative">
-            <img src="/logoNegro.png" alt="EPEFI" className="h-14 w-auto select-none" draggable={false} />
+            <BrandLogo className="h-14 w-auto select-none" draggable={false} />
             <div className="loader-logo-shine absolute inset-0" aria-hidden="true" />
           </div>
 

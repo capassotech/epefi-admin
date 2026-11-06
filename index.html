@@ -8,6 +8,12 @@
     <link rel="apple-touch-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EPEFI - Administración</title>
+    <!-- Aplica el tema guardado antes del primer pintado, para que no parpadee en claro -->
+    <script>
+      try {
+        if (localStorage.getItem("epefi-admin-theme") === "dark") document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

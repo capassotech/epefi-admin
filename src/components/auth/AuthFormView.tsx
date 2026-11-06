@@ -17,6 +17,7 @@ import {
 import { isDevelopmentOrQA } from "@/utils/environment";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import type { PasswordRequirementStatus } from "@/utils/passwordValidation";
+import { BrandLogo } from "@/components/common/BrandLogo";
 
 export default function AuthFormView({
   isLogin = false,
@@ -361,8 +362,7 @@ export default function AuthFormView({
           <Link to="/" className="inline-flex items-center space-x-2 mb-8">
             <div className="flex items-center space-x-2">
               <div className="h-10 rounded-lg flex items-center justify-center">
-                <img
-                  src="/logoNegro.png"
+                <BrandLogo
                   alt="EPEFI Logo"
                   className="h-20"
                 />
