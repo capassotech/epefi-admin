@@ -130,6 +130,166 @@
   }
 }
 
+/* Tema oscuro: el admin usa colores fijos de Tailwind (bg-white, text-gray-*, bg-red-50...),
+   así que en vez de agregar dark: a cada clase se reasigna la paleta. Blanco = superficie,
+   grises invertidos, tonos 50-300 = fondos oscuros, tonos 600-950 = texto claro. */
+.dark {
+  color-scheme: dark;
+
+  --color-white: oklch(0.205 0 0);
+
+  --color-gray-50: oklch(0.175 0 0);
+  --color-gray-100: oklch(0.27 0 0);
+  --color-gray-200: oklch(0.32 0 0);
+  --color-gray-300: oklch(0.4 0 0);
+  --color-gray-400: oklch(0.66 0 0);
+  --color-gray-500: oklch(0.7 0 0);
+  --color-gray-600: oklch(0.76 0 0);
+  --color-gray-700: oklch(0.84 0 0);
+  --color-gray-800: oklch(0.9 0 0);
+  --color-gray-900: oklch(0.96 0 0);
+
+  --color-red-50: oklch(0.26 0.05 25);
+  --color-red-100: oklch(0.3 0.07 25);
+  --color-red-200: oklch(0.38 0.09 25);
+  --color-red-300: oklch(0.47 0.12 25);
+  --color-red-600: oklch(0.72 0.16 25);
+  --color-red-700: oklch(0.78 0.13 25);
+  --color-red-800: oklch(0.84 0.1 25);
+
+  --color-orange-50: oklch(0.26 0.04 50);
+  --color-orange-100: oklch(0.3 0.06 50);
+  --color-orange-300: oklch(0.47 0.1 50);
+  --color-orange-600: oklch(0.74 0.15 50);
+  --color-orange-700: oklch(0.8 0.12 50);
+
+  --color-amber-50: oklch(0.26 0.04 75);
+  --color-amber-100: oklch(0.3 0.06 75);
+  --color-amber-200: oklch(0.38 0.08 75);
+  --color-amber-600: oklch(0.78 0.14 75);
+  --color-amber-700: oklch(0.82 0.12 75);
+  --color-amber-800: oklch(0.86 0.1 75);
+  --color-amber-900: oklch(0.9 0.07 75);
+  --color-amber-950: oklch(0.93 0.05 75);
+
+  --color-green-50: oklch(0.26 0.04 150);
+  --color-green-100: oklch(0.3 0.06 150);
+  --color-green-200: oklch(0.38 0.08 150);
+  --color-green-600: oklch(0.74 0.15 150);
+  --color-green-700: oklch(0.79 0.13 150);
+  --color-green-800: oklch(0.85 0.1 150);
+
+  --color-emerald-600: oklch(0.74 0.14 165);
+  --color-emerald-700: oklch(0.79 0.12 165);
+
+  --color-blue-50: oklch(0.26 0.04 260);
+  --color-blue-100: oklch(0.3 0.06 260);
+  --color-blue-200: oklch(0.38 0.09 260);
+  --color-blue-300: oklch(0.47 0.12 260);
+  --color-blue-600: oklch(0.72 0.14 260);
+  --color-blue-700: oklch(0.78 0.11 260);
+  --color-blue-800: oklch(0.84 0.09 260);
+  --color-blue-900: oklch(0.9 0.06 260);
+
+  --color-violet-50: oklch(0.26 0.05 295);
+  --color-violet-600: oklch(0.74 0.14 295);
+  --color-violet-700: oklch(0.8 0.11 295);
+}
+
+/* El texto blanco sigue siendo blanco */
+.dark [class*="text-white"],
+.dark .admin-button {
+  --color-white: #fff;
+}
+
+/* Botones y chips con fondo gris oscuro y texto blanco */
+.dark [class*="bg-gray-8"],
+.dark [class*="bg-gray-9"],
+.dark .admin-button {
+  --color-gray-800: oklch(0.46 0 0);
+  --color-gray-900: oklch(0.4 0 0);
+}
+
+/* Fondos fuertes de color: conservan el tono original */
+.dark [class*="bg-red-6"],
+.dark [class*="bg-red-7"] {
+  --color-red-600: oklch(57.7% 0.245 27.325);
+  --color-red-700: oklch(50.5% 0.213 27.518);
+}
+
+.dark [class*="bg-blue-6"],
+.dark [class*="bg-blue-7"] {
+  --color-blue-600: oklch(54.6% 0.245 262.881);
+  --color-blue-700: oklch(48.8% 0.243 264.376);
+}
+
+.dark [class*="bg-amber-6"],
+.dark [class*="bg-amber-7"] {
+  --color-amber-600: oklch(66.6% 0.179 58.318);
+  --color-amber-700: oklch(55.5% 0.163 48.998);
+}
+
+.dark [class*="bg-green-6"],
+.dark [class*="bg-green-7"] {
+  --color-green-600: oklch(62.7% 0.194 149.214);
+  --color-green-700: oklch(52.7% 0.154 150.069);
+}
+
+/* Franja de entorno de pruebas: texto oscuro sobre ámbar */
+.dark [class*="bg-amber-4"] {
+  --color-amber-950: oklch(27.9% 0.077 45.635);
+}
+
+/* Los AlertDialogAction heredan el texto de primary, que en oscuro es oscuro */
+.dark [class*="bg-red-6"],
+.dark [class*="bg-blue-6"],
+.dark [class*="bg-amber-6"] {
+  color: #fff;
+}
+
+/* Bordó de marca: sobre fondo oscuro necesita más luz */
+.dark .text-\[\#7a1a3a\] {
+  color: oklch(0.75 0.13 5);
+}
+
+.dark .bg-\[\#7a1a3a\]\/10 {
+  background-color: oklch(0.75 0.13 5 / 15%);
+}
+
+.dark .loader-logo-shine {
+  -webkit-mask-image: url("/logoBlanco.png");
+  mask-image: url("/logoBlanco.png");
+}
+
+.dark .toaster[data-sonner-toaster] {
+  --normal-bg: var(--popover);
+  --normal-text: var(--popover-foreground);
+  --normal-border: var(--border);
+}
+
+/* Tour guiado (driver.js trae su propia hoja con colores claros) */
+.dark .driver-popover {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.dark .driver-popover-description,
+.dark .driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+
+.dark .driver-popover-footer button {
+  background-color: var(--secondary);
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+  text-shadow: none;
+}
+
+.dark .driver-popover-arrow-side-left { border-left-color: var(--popover); }
+.dark .driver-popover-arrow-side-right { border-right-color: var(--popover); }
+.dark .driver-popover-arrow-side-top { border-top-color: var(--popover); }
+.dark .driver-popover-arrow-side-bottom { border-bottom-color: var(--popover); }
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

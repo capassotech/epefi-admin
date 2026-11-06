@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileMenuButton } from "./MobileMenuButton";
 import EnvironmentBanner from "@/components/EnvironmentBanner";
+import { BrandLogo } from "@/components/common/BrandLogo";
 
 interface AdminTopbarProps {
   onOpenMobileMenu: () => void;
@@ -72,7 +73,7 @@ export function AdminTopbar({ onOpenMobileMenu }: AdminTopbarProps) {
             </ol>
           </nav>
         ) : (
-          isMobile && <img src="/logoNegro.png" alt="EPEFI" className="h-5 w-auto opacity-80" />
+          isMobile && <BrandLogo className="h-5 w-auto opacity-80" />
         )}
 
         {tourSteps && <TourButton steps={tourSteps} className="shrink-0" />}

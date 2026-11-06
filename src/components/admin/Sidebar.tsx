@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookOpen, Users, Calendar, X, ClipboardCheck, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { BookOpen, Users, Calendar, X, ClipboardCheck, PanelLeftOpen, PanelLeftClose, Moon, Sun } from "lucide-react";
 import { useSidebarLayout } from "@/context/SidebarLayoutContext";
+import { useTheme } from "@/context/ThemeContext";
+import { BrandLogo } from "@/components/common/BrandLogo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -47,6 +49,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const { setSidebarWidth } = useSidebarLayout();
+  const { theme, toggleTheme } = useTheme();
   const panelRef = useRef<HTMLElement>(null);
 
   // Usar el estado externo si está disponible, sino usar el interno
@@ -100,6 +103,24 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
   }, [isMobile, isCollapsed]);
 
   const toggleLabel = isCollapsed ? "Expandir menú" : "Contraer menú";
+  const themeLabel = theme === "dark" ? "Tema claro" : "Tema oscuro";
+  const ThemeIcon = theme === "dark" ? Sun : Moon;
+
+  const themeButton = (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={themeLabel}
+      className={cn(
+        "flex items-center text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200 cursor-pointer",
+        isExpanded ? "w-full gap-3 px-3" : "justify-center h-10 w-10 mx-auto",
+        isExpanded && (isMobile ? "min-h-12" : "py-2")
+      )}
+    >
+      <ThemeIcon className="w-[18px] h-[18px] flex-shrink-0" />
+      {isExpanded && <span className="truncate">{themeLabel}</span>}
+    </button>
+  );
 
   return (
     <>
@@ -120,7 +141,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
           ref={panelRef}
           data-tour="sidebar"
           className={cn(
-            "flex flex-col h-screen bg-white border-r border-gray-200/80 transition-[width,transform,box-shadow] duration-300 ease-out",
+            "flex flex-col h-dvh bg-white border-r border-gray-200/80 transition-[width,transform,box-shadow] duration-300 ease-out",
             // Desktop
             !isMobile && "fixed top-0 left-0 z-40",
             !isMobile && (isCollapsed ? "w-16" : "w-64 shadow-xl shadow-gray-900/5"),
@@ -138,7 +159,7 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
           >
             {isExpanded && (
               <Link to="/" className="flex items-center opacity-80 hover:opacity-100 transition-opacity">
-                <img src="/logoNegro.png" alt="EPEFI" className="h-5 w-auto" />
+                <BrandLogo className="h-5 w-auto" />
               </Link>
             )}
 
@@ -215,6 +236,22 @@ export function AdminSidebar({ isOpen: externalIsOpen, onToggle }: AdminSidebarP
               return navItem;
             })}
           </nav>
+
+          {/* Tema claro / oscuro */}
+          <div className={cn("shrink-0 py-3 border-t border-gray-100", isExpanded ? "px-3" : "px-2")}>
+            {isExpanded ? (
+              themeButton
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>{themeButton}</TooltipTrigger>
+                  <TooltipContent side="right" className="ml-2">
+                    <p>{themeLabel}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </aside>
       </div>
     </>
