@@ -11,6 +11,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PaginationMeta } from "@/types/types";
 import type { RefObject } from "react";
+import { PAGE_LIMIT_ALL } from "@/utils/tableState";
 
 interface PaginationControlsProps {
   pagination: PaginationMeta;
@@ -20,6 +21,11 @@ interface PaginationControlsProps {
   scrollTargetRef?: RefObject<HTMLElement | null>;
   /** Evita ids duplicados cuando hay más de un paginador en la misma pantalla. */
   idPrefix?: string;
+  /**
+   * Agrega la opción "Todos" (envía `PAGE_LIMIT_ALL`). Usar solo donde el listado
+   * completo ya está en memoria o el backend acepta límites grandes.
+   */
+  allowAll?: boolean;
 }
 
 const getVisiblePages = (currentPage: number, totalPages: number): number[] => {
@@ -42,7 +48,19 @@ export const PaginationControls = ({
   limitOptions = [10, 20, 50],
   scrollTargetRef,
   idPrefix = "pagination-limit",
+  allowAll = false,
 }: PaginationControlsProps) => {
+  const isAll = allowAll && pagination.limit >= PAGE_LIMIT_ALL;
+  const selectValue = isAll ? String(PAGE_LIMIT_ALL) : String(pagination.limit);
+  const options = [
+    ...limitOptions.map((option) => ({ value: String(option), label: String(option) })),
+    ...(allowAll ? [{ value: String(PAGE_LIMIT_ALL), label: "Todos" }] : []),
+  ];
+  const handleLimitChange = (value: string) => {
+    onLimitChange(Number(value));
+    scrollToTarget();
+  };
+
   const currentPage = Math.max(1, pagination.page);
   const totalPages = Math.max(1, pagination.totalPages);
   const visiblePages = getVisiblePages(currentPage, totalPages);
@@ -76,15 +94,12 @@ export const PaginationControls = ({
           <select
             id={`${idPrefix}-desktop`}
             className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
-            value={pagination.limit}
-            onChange={(e) => {
-              onLimitChange(Number(e.target.value));
-              scrollToTarget();
-            }}
+            value={selectValue}
+            onChange={(e) => handleLimitChange(e.target.value)}
           >
-            {limitOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -104,15 +119,12 @@ export const PaginationControls = ({
             <select
               id={`${idPrefix}-mobile`}
               className="h-7 rounded border border-gray-200 bg-white px-1.5 text-xs text-gray-700"
-              value={pagination.limit}
-              onChange={(e) => {
-                onLimitChange(Number(e.target.value));
-                scrollToTarget();
-              }}
+              value={selectValue}
+              onChange={(e) => handleLimitChange(e.target.value)}
             >
-              {limitOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>

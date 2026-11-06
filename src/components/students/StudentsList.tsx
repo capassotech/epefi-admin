@@ -1,15 +1,23 @@
 // src/components/student/StudentList.tsx
 import {
-  Mail,
-  // Calendar,
   Edit2,
   Loader2,
   Calendar,
   Eye,
   Users,
+  ShieldCheck,
+  GraduationCap,
 } from "lucide-react";
+import { FilterHeader, FilterMenuButton, PlainHeader, SortableHeader } from "../common/TableHeaders";
+import { getFechaRegistroSeconds } from "@/utils/studentDates";
+import {
+  INACTIVE_ROW_TEXT,
+  STATUS_FILTER_OPTIONS,
+  inactiveRowClass,
+  type ColumnSort,
+  type SortDirection,
+} from "@/utils/tableState";
 import { type StudentDB } from "@/types/types";
-import { CreateUserModal } from "./CreateUserModal";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { CoursesAsignStudentModal } from "./CoursesAsignStudentModal";
@@ -17,6 +25,8 @@ import { BulkAssignCoursesModal } from "./BulkAssignCoursesModal";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
+import { IconAction } from "../ui/icon-action";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { StudentsAPI } from "@/service/students";
 import { toast } from "sonner";
 
@@ -25,9 +35,108 @@ interface StudentListProps {
   onDelete: (id: string) => void;
   onUserUpdated?: (user?: StudentDB, meta?: { isCreate: boolean }) => void;
   onStatusChange?: () => void;
+  sortBy?: string;
+  sortDirection?: SortDirection;
+  /** Ciclo por columna: asc → desc → sin orden de columna (null) */
+  onSortChange?: (sort: ColumnSort) => void;
+  role?: string;
+  /** undefined = todos los roles */
+  onRoleChange?: (role: string | undefined) => void;
+  status?: string;
+  /** undefined = activos e inactivos */
+  onStatusFilterChange?: (status: string | undefined) => void;
+  /** Para nombrar los cursos asignados (tooltip) e ignorar cursos eliminados */
+  coursesById?: Record<string, { titulo: string }>;
 }
 
-export function StudentList({ students, onUserUpdated, onStatusChange }: StudentListProps) {
+/** Cantidad de cursos; al pasar el mouse lista sus nombres */
+function CourseCount({ titles }: { titles: string[] }) {
+  const named = titles.filter(Boolean);
+  if (named.length === 0) return <span>{titles.length}</span>;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default underline decoration-dotted decoration-gray-300 underline-offset-4">
+          {titles.length}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="space-y-0.5">
+          {named.map((title) => (
+            <p key={title}>{title}</p>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Fecha de registro en formato DD/MM/AA */
+function formatRegistrationDate(student: StudentDB): string {
+  const sec = getFechaRegistroSeconds(student);
+  if (!sec) return "—";
+  const date = new Date(sec * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${String(date.getFullYear()).slice(-2)}`;
+}
+
+const ROLE_OPTIONS = [
+  { value: "all", label: "Todos los roles" },
+  { value: "student", label: "Estudiante" },
+  { value: "admin", label: "Administrador" },
+];
+
+/** Ícono de rol antes del nombre: escudo para administradores, birrete para estudiantes */
+function RoleIcon({ student, muted }: { student: StudentDB; muted: boolean }) {
+  const isAdmin = Boolean(student.role?.admin);
+  const isStudent = Boolean(student.role?.student);
+  const label =
+    isAdmin && isStudent ? "Administrador y estudiante" : isAdmin ? "Administrador" : "Estudiante";
+  const Icon = isAdmin ? ShieldCheck : GraduationCap;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`grid place-items-center shrink-0 ${
+            muted ? "text-gray-300" : isAdmin ? "text-violet-600" : "text-gray-400"
+          }`}
+          aria-label={label}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function StudentList({
+  students,
+  onUserUpdated,
+  onStatusChange,
+  sortBy,
+  sortDirection,
+  onSortChange,
+  role,
+  onRoleChange,
+  status,
+  onStatusFilterChange,
+  coursesById,
+}: StudentListProps) {
+  // Con la lista de cursos cargada se ignoran ids de cursos eliminados;
+  // mientras tanto se usan los ids tal cual (sin nombre) para no mostrar 0
+  const courseTitles = (student: StudentDB): string[] => {
+    const ids = student.cursos_asignados ?? [];
+    if (!coursesById || Object.keys(coursesById).length === 0) return ids.map(() => "");
+    return ids
+      .map((id) => coursesById[id]?.titulo)
+      .filter((title): title is string => !!title);
+  };
+
   const navigate = useNavigate();
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -141,178 +250,155 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
         </div>
       )}
 
-      {/* ── Vista mobile: tarjetas ── */}
-      <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm overflow-hidden">
-        {students.map((student, index) => (
-          <div
-            key={student.id || student.uid || `student-mobile-${index}`}
-            className="p-4 bg-white hover:bg-gray-50 transition-colors"
-          >
-            {/* Cabecera: avatar + nombre + rol */}
-            <div
-              className="flex items-start gap-3 cursor-pointer"
+      <TooltipProvider delayDuration={300}>
+      {/* ── Vista mobile: filas compactas, igual que el resto de los listados ── */}
+      <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
+        {students.map((student, index) => {
+          const isActive = student.activo ?? false;
+          return (
+            <li
+              key={student.id || student.uid || `student-mobile-${index}`}
+              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer ${inactiveRowClass(isActive)}`}
               onClick={() => navigate(`/students/${student.id}`)}
             >
-              <div
-                className="flex-shrink-0 pt-1"
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
+              <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                 <Checkbox
                   checked={selectedRowIds.includes(student.id)}
                   onCheckedChange={() => toggleRow(student.id)}
                   aria-label={`Seleccionar ${getFullName(student)}`}
                 />
               </div>
-              <div className="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-semibold text-sm">
-                  {student.nombre?.charAt(0).toUpperCase() || "?"}
-                </span>
-              </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900 break-words">{getFullName(student)}</p>
-                <p className="text-sm text-gray-600 truncate flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                  {student.email || "Sin email"}
+                <p className="flex min-w-0 items-center gap-1.5">
+                  <RoleIcon student={student} muted={!isActive} />
+                  <span className={`truncate text-sm font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                    {getFullName(student)}
+                  </span>
                 </p>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                  {student.role?.admin && (
-                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-purple-100 text-purple-800">
-                      Admin
-                    </span>
-                  )}
-                  {student.role?.student && (
-                    <span className="px-2 py-0.5 text-[0.65rem] font-semibold rounded-full bg-blue-100 text-blue-800">
-                      Alumno
-                    </span>
+                <p className={`truncate text-xs ${isActive ? "text-gray-500" : INACTIVE_ROW_TEXT}`}>
+                  {student.email || "Sin email"} · {courseTitles(student).length} curso
+                  {courseTitles(student).length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <div
+                className="flex shrink-0 items-center gap-0.5"
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <IconAction
+                  label="Editar usuario"
+                  onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+                  data-tour="edit-student"
+                >
+                  <Edit2 />
+                </IconAction>
+                <IconAction
+                  label={
+                    disableIndividualCursos
+                      ? "Con usuarios seleccionados, usá «Asignar cursos al grupo»"
+                      : "Asignar cursos"
+                  }
+                  disabled={disableIndividualCursos}
+                  onClick={() => {
+                    setSelectedStudentId(student.id);
+                    setSelectedCourseIds([]);
+                    setAssignDialogOpen(true);
+                  }}
+                  data-tour="assign-courses"
+                >
+                  <Calendar />
+                </IconAction>
+                <div className="grid place-items-center w-11 h-8" data-tour="toggle-student-status">
+                  {updatingStatusId === student.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={() => handleStatusChange(student.id, isActive)}
+                      disabled={updatingStatusId !== null}
+                      aria-label={isActive ? "Deshabilitar usuario" : "Habilitar usuario"}
+                      className="data-[state=checked]:bg-green-600 disabled:opacity-50"
+                    />
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Acciones */}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/students/${student.id}`)}
-                className="h-9 w-full justify-center border-green-200 text-green-700 hover:bg-green-50 cursor-pointer"
-                data-tour="view-student-details"
-              >
-                <Eye className="w-3.5 h-3.5 mr-1" />
-                Ver
-              </Button>
-
-              <div className="w-full">
-                <CreateUserModal
-                  onUserCreated={onUserUpdated}
-                  triggerText=""
-                  isEditing={true}
-                  editingUser={student}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 w-full justify-center border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer"
-                    data-tour="edit-student"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 mr-1" />
-                    Editar
-                  </Button>
-                </CreateUserModal>
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={disableIndividualCursos}
-                onClick={() => {
-                  setSelectedStudentId(student.id);
-                  setSelectedCourseIds([]);
-                  setAssignDialogOpen(true);
-                }}
-                className="h-9 w-full justify-center bg-blue-600 text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
-                title={
-                  disableIndividualCursos
-                    ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
-                    : "Asignar cursos a este usuario"
-                }
-                data-tour="assign-courses"
-              >
-                <Calendar className="w-3.5 h-3.5 mr-1 text-white" />
-                Cursos
-              </Button>
-
-              {/* Toggle estado */}
-              <div
-                className={`flex items-center justify-between gap-2 px-3 py-1.5 border rounded-lg transition-colors min-h-9 ${
-                  (student.activo ?? false)
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-red-50 border-red-200'
-                }`}
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                data-tour="toggle-student-status"
-              >
-                <span className={`text-sm font-medium ${
-                  (student.activo ?? false) ? 'text-green-700' : 'text-red-700'
-                }`}>
-                  {updatingStatusId === student.id
-                    ? '...'
-                    : (student.activo ?? false) ? 'Activo' : 'Inactivo'}
-                </span>
-                {updatingStatusId === student.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-500 shrink-0" />
-                ) : (
-                  <Switch
-                    checked={student.activo ?? false}
-                    onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
-                    onClick={(e) => e.stopPropagation()}
-                    disabled={updatingStatusId !== null}
-                    className="shrink-0 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          );
+        })}
+      </ul>
 
       {/* ── Vista desktop: tabla ── */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="w-12 pl-4 pr-2 py-3 text-left align-middle">
+              <th className="w-10 pl-4 pr-1 py-2.5 text-left align-middle">
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
                   onCheckedChange={toggleSelectAll}
                   aria-label="Seleccionar todos los usuarios visibles"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
-              </th>
+              <SortableHeader
+                label="Nombre"
+                column="name"
+                defaultLabel="fecha de creación"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+                trailing={
+                  onRoleChange && (
+                    <FilterMenuButton
+                      tooltip="Filtrar por rol"
+                      value={role}
+                      options={ROLE_OPTIONS}
+                      onChange={onRoleChange}
+                    />
+                  )
+                }
+              />
+              <SortableHeader
+                label="Email"
+                column="email"
+                defaultLabel="fecha de creación"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+              />
+              <SortableHeader
+                label="Inicio"
+                column="date"
+                firstDirection="desc"
+                ascHint="más antiguos primero"
+                descHint="más recientes primero"
+                defaultLabel="más recientes primero"
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+              />
+              <PlainHeader>Cursos</PlainHeader>
+              <FilterHeader
+                label="Acciones"
+                tooltip="Filtrar por estado (habilitados / deshabilitados)"
+                value={status}
+                options={STATUS_FILTER_OPTIONS}
+                onChange={onStatusFilterChange}
+                align="right"
+                className="pl-3 pr-4"
+              />
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {students.map((student, index) => (
+          <tbody className="bg-white divide-y divide-gray-100">
+            {students.map((student, index) => {
+              const isActive = student.activo ?? false;
+              return (
               <tr
                 key={student.id || student.uid || `student-${index}`}
-                className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                className={`transition-colors duration-150 cursor-pointer ${inactiveRowClass(isActive)}`}
                 onClick={() => navigate(`/students/${student.id}`)}
               >
                 <td
-                  className="w-12 pl-4 pr-2 py-4 align-middle"
+                  className="w-10 pl-4 pr-1 py-1.5 align-middle"
                   onClick={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
@@ -322,136 +408,88 @@ export function StudentList({ students, onUserUpdated, onStatusChange }: Student
                     aria-label={`Seleccionar ${getFullName(student)}`}
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 font-medium text-sm">
-                          {student.nombre?.charAt(0).toUpperCase() || "?"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="font-medium text-gray-900">
-                        {getFullName(student)}
-                      </div>
-                    </div>
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <RoleIcon student={student} muted={!isActive} />
+                    <span className={`font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                      {getFullName(student)}
+                    </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center text-gray-900">
-                    <Mail className="w-4 h-4 mr-2 text-gray-400" />
-                    {student.email || "Sin email"}
-                  </div>
+                <td className={`px-3 py-1.5 whitespace-nowrap ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                  {student.email || "Sin email"}
                 </td>
-                <td className="px-1 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1">
-                    {student.role?.admin && (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                        Admin
-                      </span>
-                    )}
-                    {student.role?.student && (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Estudiante
-                      </span>
-                    )}
-                  </div>
+                <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                  {formatRegistrationDate(student)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/students/${student.id}`);
-                      }}
-                      className="h-9 w-[140px] px-3 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 hover:text-green-800 transition-all duration-200 shadow-sm cursor-pointer"
-                      title="Ver detalles del estudiante"
+                <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                  <CourseCount titles={courseTitles(student)} />
+                </td>
+                <td
+                  className="pl-3 pr-4 py-1.5 whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-end gap-0.5">
+                    <IconAction
+                      label="Ver detalles"
+                      onClick={() => navigate(`/students/${student.id}`)}
                       data-tour="view-student-details"
                     >
-                      <Eye className="w-4 h-4 mr-1.5" />
-                      Ver Detalles
-                    </Button>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <CreateUserModal
-                        onUserCreated={onUserUpdated}
-                        triggerText=""
-                        isEditing={true}
-                        editingUser={student}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 w-[140px] px-3 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-all duration-200 shadow-sm cursor-pointer"
-                          title="Editar usuario"
-                          data-tour="edit-student"
-                        >
-                          <Edit2 className="w-4 h-4 mr-1.5" />
-                          Editar
-                        </Button>
-                      </CreateUserModal>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
+                      <Eye />
+                    </IconAction>
+                    <IconAction
+                      label="Editar usuario"
+                      onClick={() => navigate(`/students/${encodeURIComponent(student.id)}/edit`)}
+                      data-tour="edit-student"
+                    >
+                      <Edit2 />
+                    </IconAction>
+                    <IconAction
+                      label={
+                        disableIndividualCursos
+                          ? "Con usuarios seleccionados, usá «Asignar cursos al grupo»"
+                          : "Asignar cursos"
+                      }
                       disabled={disableIndividualCursos}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={() => {
                         setSelectedStudentId(student.id);
                         setSelectedCourseIds([]);
                         setAssignDialogOpen(true);
                       }}
-                      className=" bg-blue-600 w-[140px] text-white hover:bg-blue-700 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed"
-                      title={
-                        disableIndividualCursos
-                          ? "Con la selección activa, usa «Asignar cursos al grupo» arriba."
-                          : "Asignar cursos"
-                      }
                       data-tour="assign-courses"
                     >
-                      <Calendar className="w-4 h-4 mr-1.5 text-white" />
-                      Cursos
-                    </Button>
-                    <div 
-                      className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors w-[140px] ${
-                        (student.activo ?? false)
-                          ? 'bg-green-50 border-green-200' 
-                          : 'bg-red-50 border-red-200'
-                      }`}
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      data-tour="toggle-student-status"
-                    >
-                      <span className={`text-xs whitespace-nowrap font-medium ${
-                        (student.activo ?? false)
-                          ? 'text-green-700' 
-                          : 'text-red-700'
-                      }`}>
-                        {updatingStatusId === student.id ? 'Actualizando...' : ((student.activo ?? false) ? 'Habilitado' : 'Deshabilitado')}
-                      </span>
-                      {updatingStatusId === student.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                      ) : (
-                        <Switch
-                          checked={student.activo ?? false}
-                          onCheckedChange={() => handleStatusChange(student.id, student.activo ?? false)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          disabled={updatingStatusId !== null}
-                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                        />
-                      )}
-                    </div>
+                      <Calendar />
+                    </IconAction>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="grid place-items-center w-10 h-8" data-tour="toggle-student-status">
+                          {updatingStatusId === student.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                          ) : (
+                            <Switch
+                              checked={isActive}
+                              onCheckedChange={() => handleStatusChange(student.id, isActive)}
+                              disabled={updatingStatusId !== null}
+                              aria-label={isActive ? "Deshabilitar usuario" : "Habilitar usuario"}
+                              className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 disabled:opacity-50"
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{isActive ? "Habilitado" : "Deshabilitado"}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
+      </TooltipProvider>
       <CoursesAsignStudentModal
         id={selectedStudentId}
         assignDialogOpen={assignDialogOpen}

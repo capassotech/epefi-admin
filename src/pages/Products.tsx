@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ProductCard } from '@/components/product/ProductCard';
 import { ProductList } from '@/components/product/ProductList';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { useNavigate } from 'react-router-dom';
@@ -8,20 +7,22 @@ import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
 import { type Course } from '@/types/types';
 import { toast } from 'sonner';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { productsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { Loader } from 'lucide-react';
+import { ListLoadingPill } from '@/components/common/ListLoading';
+import { applyColumnFilter, applyColumnSort, listLoadingClass, STATUS_FILTER_OPTIONS, type ColumnSort } from '@/utils/tableState';
+import { MobileListControls } from '@/components/common/MobileListControls';
 
 export default function Products() {
   const navigate = useNavigate();
+  usePageHeader({ title: 'Cursos', tourSteps: productsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [cursos, setCursos] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({});
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
   const [loading, setLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,11 +52,7 @@ export default function Products() {
       };
 
       const sortBy = filters.sortBy ? sortByMap[filters.sortBy] : undefined;
-      const sortOrder = filters.sortBy
-        ? filters.sortBy === "price"
-          ? "desc"
-          : "asc"
-        : undefined;
+      const sortOrder = sortBy ? filters.sortDirection ?? "asc" : undefined;
       const status =
         filters.status && filters.status !== "all"
           ? statusMap[filters.status]
@@ -187,20 +184,10 @@ export default function Products() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filterOptions = {
-    types: [
-      { value: 'ON_DEMAND', label: 'On Demand' },
-      { value: 'ASYNC', label: 'Asincrónica' },
-      { value: 'VIVO', label: 'En Vivo' },
-      { value: 'EBOOK', label: 'E-book' },
-    ],
-    sortOptions: [
-      { value: 'title', label: 'Título' },
-      { value: 'price', label: 'Precio' },
-      { value: 'students', label: 'Estudiantes' },
-      { value: 'date', label: 'Fecha de creación' },
-    ],
-  };
+  // Orden y estado se eligen desde los encabezados de la tabla
+  const handleSortChange = (sort: ColumnSort) => handleFilter(applyColumnSort(filters, sort));
+  const handleStatusFilterChange = (status: string | undefined) =>
+    handleFilter(applyColumnFilter(filters, 'status', status));
 
   if (loading) {
     return (
@@ -217,68 +204,54 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cursos</h1>
-        <TourButton steps={productsTourSteps} />
-      </div>
-
       <div data-tour="search-filter">
         <SearchAndFilter
           onSearch={handleSearch}
           onFilter={handleFilter}
           onCreateNew={() => navigate('/products/create')}
           createButtonText="Crear curso"
-          filterOptions={filterOptions}
+          showStateFilter={false}
+          currentFilters={filters}
+          resetFiltersTo={{}}
+          showClearFilters
         />
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {cursos.length} de {pagination.total} cursos
-        </p>
-        <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
-          <span>Vista:</span>
-          <button
-            onClick={() => setViewMode('cards')}
-            className={`px-3 py-1 rounded-md ${viewMode === 'cards' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-          >
-            Tarjetas
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-          >
-            Lista
-          </button>
-        </div>
-      </div>
+      <MobileListControls
+        sort={{
+          fields: [
+            { key: "title", label: "Título" },
+            { key: "price", label: "Precio", ascLabel: "menor a mayor", descLabel: "mayor a menor" },
+          ],
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
+          onChange: handleSortChange,
+          defaultLabel: "Orden por defecto",
+        }}
+        filters={[
+          {
+            id: "status",
+            label: "Estado",
+            value: filters.status,
+            options: STATUS_FILTER_OPTIONS,
+            onChange: handleStatusFilterChange,
+          },
+        ]}
+      />
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-          </div>
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando cursos…" />
+        {paginationLoading && cursos.length === 0 ? (
+          <div className="h-32" />
         ) : cursos.length > 0 ? (
-          <>
-          {viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="courses-list">
-              {cursos.map((f, index) => (
-                <div
-                  key={f.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <ProductCard
-                    product={f}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
             <div data-tour="courses-list">
-              <ProductList 
+              <ProductList
                 products={cursos}
+                sortBy={filters.sortBy}
+                sortDirection={filters.sortDirection}
+                onSortChange={handleSortChange}
+                status={filters.status}
+                onStatusFilterChange={handleStatusFilterChange}
                 onProductUpdated={(id, newEstado) => {
                   // Actualizar el estado local sin recargar todo
                   console.log('Actualizando estado local del curso:', { id, newEstado });
@@ -304,8 +277,6 @@ export default function Products() {
                 }}
               />
             </div>
-          )}
-          </>
         ) : (
           <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

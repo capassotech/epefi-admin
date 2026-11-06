@@ -1,32 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ClipboardCheck, Download, Eye, FileSpreadsheet } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { completedExamsTourSteps } from "@/config/tourSteps";
+import { ClipboardCheck, Download, Eye, FileSpreadsheet, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { IconAction } from "@/components/ui/icon-action";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { PaginationControls } from "@/components/common/PaginationControls";
+import { FilterMenuButton, PlainHeader, SortableHeader } from "@/components/common/TableHeaders";
+import { FilterChips, type FilterChip } from "@/components/common/FilterChips";
+import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
 import { CompletedExamsAPI } from "@/service/completedExams";
 import { ExamsAPI } from "@/service/exams";
 import { CoursesAPI } from "@/service/courses";
 import type { Course, Examen, ExamenRealizado, PaginationMeta } from "@/types/types";
 import { formatTimestamp } from "@/utils/formatTimestamp";
 import { downloadCsvExport, downloadExcelExport } from "@/utils/exportData";
+import { listLoadingClass, type ColumnSort } from "@/utils/tableState";
 import {
   buildCompletedExamsListPath,
   buildCompletedExamsSearchParams,
@@ -36,7 +35,7 @@ import { toast } from "sonner";
 
 const EXPORT_HEADERS = [
   "Alumno",
-  "Formación",
+  "Curso",
   "Examen",
   "Nota",
   "Estado",
@@ -83,8 +82,34 @@ const EMPTY_PAGINATION: PaginationMeta = {
   totalPages: 1,
 };
 
+/** Nota y estado en una sola píldora: ámbar si falta corregir, verde/rojo según aprobación */
+function ResultPill({ row }: { row: ExamenRealizado }) {
+  if (row.estado === "pendiente_correccion") {
+    return (
+      <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+        Por corregir
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+        row.aprobado ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+      }`}
+    >
+      <span className="font-semibold">{typeof row.nota === "number" ? row.nota : "—"}</span>
+      <span className="opacity-80">· {row.aprobado ? "Aprobado" : "No aprobado"}</span>
+    </span>
+  );
+}
+
 export default function CompletedExams() {
   const navigate = useNavigate();
+  usePageHeader({
+    title: "Realizados",
+    tourSteps: completedExamsTourSteps,
+    breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
+  });
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilters = readCompletedExamsFilters(searchParams);
   const [pendientes, setPendientes] = useState<ExamenRealizado[]>([]);
@@ -104,6 +129,8 @@ export default function CompletedExams() {
   const [filterFormacion, setFilterFormacion] = useState(initialFilters.formacion);
   const [filterExamen, setFilterExamen] = useState(initialFilters.examen);
   const [filterAlumno, setFilterAlumno] = useState(initialFilters.alumno);
+  /** Orden elegido en los encabezados; null = más recientes primero */
+  const [sort, setSort] = useState<ColumnSort>(null);
 
   const coursesById = useMemo(
     () =>
@@ -141,9 +168,16 @@ export default function CompletedExams() {
       idFormacion: filterFormacion || undefined,
       idExamen: filterExamen || undefined,
       search: filterAlumno.trim() || undefined,
+      sortBy: sort?.sortBy,
+      sortDirection: sort?.sortDirection,
     }),
-    [filterFormacion, filterExamen, filterAlumno]
+    [filterFormacion, filterExamen, filterAlumno, sort]
   );
+
+  const handleSortChange = (next: ColumnSort) => {
+    setSort(next);
+    resetPages();
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -210,7 +244,7 @@ export default function CompletedExams() {
         setExams(examList);
       } catch (err) {
         console.error("Error al cargar filtros:", err);
-        toast.error("No se pudieron cargar formaciones o exámenes para filtros");
+        toast.error("No se pudieron cargar cursos o exámenes para filtros");
       }
     };
     loadMeta();
@@ -230,6 +264,23 @@ export default function CompletedExams() {
     setFilterFormacion("");
     setFilterExamen("");
     setFilterAlumno("");
+    resetPages();
+  };
+
+  const changeFormacion = (value: string | undefined) => {
+    setFilterFormacion(value ?? "");
+    // El examen elegido puede no pertenecer a la nueva formación
+    setFilterExamen("");
+    resetPages();
+  };
+
+  const changeExamen = (value: string | undefined) => {
+    setFilterExamen(value ?? "");
+    resetPages();
+  };
+
+  const changeAlumno = (value: string) => {
+    setFilterAlumno(value);
     resetPages();
   };
 
@@ -289,6 +340,175 @@ export default function CompletedExams() {
     }
   };
 
+  const courseTitle = (row: ExamenRealizado) =>
+    row.tituloFormacion || coursesById[row.idFormacion]?.titulo || row.idFormacion;
+  const examTitle = (row: ExamenRealizado) =>
+    row.tituloExamen || examsById[row.idExamen]?.titulo || row.idExamen;
+
+  const courseOptions = [
+    { value: "all", label: "Todos los cursos" },
+    ...courses.map((c) => ({ value: c.id, label: c.titulo })),
+  ];
+  const examOptions = [
+    { value: "all", label: "Todos los exámenes" },
+    ...examsForFilter.map((e) => ({ value: e.id, label: e.titulo || e.id })),
+  ];
+
+  const chips: FilterChip[] = [];
+  if (filterAlumno.trim()) {
+    chips.push({ key: "alumno", label: `“${filterAlumno.trim()}”`, onRemove: () => changeAlumno("") });
+  }
+  if (filterFormacion) {
+    chips.push({
+      key: "formacion",
+      label: `Curso: ${coursesById[filterFormacion]?.titulo ?? "…"}`,
+      onRemove: () => changeFormacion(undefined),
+    });
+  }
+  if (filterExamen) {
+    chips.push({
+      key: "examen",
+      label: `Examen: ${examsById[filterExamen]?.titulo ?? "…"}`,
+      onRemove: () => changeExamen(undefined),
+    });
+  }
+
+  const sortProps = {
+    sortBy: sort?.sortBy,
+    sortDirection: sort?.sortDirection,
+    onSortChange: handleSortChange,
+    defaultLabel: "más recientes primero",
+  };
+
+  const renderTable = (rows: ExamenRealizado[], pending: boolean) => (
+    <div className="admin-card overflow-hidden">
+      {/* ── Vista mobile: filas compactas ── */}
+      <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50"
+            onClick={() => goToDetalle(row.id)}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-gray-900">{row.nombreAlumno || "—"}</p>
+              <p className="truncate text-xs text-gray-500">
+                {examTitle(row)} · {formatTimestamp(row.fechaRealizacion)}
+              </p>
+            </div>
+            <ResultPill row={row} />
+          </li>
+        ))}
+      </ul>
+
+      {/* ── Vista desktop: tabla ── */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <SortableHeader
+                label="Alumno"
+                column="alumno"
+                {...sortProps}
+                className="pl-4 pr-3"
+              />
+              <SortableHeader
+                label="Curso"
+                column="curso"
+                {...sortProps}
+                trailing={
+                  <FilterMenuButton
+                    tooltip="Filtrar por curso"
+                    value={filterFormacion || undefined}
+                    options={courseOptions}
+                    onChange={changeFormacion}
+                  />
+                }
+              />
+              <SortableHeader
+                label="Examen"
+                column="examen"
+                {...sortProps}
+                trailing={
+                  <FilterMenuButton
+                    tooltip="Filtrar por examen"
+                    value={filterExamen || undefined}
+                    options={examOptions}
+                    onChange={changeExamen}
+                  />
+                }
+              />
+              <SortableHeader
+                label="Nota"
+                column="nota"
+                {...sortProps}
+                firstDirection="desc"
+                ascHint="menor a mayor"
+                descHint="mayor a menor"
+              />
+              <SortableHeader
+                label="Fecha"
+                column="fecha"
+                {...sortProps}
+                firstDirection="desc"
+                ascHint="más antiguos primero"
+                descHint="más recientes primero"
+              />
+              <PlainHeader align="right" className="pl-3 pr-4">
+                Acciones
+              </PlainHeader>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                className="transition-colors duration-150 cursor-pointer hover:bg-gray-50"
+                onClick={() => goToDetalle(row.id)}
+              >
+                <td className="pl-4 pr-3 py-1.5 font-medium text-gray-900 whitespace-nowrap">
+                  {row.nombreAlumno || "—"}
+                </td>
+                <td className="px-3 py-1.5 text-gray-600">
+                  <span className="line-clamp-1">{courseTitle(row)}</span>
+                </td>
+                <td className="px-3 py-1.5 text-gray-600">
+                  <span className="line-clamp-1">{examTitle(row)}</span>
+                </td>
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  <ResultPill row={row} />
+                </td>
+                <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">
+                  {formatTimestamp(row.fechaRealizacion)}
+                </td>
+                <td
+                  className="pl-3 pr-4 py-1.5 whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-end">
+                    {pending ? (
+                      <IconAction
+                        label="Corregir examen"
+                        onClick={() => goToDetalle(row.id)}
+                        className="text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                      >
+                        <ClipboardCheck />
+                      </IconAction>
+                    ) : (
+                      <IconAction label="Ver detalle" onClick={() => goToDetalle(row.id)}>
+                        <Eye />
+                      </IconAction>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   if (loading && pendientes.length === 0 && generales.length === 0 && !error) {
     return (
       <InteractiveLoader
@@ -299,219 +519,75 @@ export default function CompletedExams() {
   }
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto shrink-0"
-            onClick={() => navigate("/exams")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver a Exámenes
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
-            Exámenes realizados
-          </h1>
+      <div className="w-full space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:w-80" data-tour="completed-search">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <Input
+              value={filterAlumno}
+              onChange={(e) => changeAlumno(e.target.value)}
+              placeholder="Buscar alumno, curso o examen..."
+              className="pl-10"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" className="h-10 w-full sm:w-auto" disabled={exporting} data-tour="completed-export">
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? "Exportando…" : "Exportar"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => void handleExport("csv")}>
+                <FileText className="w-4 h-4" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void handleExport("excel")}>
+                <FileSpreadsheet className="w-4 h-4" />
+                Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto"
-            disabled={exporting}
-            onClick={() => void handleExport("csv")}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto"
-            disabled={exporting}
-            onClick={() => void handleExport("excel")}
-          >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Exportar Excel
-          </Button>
-        </div>
+        <MobileListControls
+          sort={{
+            fields: [
+              { key: "alumno", label: "Alumno" },
+              { key: "curso", label: "Curso" },
+              { key: "examen", label: "Examen" },
+              { key: "nota", label: "Nota", ascLabel: "Nota: menor a mayor", descLabel: "Nota: mayor a menor" },
+              { key: "fecha", label: "Fecha", ascLabel: "Más antiguos", descLabel: "Más recientes" },
+            ],
+            sortBy: sort?.sortBy,
+            sortDirection: sort?.sortDirection,
+            onChange: handleSortChange,
+            defaultLabel: "Más recientes",
+          }}
+          filters={[
+            { id: "formacion", label: "Curso", value: filterFormacion || undefined, options: courseOptions, onChange: changeFormacion },
+            { id: "examen", label: "Examen", value: filterExamen || undefined, options: examOptions, onChange: changeExamen },
+          ]}
+        />
+        <FilterChips chips={chips} onClearAll={handleClearFilters} />
       </div>
-
-      <div className="rounded-lg border bg-white p-4 flex flex-wrap gap-x-4 gap-y-4 items-end">
-        <div className="space-y-2 w-full sm:w-auto sm:min-w-[12rem] sm:flex-1">
-          <Label>Formación</Label>
-          <Select
-            value={filterFormacion || "__all__"}
-            onValueChange={(v) => {
-              setFilterFormacion(v === "__all__" ? "" : v);
-              setFilterExamen("");
-              resetPages();
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas las formaciones</SelectItem>
-              {courses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.titulo}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 w-full sm:w-auto sm:min-w-[12rem] sm:flex-1">
-          <Label>Examen</Label>
-          <Select
-            value={filterExamen || "__all__"}
-            onValueChange={(v) => {
-              setFilterExamen(v === "__all__" ? "" : v);
-              resetPages();
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos los exámenes</SelectItem>
-              {examsForFilter.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.titulo || e.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 w-full sm:w-auto sm:min-w-[14rem] sm:flex-[1.5]">
-          <Label>Alumno (nombre)</Label>
-          <Input
-            value={filterAlumno}
-            onChange={(e) => {
-              setFilterAlumno(e.target.value);
-              resetPages();
-            }}
-            placeholder="Buscar por nombre o apellido"
-          />
-        </div>
-        <div className="space-y-2 shrink-0">
-          <Label className="invisible select-none" aria-hidden>
-            Limpiar
-          </Label>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 px-3"
-            onClick={handleClearFilters}
-          >
-            Limpiar filtros
-          </Button>
-        </div>
-      </div>
-
-      <p className="text-sm text-gray-600">
-        Pendientes de revisión: {pendingPagination.total}
-        {" · "}
-        Exámenes realizados: {generalPagination.total}
-        {loading ? " (actualizando…)" : ""}
-      </p>
 
       {error ? (
         <p className="text-center text-red-600 py-6">{error}</p>
       ) : pendingPagination.total > 0 || generalPagination.total > 0 ? (
-        <>
+        <div className={listLoadingClass(loading, "space-y-8")} aria-busy={loading} data-tour="completed-list">
+          <ListLoadingPill loading={loading} label="Cargando exámenes…" />
+
           {pendingPagination.total > 0 && (
             <section ref={pendingListRef} className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-amber-900">
-                  Pendientes de revisión
-                </h2>
-                <span className="text-xs font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                Por corregir
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                   {pendingPagination.total}
                 </span>
-              </div>
-              <div className="rounded-md border border-amber-200 bg-amber-50/60 overflow-hidden">
-                <div className="block md:hidden divide-y divide-amber-200">
-                  {pendientes.map((row) => (
-                    <div key={`pending-m-${row.id}`} className="p-4 space-y-3">
-                      <div className="min-w-0 space-y-1.5">
-                        <p className="font-semibold text-gray-900 break-words">
-                          {row.nombreAlumno || "—"}
-                        </p>
-                        <p className="text-sm text-gray-700 break-words">
-                          {row.tituloFormacion ||
-                            coursesById[row.idFormacion]?.titulo ||
-                            row.idFormacion}
-                        </p>
-                        <p className="text-sm text-gray-600 break-words">
-                          {row.tituloExamen ||
-                            examsById[row.idExamen]?.titulo ||
-                            row.idExamen}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimestamp(row.fechaRealizacion)}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => goToDetalle(row.id)}
-                      >
-                        <ClipboardCheck className="w-4 h-4 mr-1" />
-                        Corregir examen
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden md:block overflow-x-auto bg-white/70">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Alumno</TableHead>
-                        <TableHead>Formación</TableHead>
-                        <TableHead>Examen</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendientes.map((row) => (
-                        <TableRow key={`pending-${row.id}`}>
-                          <TableCell className="font-medium">
-                            {row.nombreAlumno || "—"}
-                          </TableCell>
-                          <TableCell>
-                            {row.tituloFormacion ||
-                              coursesById[row.idFormacion]?.titulo ||
-                              row.idFormacion}
-                          </TableCell>
-                          <TableCell>
-                            {row.tituloExamen ||
-                              examsById[row.idExamen]?.titulo ||
-                              row.idExamen}
-                          </TableCell>
-                          <TableCell>
-                            {formatTimestamp(row.fechaRealizacion)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => goToDetalle(row.id)}
-                            >
-                              <ClipboardCheck className="w-4 h-4 mr-1" />
-                              Corregir examen
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
+              </h2>
+              {renderTable(pendientes, true)}
               <PaginationControls
                 pagination={pendingPagination}
                 idPrefix="pending-exams-limit"
@@ -526,132 +602,21 @@ export default function CompletedExams() {
             </section>
           )}
 
-          <section
-            ref={generalListRef}
-            className={`space-y-3 ${pendingPagination.total > 0 ? "pt-4 mt-2 border-t border-gray-200" : ""}`}
-          >
+          <section ref={generalListRef} className="space-y-3">
             {pendingPagination.total > 0 && (
-              <h2 className="text-lg font-semibold text-gray-900">
-                Todos los exámenes realizados
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                Corregidos
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                  {generalPagination.total}
+                </span>
               </h2>
             )}
             {generalPagination.total === 0 && pendingPagination.total > 0 ? (
-              <p className="text-sm text-gray-600 py-4">
+              <p className="text-sm text-gray-500 py-2">
                 No hay otros exámenes realizados con los filtros actuales.
               </p>
             ) : generales.length > 0 ? (
-              <>
-                <div className="block md:hidden divide-y divide-gray-200 rounded-md border border-gray-200 bg-white shadow-sm">
-                  {generales.map((row) => (
-                    <div key={row.id} className="p-4 space-y-3 bg-white">
-                      <div className="min-w-0 space-y-1.5">
-                        <p className="font-semibold text-gray-900 break-words text-base">
-                          {row.nombreAlumno || "—"}
-                        </p>
-                        <p className="text-sm text-gray-700 break-words">
-                          {row.tituloFormacion ||
-                            coursesById[row.idFormacion]?.titulo ||
-                            row.idFormacion}
-                        </p>
-                        <p className="text-sm text-gray-600 break-words">
-                          {row.tituloExamen ||
-                            examsById[row.idExamen]?.titulo ||
-                            row.idExamen}
-                        </p>
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                          <span className="text-sm font-semibold text-gray-900">
-                            Nota: {typeof row.nota === "number" ? row.nota : "—"}
-                          </span>
-                          <span
-                            className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                              row.aprobado
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {row.aprobado ? "Aprobado" : "No aprobado"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          {formatTimestamp(row.fechaRealizacion)}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => goToDetalle(row.id)}
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Ver detalle
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Alumno</TableHead>
-                        <TableHead>Formación</TableHead>
-                        <TableHead>Examen</TableHead>
-                        <TableHead className="text-right">Nota</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {generales.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell className="font-medium">
-                            {row.nombreAlumno || "—"}
-                          </TableCell>
-                          <TableCell>
-                            {row.tituloFormacion ||
-                              coursesById[row.idFormacion]?.titulo ||
-                              row.idFormacion}
-                          </TableCell>
-                          <TableCell>
-                            {row.tituloExamen ||
-                              examsById[row.idExamen]?.titulo ||
-                              row.idExamen}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {typeof row.nota === "number" ? row.nota : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                row.aprobado
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {row.aprobado ? "Aprobado" : "No aprobado"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {formatTimestamp(row.fechaRealizacion)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => goToDetalle(row.id)}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Ver detalle
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
+              renderTable(generales, false)
             ) : null}
             {generalPagination.total > 0 && (
               <PaginationControls
@@ -667,12 +632,13 @@ export default function CompletedExams() {
               />
             )}
           </section>
-        </>
+        </div>
       ) : (
         <div className="text-center py-12 text-gray-600">
           No hay exámenes realizados con los filtros seleccionados.
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }

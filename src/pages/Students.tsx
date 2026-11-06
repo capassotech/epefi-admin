@@ -8,16 +8,25 @@ import {
 import { useNavigate } from "react-router-dom";
 import { StudentsAPI } from "@/service/students";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
-import { type StudentDB } from "@/types/types";
+import { type Course, type StudentDB } from "@/types/types";
+import { CoursesAPI } from "@/service/courses";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { TourButton } from "@/components/tour/TourButton";
+import { usePageHeader } from "@/context/PageHeaderContext";
 import { studentsTourSteps } from "@/config/tourSteps";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { PaginationMeta } from "@/types/types";
-import { Loader } from "lucide-react";
+import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
+import {
+  applyColumnFilter,
+  applyColumnSort,
+  listLoadingClass,
+  STATUS_FILTER_OPTIONS,
+  type ColumnSort,
+} from "@/utils/tableState";
 import { extractStudentsFromResponse } from "@/utils/studentDates";
 import {
   getEffectiveStudentFilters,
@@ -35,6 +44,7 @@ const SERVER_PAGE_LIMIT = 200;
 
 export default function Students() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Usuarios", tourSteps: studentsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentDB[]>([]);
@@ -52,6 +62,8 @@ export default function Students() {
 
   const pendingNewUserRef = useRef<StudentDB | null>(null);
   const skipNextAutoFetchRef = useRef(false);
+  /** Id del último pedido; las respuestas de pedidos anteriores se descartan */
+  const fetchSeqRef = useRef(0);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -61,6 +73,8 @@ export default function Students() {
     const page = forcedPage !== undefined ? forcedPage : pagination.page;
     const limit = pagination.limit;
     const effectiveFilters = getEffectiveStudentFilters(filters);
+    const seq = ++fetchSeqRef.current;
+    const isStale = () => seq !== fetchSeqRef.current;
 
     try {
       setPaginationLoading(true);
@@ -78,7 +92,6 @@ export default function Students() {
           : undefined;
 
       const allRows: StudentDB[] = [];
-      let aggregatedTotal = 0;
       let pageCursor = 1;
       let totalPages = 1;
 
@@ -98,11 +111,15 @@ export default function Students() {
           SERVER_PAGE_LIMIT
         );
         totalPages = Math.max(1, meta.pagination.totalPages);
-        aggregatedTotal = Math.max(aggregatedTotal, meta.pagination.total);
         allRows.push(...extractStudentsFromResponse(res));
         pageCursor += 1;
-      } while (pageCursor <= totalPages);
+      } while (pageCursor <= totalPages && !isStale());
 
+      // Una búsqueda/filtro más reciente ya está en curso: no pisar su resultado
+      if (isStale()) return;
+
+      // El total sale de las filas efectivamente filtradas, para que la paginación
+      // coincida con lo que se muestra en la grilla
       let paginated = paginateStudentsClientSide(allRows, {
         search: searchQuery,
         status: filters.status,
@@ -111,19 +128,6 @@ export default function Students() {
         page,
         limit,
       });
-      if (aggregatedTotal > paginated.pagination.total) {
-        paginated = {
-          ...paginated,
-          pagination: {
-            ...paginated.pagination,
-            total: aggregatedTotal,
-            totalPages: Math.max(
-              1,
-              Math.ceil(aggregatedTotal / limit)
-            ),
-          },
-        };
-      }
 
       const pending = pendingNewUserRef.current;
       if (pending?.id) {
@@ -140,20 +144,28 @@ export default function Students() {
       }
 
       setStudents(paginated.data);
-      setPagination({
-        ...paginated.pagination,
-        limit,
-        ...(forcedPage !== undefined ? { page: forcedPage } : { page }),
-      });
+      // paginated.pagination.page ya viene acotada a totalPages
+      setPagination({ ...paginated.pagination, limit });
     } catch (err) {
+      if (isStale()) return;
       console.error("Error al cargar estudiantes:", err);
       setError("No se pudieron cargar los estudiantes");
       setStudents([]);
     } finally {
-      setPaginationLoading(false);
-      setLoading(false);
+      if (!isStale()) {
+        setPaginationLoading(false);
+        setLoading(false);
+      }
     }
   }, [filters, pagination.limit, pagination.page, searchQuery]);
+
+  // Cursos para mostrar los asignados a cada usuario
+  const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
+  useEffect(() => {
+    CoursesAPI.getAllList()
+      .then((list) => setCoursesById(Object.fromEntries(list.map((c) => [String(c.id), c]))))
+      .catch((err) => console.error("Error al cargar cursos:", err));
+  }, []);
 
   useEffect(() => {
     if (skipNextAutoFetchRef.current) {
@@ -241,14 +253,14 @@ export default function Students() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const filterOptions = {
-    types: [],
-    sortOptions: [
-      { value: "date", label: "Fecha de creación" },
-      { value: "name", label: "Nombre" },
-      { value: "email", label: "Email" },
-    ],
-  };
+  // El orden se elige desde los encabezados de la tabla (Nombre / Email);
+  // sin columna activa se usa el orden por defecto (fecha de creación, más nuevos primero)
+  const handleSortChange = (sort: ColumnSort) =>
+    handleFilter(applyColumnSort(filters, sort, DEFAULT_STUDENT_FILTERS));
+
+  // Rol y estado se filtran desde los encabezados "Rol" y "Acciones" de la tabla
+  const setHeaderFilter = (key: "role" | "status", value: string | undefined) =>
+    handleFilter(applyColumnFilter(filters, key, value));
 
   if (loading) {
     return (
@@ -266,44 +278,73 @@ export default function Students() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Usuarios</h1>
-        <TourButton steps={studentsTourSteps} />
-      </div>
-
       <div data-tour="search-filter">
         <SearchAndFilter
           onSearch={handleSearch}
           onFilter={handleFilter}
           isStudentPage={true}
-          onCreateNew={handleUserUpdated}
+          onCreateNew={() => navigate("/students/new")}
           createButtonText="Crear usuario"
-          filterOptions={filterOptions}
           currentFilters={filters}
           resetFiltersTo={DEFAULT_STUDENT_FILTERS}
           showClearFilters
-          hideUnsortedOption
+          hideRoleFilter
+          showStateFilter={false}
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {students.length} de {pagination.total} usuarios
-        </p>
-      </div>
+      <MobileListControls
+        sort={{
+          fields: [
+            { key: "name", label: "Nombre" },
+            { key: "email", label: "Email" },
+            { key: "date", label: "Inicio", ascLabel: "más antiguos", descLabel: "más recientes" },
+          ],
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
+          onChange: handleSortChange,
+          defaultLabel: "Más recientes",
+        }}
+        filters={[
+          {
+            id: "role",
+            label: "Rol",
+            value: filters.role,
+            options: [
+              { value: "all", label: "Todos los roles" },
+              { value: "student", label: "Estudiante" },
+              { value: "admin", label: "Administrador" },
+            ],
+            onChange: (role) => setHeaderFilter("role", role),
+          },
+          {
+            id: "status",
+            label: "Estado",
+            value: filters.status,
+            options: STATUS_FILTER_OPTIONS,
+            onChange: (status) => setHeaderFilter("status", status),
+          },
+        ]}
+      />
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-          </div>
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando usuarios…" />
+        {paginationLoading && students.length === 0 ? (
+          <div className="h-32" />
         ) : students.length > 0 ? (
           <div data-tour="students-list">
             <StudentList
               students={students}
               onDelete={handleDeleteClick}
               onUserUpdated={handleUserUpdated}
+              sortBy={filters.sortBy}
+              sortDirection={filters.sortDirection}
+              onSortChange={handleSortChange}
+              coursesById={coursesById}
+              role={filters.role}
+              onRoleChange={(role) => setHeaderFilter("role", role)}
+              status={filters.status}
+              onStatusFilterChange={(status) => setHeaderFilter("status", status)}
               onStatusChange={async () => {
                 try {
                   await fetchStudents();
@@ -342,6 +383,7 @@ export default function Students() {
             setPagination((prev) => ({ ...prev, limit, page: 1 }))
           }
           scrollTargetRef={listTopRef}
+          allowAll
         />
       )}
 

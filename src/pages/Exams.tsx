@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Edit2, Loader, Loader2, Trash2, Users } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { examsTourSteps } from "@/config/tourSteps";
+import { ClipboardList, Edit2, Loader2, Trash2, Users } from "lucide-react";
+import { ListLoadingPill } from "@/components/common/ListLoading";
+import { MobileListControls } from "@/components/common/MobileListControls";
 import { SearchAndFilter, type FilterOptions } from "@/components/admin/SearchAndFilter";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { IconAction } from "@/components/ui/icon-action";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FilterHeader, PlainHeader, SortableHeader } from "@/components/common/TableHeaders";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  INACTIVE_ROW_TEXT,
+  applyColumnFilter,
+  applyColumnSort,
+  inactiveRowClass,
+  listLoadingClass,
+  type ColumnSort,
+} from "@/utils/tableState";
 import ConfirmDeleteModal from "@/components/product/ConfirmDeleteModal";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { ExamsAPI } from "@/service/exams";
@@ -23,16 +30,16 @@ import { toast } from "sonner";
 
 const isExamEnabled = (exam: Examen) => exam.habilitado !== false;
 
+const DEFAULT_EXAM_FILTERS: FilterOptions = { sortBy: "date", sortDirection: "desc" };
+
 export default function Exams() {
   const navigate = useNavigate();
+  usePageHeader({ title: "Exámenes", tourSteps: examsTourSteps });
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const [exams, setExams] = useState<Examen[]>([]);
   const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterOptions>({
-    sortBy: "date",
-    sortDirection: "desc",
-  });
+  const [filters, setFilters] = useState<FilterOptions>(DEFAULT_EXAM_FILTERS);
   const [loading, setLoading] = useState(true);
   const [paginationLoading, setPaginationLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationMeta>({
@@ -60,6 +67,7 @@ export default function Exams() {
         search: searchQuery.trim() || undefined,
         sortBy: backendSortBy,
         sortOrder: filters.sortDirection,
+        idFormacion: filters.courseId,
         page: pagination.page,
         limit: pagination.limit,
       });
@@ -79,7 +87,7 @@ export default function Exams() {
       setPaginationLoading(false);
       setLoading(false);
     }
-  }, [searchQuery, filters.sortBy, filters.sortDirection, pagination.limit, pagination.page]);
+  }, [searchQuery, filters.sortBy, filters.sortDirection, filters.courseId, pagination.limit, pagination.page]);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -91,7 +99,7 @@ export default function Exams() {
       setCoursesById(mapped);
     } catch (err) {
       console.error("Error al cargar formaciones:", err);
-      toast.error("No se pudieron cargar las formaciones para filtros");
+      toast.error("No se pudieron cargar los cursos para filtros");
     }
   }, []);
 
@@ -168,11 +176,66 @@ export default function Exams() {
     }
   };
 
-  const filterOptions = {
-    sortOptions: [
-      { value: "date", label: "Fecha de creación" },
-      { value: "title", label: "Título" },
-    ],
+  // Orden (título) y formación se eligen desde los encabezados de la tabla
+  const handleSortChange = (sort: ColumnSort) =>
+    handleFilter(applyColumnSort(filters, sort, DEFAULT_EXAM_FILTERS));
+
+  const courseList = Object.values(coursesById);
+  const courseFilterOptions = [
+    { value: "all", label: "Todos los cursos" },
+    ...courseList.map((c) => ({ value: c.id, label: c.titulo })),
+  ];
+
+  const courseTitle = (exam: Examen) => coursesById[exam.idFormacion]?.titulo || exam.idFormacion;
+  const questionCount = (exam: Examen) => exam.preguntas?.length ?? 0;
+  const goToEdit = (exam: Examen) => navigate(`/exams/${encodeURIComponent(exam.id)}/edit`);
+
+  const renderActions = (exam: Examen) => {
+    const isActive = isExamEnabled(exam);
+    return (
+      <div
+        className="flex items-center justify-end gap-0.5"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <IconAction label="Editar examen" onClick={() => goToEdit(exam)}>
+          <Edit2 />
+        </IconAction>
+        <IconAction
+          label="Intentos por alumno"
+          onClick={() => navigate(`/exams/${encodeURIComponent(exam.id)}/intentos`)}
+        >
+          <Users />
+        </IconAction>
+        <IconAction
+          label="Eliminar examen"
+          onClick={() => handleDeleteClick(exam.id)}
+          className="hover:bg-red-50 hover:text-red-600"
+        >
+          <Trash2 />
+        </IconAction>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="grid place-items-center w-10 h-8">
+              {togglingId === exam.id ? (
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              ) : (
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={(checked) => handleToggleHabilitado(exam, checked)}
+                  disabled={togglingId !== null}
+                  aria-label={isActive ? "Deshabilitar examen" : "Habilitar examen"}
+                  className="scale-90 data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 disabled:opacity-50"
+                />
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{isActive ? "Habilitado" : "Deshabilitado"}</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
   };
 
   if (loading) {
@@ -190,27 +253,23 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Exámenes</h1>
-
+      <div data-tour="search-filter">
       <SearchAndFilter
         onSearch={handleSearch}
         showStateFilter={false}
         onFilter={handleFilter}
         onCreateNew={() => navigate("/exams/create")}
         createButtonText="Crear examen"
-        filterOptions={filterOptions}
+        filterOptions={{ courses: courseList }}
         showClearFilters
-        resetFiltersTo={{
-          sortBy: "date",
-          sortDirection: "desc",
-        }}
-        hideUnsortedOption
+        resetFiltersTo={DEFAULT_EXAM_FILTERS}
         currentFilters={filters}
         extraActions={
           <Button
             type="button"
             variant="outline"
             className="h-10"
+            data-tour="view-completed"
             onClick={() => navigate("/exams/completed")}
           >
             <ClipboardList className="w-4 h-4 mr-2" />
@@ -218,214 +277,114 @@ export default function Exams() {
           </Button>
         }
       />
-
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600">
-          Mostrando {exams.length} de {pagination.total} exámenes
-        </p>
       </div>
 
-      <div ref={listTopRef}>
-        {paginationLoading ? (
-          <div className="flex justify-center gap-3 h-full py-12">
-            <Loader className="animate-spin" />
-            <h1 className="text-zinc-700">Cargando siguiente página</h1>
-          </div>
+      <MobileListControls
+        sort={{
+          fields: [{ key: "title", label: "Título" }],
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
+          onChange: handleSortChange,
+          defaultLabel: "Más recientes",
+        }}
+        filters={[
+          {
+            id: "course",
+            label: "Curso",
+            value: filters.courseId,
+            options: courseFilterOptions,
+            onChange: (courseId) => handleFilter(applyColumnFilter(filters, "courseId", courseId)),
+          },
+        ]}
+      />
+
+      <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+        <ListLoadingPill loading={paginationLoading} label="Cargando exámenes…" />
+        {paginationLoading && exams.length === 0 ? (
+          <div className="h-32" />
         ) : exams.length > 0 ? (
-          <>
-            <div className="block md:hidden divide-y divide-gray-200 rounded-md border bg-white">
-              {exams.map((exam, index) => (
-                <div key={exam.id} className="p-4 space-y-3">
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="font-semibold text-gray-900 break-words text-base">
-                      {exam.titulo || `Examen ${index + 1}`}
-                    </p>
-                    <p className="text-sm text-gray-600 break-words">
-                      {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
-                    </p>
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-700">
-                      {exam.preguntas?.length ?? 0} pregunta
-                      {(exam.preguntas?.length ?? 0) !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer flex-1 min-w-[7rem] justify-center"
-                      onClick={() =>
-                        navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
-                      }
-                    >
-                      <Edit2 className="w-4 h-4 mr-1" />
-                      Editar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer flex-1 min-w-[7rem] justify-center"
-                      onClick={() =>
-                        navigate(
-                          `/exams/${encodeURIComponent(exam.id)}/intentos`
-                        )
-                      }
-                    >
-                      <Users className="w-4 h-4 mr-1" />
-                      Intentos
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer flex-1 min-w-[7rem] justify-center text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => handleDeleteClick(exam.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Eliminar
-                    </Button>
-                    <div
-                      className={`flex items-center justify-between gap-2 px-3 py-2 border rounded-lg w-full ${
-                        isExamEnabled(exam)
-                          ? "bg-green-50 border-green-200"
-                          : "bg-red-50 border-red-200"
-                      }`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span
-                        className={`text-sm font-medium ${
-                          isExamEnabled(exam) ? "text-green-700" : "text-red-700"
-                        }`}
-                      >
-                        {togglingId === exam.id
-                          ? "Actualizando..."
-                          : isExamEnabled(exam)
-                            ? "Habilitado"
-                            : "Deshabilitado"}
-                      </span>
-                      {togglingId === exam.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                      ) : (
-                        <Switch
-                          checked={isExamEnabled(exam)}
-                          onCheckedChange={(checked) =>
-                            handleToggleHabilitado(exam, checked)
-                          }
-                          disabled={togglingId !== null}
-                          className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="hidden md:block rounded-md border bg-white overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Formación</TableHead>
-                    <TableHead className="text-right">Preguntas</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {exams.map((exam, index) => (
-                    <TableRow key={exam.id}>
-                      <TableCell className="font-medium">
+          <TooltipProvider delayDuration={300}>
+          <div className="admin-card overflow-hidden" data-tour="exams-list">
+            {/* ── Vista mobile: filas compactas ── */}
+            <ul role="list" className="block md:hidden divide-y divide-gray-100 bg-white">
+              {exams.map((exam, index) => {
+                const isActive = isExamEnabled(exam);
+                return (
+                  <li
+                    key={exam.id}
+                    className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer ${inactiveRowClass(isActive)}`}
+                    onClick={() => goToEdit(exam)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-sm font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
                         {exam.titulo || `Examen ${index + 1}`}
-                      </TableCell>
-                      <TableCell>
-                        {coursesById[exam.idFormacion]?.titulo || exam.idFormacion}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {exam.preguntas?.length ?? 0}
-                      </TableCell>
-                      <TableCell>
-                        <div
-                          className={`inline-flex items-center justify-between gap-2 px-3 py-2 border rounded-lg min-w-[10.5rem] ${
-                            isExamEnabled(exam)
-                              ? "bg-green-50 border-green-200"
-                              : "bg-red-50 border-red-200"
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span
-                            className={`text-sm font-medium ${
-                              isExamEnabled(exam)
-                                ? "text-green-700"
-                                : "text-red-700"
-                            }`}
-                          >
-                            {togglingId === exam.id
-                              ? "Actualizando..."
-                              : isExamEnabled(exam)
-                                ? "Habilitado"
-                                : "Deshabilitado"}
-                          </span>
-                          {togglingId === exam.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                          ) : (
-                            <Switch
-                              checked={isExamEnabled(exam)}
-                              onCheckedChange={(checked) =>
-                                handleToggleHabilitado(exam, checked)
-                              }
-                              disabled={togglingId !== null}
-                              className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500 disabled:opacity-50"
-                            />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="cursor-pointer"
-                            onClick={() =>
-                              navigate(`/exams/${encodeURIComponent(exam.id)}/edit`)
-                            }
-                          >
-                            <Edit2 className="w-4 h-4 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="cursor-pointer"
-                            onClick={() =>
-                              navigate(
-                                `/exams/${encodeURIComponent(exam.id)}/intentos`
-                              )
-                            }
-                          >
-                            <Users className="w-4 h-4 mr-1" />
-                            Intentos
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="cursor-pointer text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => handleDeleteClick(exam.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Eliminar
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </p>
+                      <p className={`truncate text-xs ${isActive ? "text-gray-500" : INACTIVE_ROW_TEXT}`}>
+                        {courseTitle(exam)} · {questionCount(exam)} preguntas
+                      </p>
+                    </div>
+                    {renderActions(exam)}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* ── Vista desktop: tabla ── */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <SortableHeader
+                      label="Título"
+                      column="title"
+                      defaultLabel="fecha de creación"
+                      sortBy={filters.sortBy}
+                      sortDirection={filters.sortDirection}
+                      onSortChange={handleSortChange}
+                      className="pl-4 pr-3"
+                    />
+                    <FilterHeader
+                      label="Curso"
+                      tooltip="Filtrar por curso"
+                      value={filters.courseId}
+                      options={courseFilterOptions}
+                      onChange={(courseId) =>
+                        handleFilter(applyColumnFilter(filters, "courseId", courseId))
+                      }
+                    />
+                    <PlainHeader>Preguntas</PlainHeader>
+                    <PlainHeader align="right" className="pl-3 pr-4">
+                      Acciones
+                    </PlainHeader>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {exams.map((exam, index) => {
+                    const isActive = isExamEnabled(exam);
+                    return (
+                      <tr
+                        key={exam.id}
+                        className={`transition-colors duration-150 cursor-pointer ${inactiveRowClass(isActive)}`}
+                        onClick={() => goToEdit(exam)}
+                      >
+                        <td className={`pl-4 pr-3 py-1.5 font-medium ${isActive ? "text-gray-900" : INACTIVE_ROW_TEXT}`}>
+                          <span className="line-clamp-1">{exam.titulo || `Examen ${index + 1}`}</span>
+                        </td>
+                        <td className={`px-3 py-1.5 ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                          <span className="line-clamp-1">{courseTitle(exam)}</span>
+                        </td>
+                        <td className={`px-3 py-1.5 whitespace-nowrap tabular-nums ${isActive ? "text-gray-600" : INACTIVE_ROW_TEXT}`}>
+                          {questionCount(exam)}
+                        </td>
+                        <td className="pl-3 pr-4 py-1.5 whitespace-nowrap">{renderActions(exam)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </>
+          </div>
+          </TooltipProvider>
         ) : (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

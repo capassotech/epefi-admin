@@ -278,6 +278,10 @@ export interface ExamenCreatePayload {
   /** Porcentaje mínimo de aciertos para aprobar (1-100). Por defecto 70. */
   notaMinima?: number;
   publicacionManualDeNota?: boolean;
+  /** Límite general de intentos por alumno. Si falta, se usa 1. */
+  intentosMaximos?: number;
+  /** Revisión para quien aprobó o agotó intentos. Si falta, se considera permitida. */
+  permitirRevision?: boolean;
   preguntas: ExamenPregunta[];
 }
 

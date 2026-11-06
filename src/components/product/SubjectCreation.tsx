@@ -3,7 +3,7 @@
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import SubjectModal from "../subject/SubjectModal";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { type Subject, type Module } from "@/types/types";
 import { CoursesAPI } from "@/service/courses";
 import { toast } from "sonner";
@@ -12,7 +12,20 @@ import { useWatch } from "react-hook-form";
 import type { ProductFormData } from "@/schemas/product-schema";
 import { SubjectList } from "../subject/SubjectList";
 import ConfirmDeleteModal from "../product/ConfirmDeleteModal";
-import { Loader2, Plus } from "lucide-react";
+import { BookOpen, Link2, Loader2, Pencil, Plus, Unlink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { fromCourseState } from "@/utils/fromCourse";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
 import ModulesModal from "../subject/ModulesModal";
 import ModulesList from "../subject/ModulesList";
 import {
@@ -22,30 +35,41 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from "@/components/ui/select"
 import { Badge } from "../ui/badge";
 import { X } from "lucide-react";
 interface SubjectCreationProps {
     courseId?: string | null;
     control?: Control<ProductFormData>;
     courseTitle?: string | null; // Título del curso para pasar al modal
+    /** Guarda los cambios pendientes del curso antes de salir a editar una materia */
+    onBeforeOpenSubject?: () => Promise<void>;
+    /** Permite a la pantalla del curso guardar las materias agregadas/quitadas al tocar "Guardar cambios" */
+    handleRef?: React.Ref<SubjectCreationHandle>;
+}
+
+/** Agregar y quitar materias queda pendiente hasta que la pantalla del curso guarde */
+export interface SubjectCreationHandle {
+    hasPendingChanges: () => boolean;
+    savePendingChanges: () => Promise<void>;
 }
 
 
-export default function SubjectCreation({ courseId, control, courseTitle }: SubjectCreationProps) {
+export default function SubjectCreation({ courseId, control, courseTitle, onBeforeOpenSubject, handleRef }: SubjectCreationProps) {
+    const navigate = useNavigate();
+    /** Materias elegidas para agregar o quitar que todavía no se guardaron en el curso */
+    const [pendingAdds, setPendingAdds] = useState<Subject[]>([]);
+    const [pendingRemovals, setPendingRemovals] = useState<Subject[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    /** Materia elegida para editar: se pide confirmación antes de salir del curso */
+    const [subjectToOpen, setSubjectToOpen] = useState<Subject | null>(null);
+    const [openingSubject, setOpeningSubject] = useState(false);
+    /** Materia a quitar del curso: se confirma antes de marcarla */
+    const [subjectToUnassign, setSubjectToUnassign] = useState<Subject | null>(null);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
     const [courseSubjectIds, setCourseSubjectIds] = useState<string[]>([]);
     const [courseSubjects, setCourseSubjects] = useState<Subject[]>([]); // Materias completas asociadas al curso
-    const [loading, setLoading] = useState(false);
     const [loadingSubjects, setLoadingSubjects] = useState(false); // Estado de carga para el listado de materias
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -122,10 +146,10 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
             setLoadingSubjects(true);
             try {
                 const [subjectsList, course] = await Promise.all([
-                    CoursesAPI.getMaterias(),
+                    CoursesAPI.getAllMateriasList(),
                     courseId ? CoursesAPI.getById(String(courseId)) : Promise.resolve(null),
                 ]);
-                setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                setAllSubjects(subjectsList);
                 const existingIds = Array.isArray(course?.materias) ? course.materias.map(String) : [];
                 setCourseSubjectIds(existingIds);
                 
@@ -173,9 +197,61 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
         return new Set<string>(courseSubjectIds);
     }, [courseSubjectIds]);
 
+    const removedIds = useMemo(() => new Set(pendingRemovals.map((s) => s.id)), [pendingRemovals]);
+
+    /** Materias como van a quedar al guardar: las guardadas menos las quitadas, más las agregadas */
+    const displayedSubjects = useMemo(
+        () => [...courseSubjects.filter((s) => !removedIds.has(s.id)), ...pendingAdds],
+        [courseSubjects, removedIds, pendingAdds]
+    );
+
     const selectableSubjects = useMemo(() => {
-        return allSubjects.filter((s) => !subjectsAlreadyInCourse.has(s.id));
-    }, [allSubjects, subjectsAlreadyInCourse]);
+        const inCourse = new Set(displayedSubjects.map((s) => s.id));
+        return allSubjects.filter(
+            (s) => (!subjectsAlreadyInCourse.has(s.id) || removedIds.has(s.id)) && !inCourse.has(s.id)
+        );
+    }, [allSubjects, subjectsAlreadyInCourse, removedIds, displayedSubjects]);
+
+    const hasPendingChanges = pendingAdds.length > 0 || pendingRemovals.length > 0;
+
+    /** Aplica en el curso las materias agregadas y quitadas (se llama al guardar el curso) */
+    const savePendingChanges = useCallback(async () => {
+        if (!courseId || (pendingAdds.length === 0 && pendingRemovals.length === 0)) return;
+        const course = await CoursesAPI.getById(String(courseId));
+        const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
+        const removed = new Set(pendingRemovals.map((s) => s.id));
+        const updatedIds = Array.from(
+            new Set([...existingIds.filter((sid) => !removed.has(sid)), ...pendingAdds.map((s) => s.id)])
+        );
+        await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
+        setCourseSubjectIds(updatedIds);
+        setCourseSubjects((prev) => [...prev.filter((s) => !removed.has(s.id)), ...pendingAdds]);
+        setPendingAdds([]);
+        setPendingRemovals([]);
+    }, [courseId, pendingAdds, pendingRemovals]);
+
+    useImperativeHandle(
+        handleRef,
+        () => ({ hasPendingChanges: () => hasPendingChanges, savePendingChanges }),
+        [hasPendingChanges, savePendingChanges]
+    );
+
+    // Avisar antes de cerrar o recargar la página con materias sin guardar
+    useEffect(() => {
+        if (!hasPendingChanges) return;
+        const onBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = "";
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    }, [hasPendingChanges]);
+
+    const discardPendingChanges = () => {
+        setPendingAdds([]);
+        setPendingRemovals([]);
+        setSelectedSubjects([]);
+    };
 
     const handleCancelCreate = () => {
         setIsCreateModalOpen(false);
@@ -220,8 +296,8 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                         setCourseSubjectIds(updatedIds);
                         
                         // Recargar las materias disponibles
-                        const subjectsList = await CoursesAPI.getMaterias();
-                        setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                        const subjectsList = await CoursesAPI.getAllMateriasList();
+                        setAllSubjects(subjectsList);
                         
                         // Cargar y agregar la nueva materia a la lista de materias del curso
                         try {
@@ -251,8 +327,8 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                     } else {
                         console.log("La materia ya estaba asociada al curso");
                         // La materia ya está asociada, pero asegurémonos de que esté en la lista visual
-                        const subjectsList = await CoursesAPI.getMaterias();
-                        setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+                        const subjectsList = await CoursesAPI.getAllMateriasList();
+                        setAllSubjects(subjectsList);
                         
                         // Verificar si la materia está en courseSubjects y agregarla si no está
                         setCourseSubjects(prev => {
@@ -293,8 +369,8 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
         setLoadingSubjects(true);
         try {
             // Refrescar todas las materias
-            const subjectsList = await CoursesAPI.getMaterias();
-            setAllSubjects(Array.isArray(subjectsList) ? subjectsList : []);
+            const subjectsList = await CoursesAPI.getAllMateriasList();
+            setAllSubjects(subjectsList);
             
             // Si hay courseId, recargar el curso y las materias asociadas para asegurar que todo esté sincronizado
             if (courseId) {
@@ -398,30 +474,29 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
         }
     };
 
-    const handleUnassignSubject = async (id: string) => {
-        if (!id || !courseId) return;
-        setLoadingSubjects(true);
-        try {
-            // Remover la materia del curso (desasignar)
-            const course = await CoursesAPI.getById(String(courseId));
-            const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
-            const updatedIds = existingIds.filter(pid => pid !== id);
-            
-            await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
-            setCourseSubjectIds(updatedIds);
-            setCourseSubjects(prev => prev.filter(s => s.id !== id));
-            toast.success("Materia desasignada del curso exitosamente");
-        } catch (e) {
-            console.error(e);
-            toast.error("Error al desasignar la materia del curso");
-        } finally {
-            setLoadingSubjects(false);
-        }
+    /** Editar una materia abre su página: antes se confirma y se guardan los cambios del curso */
+    const handleOnEditSubjectClick = (subject: Subject) => {
+        setSubjectToOpen(subject);
     };
 
-    const handleOnEditSubjectClick = (subject: Subject) => {
-        setEditingSubject(subject);
-        setIsEditModalOpen(true);
+    const confirmOpenSubject = async () => {
+        if (!subjectToOpen || !courseId) return;
+        setOpeningSubject(true);
+        try {
+            await savePendingChanges();
+            await onBeforeOpenSubject?.();
+            navigate(`/subjects/${encodeURIComponent(subjectToOpen.id)}`, {
+                state: fromCourseState({
+                    // Volver lleva directo al paso "Materias" del curso
+                    to: `/products/${encodeURIComponent(courseId)}/edit?tab=materias`,
+                    label: currentCourseTitle || "Curso",
+                }),
+            });
+        } catch (error) {
+            console.error("Error al guardar el curso antes de abrir la materia:", error);
+            toast.error("No se pudieron guardar los cambios del curso");
+            setOpeningSubject(false);
+        }
     };
 
     const handleCancelEditSubject = () => {
@@ -475,234 +550,259 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
         setSelectedSubjects((prev) => prev.filter((s) => s.id !== subjectId));
     };
 
-    const handleConfirmAssociation = async () => {
-        if (!courseId) {
-            toast.error("Primero debes crear/guardar el curso");
-            return;
-        }
+    /** Suma las materias elegidas como cambio pendiente: se guardan con "Guardar cambios" */
+    const handleConfirmAssociation = () => {
         if (selectedSubjects.length === 0) {
             toast.error("Selecciona al menos una materia");
             return;
         }
-        setLoading(true);
-        try {
-            const course = await CoursesAPI.getById(String(courseId));
-            const existingIds: string[] = Array.isArray(course?.materias) ? course.materias.map(String) : [];
-            const toAdd = selectedSubjects.map((s) => s.id);
-            const updatedIds = Array.from(new Set([...existingIds, ...toAdd]));
-            await CoursesAPI.update(String(courseId), { ...course, materias: updatedIds });
-                    setCourseSubjectIds(updatedIds);
-                    
-                    // Cargar las materias asociadas y actualizar la lista
-                    setLoadingSubjects(true);
-                    try {
-                        const associatedSubjects = await CoursesAPI.getMateriasByIds(updatedIds);
-                        setCourseSubjects(Array.isArray(associatedSubjects) ? associatedSubjects : []);
-                    } catch (e) {
-                        console.error("Error al cargar materias asociadas:", e);
-                        // Si falla, agregar manualmente las seleccionadas
-                        setCourseSubjects(prev => {
-                            const newSubjects = selectedSubjects.filter(s => !prev.some(p => p.id === s.id));
-                            return [...prev, ...newSubjects];
-                        });
-                    } finally {
-                        setLoadingSubjects(false);
-                    }
-                    
-            toast.success("Materias asociadas al curso");
-            setSelectedSubjects([]);
-        } catch (e) {
-            console.error(e);
-            toast.error("Error al asociar materias");
-        } finally {
-            setLoading(false);
+        const selectedIds = new Set(selectedSubjects.map((s) => s.id));
+        // Si estaba marcada para quitar, alcanza con deshacer la quita
+        setPendingRemovals((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+        setPendingAdds((prev) => [
+            ...prev,
+            ...selectedSubjects.filter(
+                (s) => !subjectsAlreadyInCourse.has(s.id) && !prev.some((p) => p.id === s.id)
+            ),
+        ]);
+        setSelectedSubjects([]);
+    };
+
+    /** Marca una materia para quitar del curso (o deshace un agregado todavía sin guardar) */
+    const markSubjectForRemoval = (subject: Subject) => {
+        if (pendingAdds.some((s) => s.id === subject.id)) {
+            setPendingAdds((prev) => prev.filter((s) => s.id !== subject.id));
+        } else {
+            setPendingRemovals((prev) => (prev.some((s) => s.id === subject.id) ? prev : [...prev, subject]));
         }
     };
 
 
     return (
         <div className="space-y-4">
-            {/* Card unificado para agregar y crear materias */}
-            <Card>
-                <CardContent className="p-6">
-                    <div className="space-y-6">
-                        {/* Sección: Agregar materias existentes - Solo se muestra si hay materias disponibles */}
-                        {selectableSubjects.length > 0 && (
-                            <>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                        </div>
-                    <div>
-                                            <h4 className="text-sm font-semibold text-gray-900">Agregar Materias Existentes</h4>
-                                            <p className="text-xs text-gray-500">Selecciona materias que ya están creadas en el sistema</p>
-                        </div>
-                    </div>
+            {/* Encabezado: cantidad de materias y acción principal */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    Materias del curso
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums">
+                        {displayedSubjects.length}
+                    </span>
+                </h3>
+                <Button
+                    type="button"
+                    size="sm"
+                    className="h-9 cursor-pointer"
+                    onClick={() => setIsCreateModalOpen(true)}
+                >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Nueva materia
+                </Button>
+            </div>
 
-                                    <div className="pl-0 sm:pl-10 space-y-3">
-                        <Select onValueChange={handleSelectSubject}>
-                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Buscar y seleccionar materia..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {selectableSubjects.map((s) => (
-                                    <SelectItem key={s.id} value={s.id}>
-                                        {s.nombre}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                    {selectedSubjects.length > 0 && (
-                        <div className="space-y-2">
-                                                <div className="text-xs font-medium text-gray-700">Materias seleccionadas ({selectedSubjects.length}):</div>
-                            <div className="flex flex-wrap gap-2">
-                                {selectedSubjects.map((s) => (
-                                                        <Badge key={s.id} variant="secondary" className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200">
-                                        {s.nombre}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveSelected(s.id)}
-                                                                className="rounded-full hover:bg-blue-200 p-0.5 transition-colors"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                                        <div className="flex justify-end pt-2">
+            {/* Sumar materias que ya existen en el sistema */}
+            {selectableSubjects.length > 0 && (
+                <div className="space-y-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <SearchableSelect
+                            value=""
+                            options={selectableSubjects.map((s) => ({ value: s.id, label: s.nombre }))}
+                            onChange={handleSelectSubject}
+                            placeholder="Agregar materia existente…"
+                            searchPlaceholder="Buscar materia…"
+                            emptyText="Ninguna materia coincide con la búsqueda"
+                            className="sm:flex-1"
+                        />
                         <Button
                             type="button"
-                            className="cursor-pointer"
+                            variant="outline"
+                            className="h-9 cursor-pointer"
                             onClick={handleConfirmAssociation}
-                            disabled={loading || !courseId || selectedSubjects.length === 0}
+                            disabled={!courseId || selectedSubjects.length === 0}
                         >
-                                                {loading ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                        Asociando...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                        Asociar {selectedSubjects.length > 0 ? `${selectedSubjects.length} materia${selectedSubjects.length > 1 ? 's' : ''}` : 'materias'}
-                                                    </>
-                                                )}
+                            <Link2 className="w-4 h-4 mr-1.5" />
+                            {selectedSubjects.length > 0 ? `Agregar ${selectedSubjects.length}` : "Agregar"}
                         </Button>
                     </div>
-                                    </div>
-                                </div>
 
-                                {/* Divider - Solo se muestra si hay materias disponibles */}
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-200"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-white px-2 text-gray-500">O</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Sección: Crear nueva materia */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Crear Nueva Materia</h4>
-                                    <p className="text-xs text-gray-500">Crea una materia nueva que se asociará automáticamente a este curso</p>
-                                </div>
-                            </div>
-                            
-                            <div className="pl-0 sm:pl-10">
-                                <Button 
-                                    type="button" 
-                                    className="cursor-pointer w-full sm:w-auto"
-                                    onClick={() => setIsCreateModalOpen(true)}
+                    {selectedSubjects.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {selectedSubjects.map((s) => (
+                                <Badge
+                                    key={s.id}
+                                    variant="secondary"
+                                    className="flex items-center gap-1 border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700"
                                 >
-                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Crear Nueva Materia
-                                </Button>
-                            </div>
+                                    {s.nombre}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveSelected(s.id)}
+                                        className="rounded-full p-0.5 transition-colors hover:bg-blue-200"
+                                        aria-label={`Quitar ${s.nombre}`}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </Badge>
+                            ))}
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* Cambios de materias pendientes: se aplican al tocar "Guardar cambios" */}
+            {hasPendingChanges && (
+                <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <p className="font-medium text-amber-900">Cambios sin guardar</p>
+                        {pendingAdds.length > 0 && (
+                            <p className="text-xs text-amber-800">
+                                Se agregará{pendingAdds.length > 1 ? "n" : ""}:{" "}
+                                {pendingAdds.map((s) => s.nombre).join(", ")}
+                            </p>
+                        )}
+                        {pendingRemovals.length > 0 && (
+                            <p className="text-xs text-amber-800">
+                                Se quitará{pendingRemovals.length > 1 ? "n" : ""}:{" "}
+                                {pendingRemovals.map((s) => s.nombre).join(", ")}
+                            </p>
+                        )}
+                        <p className="text-xs text-amber-700">Tocá “Guardar cambios” para aplicarlos al curso.</p>
                     </div>
-                </CardContent>
-            </Card>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 shrink-0 text-amber-800 hover:bg-amber-100"
+                        onClick={discardPendingChanges}
+                    >
+                        Descartar
+                    </Button>
+                </div>
+            )}
 
-
-            {/* Lista de materias asociadas al curso */}
+            {/* Lista de materias del curso (como va a quedar al guardar) */}
             {loadingSubjects ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-center py-12">
-                            <div className="flex flex-col items-center space-y-3">
-                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                                <p className="text-sm text-gray-500 font-medium">Cargando materias...</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            ) : courseSubjects.length > 0 ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <SubjectList
-                            subjects={courseSubjects}
-                            onDelete={handleOnDeleteSubject}
-                            onEdit={handleOnEditSubjectClick}
-                            onUnassign={handleUnassignSubject}
-                            showUnassign={true}
-                            showTitle={true}
-                            onSubjectStatusUpdated={(id, newEstado) => {
-                                const newActivo = newEstado === "activo";
-                                const normalizedId = String(id);
-                                setCourseSubjects((prev) =>
-                                    prev.map((m) =>
-                                        String(m.id) === normalizedId
-                                            ? { ...m, activo: newActivo, estado: newEstado }
-                                            : m
-                                    )
-                                );
-                                setAllSubjects((prev) =>
-                                    prev.map((m) =>
-                                        String(m.id) === normalizedId
-                                            ? { ...m, activo: newActivo, estado: newEstado }
-                                            : m
-                                    )
-                                );
-                            }}
-                        />
-                    </CardContent>
-                </Card>
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 py-10 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Cargando materias…
+                </div>
+            ) : displayedSubjects.length > 0 ? (
+                <SubjectList
+                    subjects={displayedSubjects}
+                    onDelete={handleOnDeleteSubject}
+                    onEdit={handleOnEditSubjectClick}
+                    onUnassign={async (id) => {
+                        // Se pide confirmación antes de quitarla del curso
+                        setSubjectToUnassign(displayedSubjects.find((s) => s.id === id) ?? null);
+                    }}
+                    showUnassign={true}
+                    showTitle={false}
+                    onSubjectStatusUpdated={(id, newEstado) => {
+                        const newActivo = newEstado === "activo";
+                        const normalizedId = String(id);
+                        setCourseSubjects((prev) =>
+                            prev.map((m) =>
+                                String(m.id) === normalizedId
+                                    ? { ...m, activo: newActivo, estado: newEstado }
+                                    : m
+                            )
+                        );
+                        setAllSubjects((prev) =>
+                            prev.map((m) =>
+                                String(m.id) === normalizedId
+                                    ? { ...m, activo: newActivo, estado: newEstado }
+                                    : m
+                            )
+                        );
+                    }}
+                />
             ) : courseId ? (
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="text-center py-8">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </div>
-                            <p className="text-gray-500 font-medium">No hay materias asociadas a este curso</p>
-                            <p className="text-sm text-gray-400 mt-1">Agrega materias existentes o crea una nueva</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-gray-200 px-6 py-8 text-center">
+                    <BookOpen className="mb-1 w-6 h-6 text-gray-300" />
+                    <p className="text-sm text-gray-500">Este curso todavía no tiene materias.</p>
+                    <p className="text-xs text-gray-400">Creá una nueva o agregá una existente.</p>
+                </div>
             ) : null}
+
+            {/* Confirmación antes de quitar una materia del curso */}
+            <AlertDialog
+                open={subjectToUnassign !== null}
+                onOpenChange={(open) => {
+                    if (!open) setSubjectToUnassign(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Unlink className="w-5 h-5 text-red-600" />
+                            Quitar materia del curso
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                Se quitará{" "}
+                                <strong className="font-semibold text-gray-900">
+                                    “{subjectToUnassign?.nombre}”
+                                </strong>{" "}
+                                de este curso al tocar “Guardar cambios”.
+                            </span>
+                            <span className="block">
+                                La materia y sus módulos no se eliminan: podés volver a agregarla cuando quieras.
+                            </span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => {
+                                if (subjectToUnassign) markSubjectForRemoval(subjectToUnassign);
+                                setSubjectToUnassign(null);
+                            }}
+                        >
+                            Quitar del curso
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Confirmación antes de salir a editar una materia */}
+            <AlertDialog
+                open={subjectToOpen !== null}
+                onOpenChange={(open) => {
+                    if (!open && !openingSubject) setSubjectToOpen(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Pencil className="w-5 h-5 text-gray-700" />
+                            Editar materia
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            <span className="block">
+                                Se guardarán los cambios del curso y se abrirá la materia{" "}
+                                <strong className="font-semibold text-gray-900">
+                                    “{subjectToOpen?.nombre}”
+                                </strong>{" "}
+                                con sus módulos.
+                            </span>
+                            <span className="block">¿Deseás continuar?</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={openingSubject}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={openingSubject}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                void confirmOpenSubject();
+                            }}
+                        >
+                            {openingSubject && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                            {openingSubject ? "Guardando…" : "Guardar y abrir"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <SubjectModal
                 isOpen={isCreateModalOpen || isEditModalOpen}
@@ -765,6 +865,8 @@ export default function SubjectCreation({ courseId, control, courseTitle }: Subj
                     setAllSubjects(prev => prev.filter(s => s.id !== subjectId));
                     setCourseSubjects(prev => prev.filter(s => s.id !== subjectId));
                     setCourseSubjectIds(prev => prev.filter(id => id !== subjectId));
+                    setPendingAdds(prev => prev.filter(s => s.id !== subjectId));
+                    setPendingRemovals(prev => prev.filter(s => s.id !== subjectId));
                     setEditingSubject(null);
                     
                     // Si hay courseId, actualizar el curso para remover la referencia a la materia

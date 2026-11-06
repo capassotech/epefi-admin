@@ -1,36 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SubjectCard } from '../components/subject/SubjectCard';
 import { SubjectList } from '../components/subject/SubjectList';
-import SubjectModal from '../components/subject/SubjectModal';
 import { SearchAndFilter, type FilterOptions } from '@/components/admin/SearchAndFilter';
 import { CoursesAPI } from "@/service/courses";
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
-import { toast } from 'sonner';
-import { type Subject } from '@/types/types';
+import { type Course, type Subject } from '@/types/types';
 import { useNavigate } from 'react-router-dom';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { subjectsTourSteps } from '@/config/tourSteps';
 import { PaginationControls } from '@/components/common/PaginationControls';
 import { normalizePaginatedResponse } from '@/utils/pagination';
 import type { PaginationMeta } from '@/types/types';
-import { Loader } from 'lucide-react';
+import { ListLoadingPill } from '@/components/common/ListLoading';
+import { applyColumnFilter, applyColumnSort, listLoadingClass, STATUS_FILTER_OPTIONS, type ColumnSort } from '@/utils/tableState';
+import { MobileListControls } from '@/components/common/MobileListControls';
 
 export default function Subjects() {
     const listTopRef = useRef<HTMLDivElement | null>(null);
     const [materias, setMaterias] = useState<Subject[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<FilterOptions>({});
-    const [viewMode, setViewMode] = useState<'cards' | 'list'>('list');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [paginationLoading, setPaginationLoading] = useState<boolean>(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const navigate = useNavigate();
+    usePageHeader({ title: 'Materias', tourSteps: subjectsTourSteps });
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [pagination, setPagination] = useState<PaginationMeta>({
         page: 1,
         limit: 10,
@@ -62,7 +59,7 @@ export default function Subjects() {
                 search: searchQuery.trim() || undefined,
                 status,
                 sortBy,
-                sortOrder: sortBy ? "asc" : undefined,
+                sortOrder: sortBy ? filters.sortDirection ?? "asc" : undefined,
             });
             const paginated = normalizePaginatedResponse<Subject>(res, pagination.page, pagination.limit);
             const data = paginated.data;
@@ -86,6 +83,16 @@ export default function Subjects() {
     useEffect(() => {
         fetchMaterias();
     }, [fetchMaterias]);
+
+    // Cursos para mostrar a cuáles pertenece cada materia
+    const [coursesById, setCoursesById] = useState<Record<string, Course>>({});
+    useEffect(() => {
+        CoursesAPI.getAllList()
+            .then((list) =>
+                setCoursesById(Object.fromEntries(list.map((c) => [String(c.id), c])))
+            )
+            .catch((err) => console.error("Error al cargar cursos:", err));
+    }, []);
 
     const handleDeleteClick = (id: string) => {
         setConfirmDeleteId(id);
@@ -115,67 +122,9 @@ export default function Subjects() {
         setConfirmDeleteId(null);
     };
 
-    const handleCreateSubject = async (subjectData: { nombre: string, id_cursos: string[], modulos: string[] }): Promise<Subject> => {
-        try {
-            const payload = {
-                nombre: subjectData.nombre,
-                id_cursos: subjectData.id_cursos,
-                modulos: subjectData.modulos || [],
-            };
-
-            const response = await CoursesAPI.createMateria({
-                nombre: payload.nombre,
-                id_cursos: payload.id_cursos,
-                modulos: payload.modulos,
-            });
-
-            // La respuesta del backend puede incluir todos los campos, usarla directamente si está disponible
-            const newSubject: Subject = {
-                id: response.id,
-                nombre: response.nombre || payload.nombre,
-                id_cursos: response.id_cursos || payload.id_cursos,
-                modulos: response.modulos || payload.modulos,
-            };
-
-            setMaterias(prev => [newSubject, ...prev]);
-
-            // No mostrar toast aquí: SubjectModal muestra el mensaje del backend
-            return newSubject;
-        } catch (err: unknown) {
-            throw err;
-        }
-    };
-
-    const handleCancelCreate = () => {
-        setIsCreateModalOpen(false);
-        setEditingSubject(null);
-    };
-
-    const handleEditClick = (subject: Subject) => {
-        setEditingSubject(subject);
-        setIsCreateModalOpen(true);
-    };
-
-    const handleUpdateSubject = async (subjectData: { id: string; nombre: string; id_cursos: string[]; modulos: string[] }): Promise<void> => {
-        try {
-            await CoursesAPI.updateMateria(subjectData.id, {
-                id: subjectData.id,
-                nombre: subjectData.nombre,
-                id_cursos: subjectData.id_cursos,
-                modulos: subjectData.modulos,
-            });
-
-            // Actualizar el estado local
-            setMaterias(prev => prev.map(m => 
-                m.id === subjectData.id 
-                    ? { ...m, nombre: subjectData.nombre, id_cursos: subjectData.id_cursos, modulos: subjectData.modulos }
-                    : m
-            ));
-            toast.success("Materia actualizada exitosamente");
-        } catch (err: unknown) {
-            throw err;
-        }
-    };
+    // Crear y editar materias se hace en su propia página
+    const goToCreate = () => navigate('/subjects/new');
+    const handleEditClick = (subject: Subject) => navigate(`/subjects/${encodeURIComponent(subject.id)}/edit`);
 
     const handleSearch = (query: string) => {
         setSearchQuery(query);
@@ -187,22 +136,15 @@ export default function Subjects() {
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
-    const filterOptions = {
-        types: [
-            { value: 'TEORICA', label: 'Teórica' },
-            { value: 'PRACTICA', label: 'Práctica' },
-            { value: 'MIXTA', label: 'Mixta' },
-        ],
-        sortOptions: [
-            { value: 'title', label: 'Título' },
-            { value: 'status', label: 'Estado' },
-        ],
-    };
+    // Orden y estado se eligen desde los encabezados de la tabla
+    const handleSortChange = (sort: ColumnSort) => handleFilter(applyColumnSort(filters, sort));
+    const handleStatusFilterChange = (status: string | undefined) =>
+        handleFilter(applyColumnFilter(filters, 'status', status));
 
     if (loading) {
         return (
             <InteractiveLoader
-                initialMessage="Cargando cursos"
+                initialMessage="Cargando materias"
                 delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
             />
         );
@@ -214,72 +156,55 @@ export default function Subjects() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Materias</h1>
-                <TourButton steps={subjectsTourSteps} />
-            </div>
-
             <div data-tour="search-filter">
                 <SearchAndFilter
                     onSearch={handleSearch}
                     onFilter={handleFilter}
-                    onCreateNew={() => setIsCreateModalOpen(true)}
+                    onCreateNew={goToCreate}
                     createButtonText="Crear materia"
-                    filterOptions={filterOptions}
+                    showStateFilter={false}
+                    currentFilters={filters}
+                    resetFiltersTo={{}}
+                    showClearFilters
                 />
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-600">
-                    Mostrando {materias.length} de {pagination.total} materias
-                </p>
-                <div className="flex items-center space-x-2 text-sm text-gray-600" data-tour="view-toggle">
-                    <span>Vista:</span>
-                    <button
-                        onClick={() => setViewMode('cards')}
-                        className={`px-3 py-1 rounded-md ${viewMode === 'cards' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                    >
-                        Tarjetas
-                    </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`px-3 py-1 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                    >
-                        Lista
-                    </button>
-                </div>
-            </div>
+            <MobileListControls
+                sort={{
+                    fields: [{ key: "title", label: "Nombre" }],
+                    sortBy: filters.sortBy,
+                    sortDirection: filters.sortDirection,
+                    onChange: handleSortChange,
+                    defaultLabel: "Orden por defecto",
+                }}
+                filters={[
+                    {
+                        id: "status",
+                        label: "Estado",
+                        value: filters.status,
+                        options: STATUS_FILTER_OPTIONS,
+                        onChange: handleStatusFilterChange,
+                    },
+                ]}
+            />
 
-            <div ref={listTopRef}>
-                {paginationLoading ? (
-                    <div className="flex justify-center gap-3 h-full">
-                        <Loader className="animate-spin" />
-                        <h1 className="text-zinc-700">Cargando siguiente pagina</h1>
-                    </div>
+            <div ref={listTopRef} className={listLoadingClass(paginationLoading)} aria-busy={paginationLoading}>
+                <ListLoadingPill loading={paginationLoading} label="Cargando materias…" />
+                {paginationLoading && materias.length === 0 ? (
+                    <div className="h-32" />
                 ) : materias.length > 0 ? (
-                    <>
-                    {viewMode === 'cards' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="subjects-list">
-                            {materias.map((m, index) => (
-                                <div
-                                    key={m.id}
-                                    className="animate-fade-in"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    <SubjectCard
-                                        subject={m}
-                                        onEdit={handleEditClick}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
                         <div data-tour="subjects-list">
                             <SubjectList 
                                 subjects={materias} 
                                 onDelete={handleDeleteClick} 
                                 onEdit={handleEditClick} 
                                 showTitle={false}
+                                coursesById={coursesById}
+                                sortBy={filters.sortBy}
+                                sortDirection={filters.sortDirection}
+                                onSortChange={handleSortChange}
+                                status={filters.status}
+                                onStatusFilterChange={handleStatusFilterChange}
                                 onStatusChange={async () => {
                                     try {
                                         await fetchMaterias();
@@ -313,8 +238,6 @@ export default function Subjects() {
                                 }}
                             />
                         </div>
-                    )}
-                    </>
                 ) : (
                     <div className="text-center py-12">
                     <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -323,7 +246,7 @@ export default function Subjects() {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron materias</h3>
                     <p className="text-gray-600 mb-4">Intenta ajustar los filtros o crear una nueva materia.</p>
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={goToCreate}
                         className="admin-button cursor-pointer"
                     >
                         Crear primera materia
@@ -350,23 +273,6 @@ export default function Subjects() {
                 deleteLoading={deleteLoading}
                 itemName={materias.find(m => m.id === confirmDeleteId)?.nombre || "esta materia"}
                 id={confirmDeleteId || ""}
-            />
-
-            <SubjectModal
-                isOpen={isCreateModalOpen}
-                onCancel={handleCancelCreate}
-                onSubjectCreated={handleCreateSubject}
-                courseId={null} 
-                editingSubject={editingSubject}
-                onSubjectUpdated={handleUpdateSubject}
-                onGoToModules={async (subjectId: string) => {
-                    navigate(`/modules/create?subjectId=${subjectId}`);
-                }}
-                onSubjectDeleted={async (subjectId: string) => {
-                    // Actualizar el estado local removiendo la materia eliminada
-                    setMaterias(prev => prev.filter(m => m.id !== subjectId));
-                    setEditingSubject(null);
-                }}
             />
         </div>
     );

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
-import type { Driver } from 'driver.js';
+import type { Config, Driver } from 'driver.js';
 
 export type TourStep = {
   element: string;
@@ -15,125 +15,78 @@ export type TourStep = {
 
 export function useTour(steps: TourStep[]) {
   const driverRef = useRef<Driver | null>(null);
-  const clickHandlerRef = useRef<((e: MouseEvent) => void) | null>(null);
 
+  // Cerrar el tour si cambian los pasos (otra página) o se desmonta el componente
   useEffect(() => {
-    if (steps.length === 0) return;
-
-    // Destruir el driver anterior si existe
-    if (driverRef.current) {
-      driverRef.current.destroy();
-    }
-
-    // Remover el listener anterior si existe
-    if (clickHandlerRef.current) {
-      document.removeEventListener('click', clickHandlerRef.current, true);
-    }
-
-    // Crear un handler de eventos usando event delegation
-    clickHandlerRef.current = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target) return;
-
-      // Verificar si el clic fue en un botón dentro del popover de driver
-      const isDriverButton = target.closest('.driver-popover') !== null;
-      if (!isDriverButton) return;
-
-      const buttonText = target.textContent?.trim() || '';
-      const isDoneButton = buttonText === 'Terminar' || buttonText === 'Done' || 
-                          target.classList.contains('driver-done-btn') ||
-                          target.getAttribute('data-driver-done-btn') !== null;
-      
-      const isCloseButton = target.classList.contains('driver-close-btn') ||
-                           target.getAttribute('data-driver-close-btn') !== null ||
-                           target.closest('.driver-close-btn') !== null;
-
-      if (isDoneButton) {
-        e.preventDefault();
-        e.stopPropagation();
-        localStorage.setItem('tour-completed', 'true');
-        if (driverRef.current) {
-          driverRef.current.destroy();
-        }
-        if (clickHandlerRef.current) {
-          document.removeEventListener('click', clickHandlerRef.current, true);
-          clickHandlerRef.current = null;
-        }
-      } else if (isCloseButton) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (driverRef.current) {
-          driverRef.current.destroy();
-        }
-        if (clickHandlerRef.current) {
-          document.removeEventListener('click', clickHandlerRef.current, true);
-          clickHandlerRef.current = null;
-        }
-      }
+    return () => {
+      driverRef.current?.destroy();
+      driverRef.current = null;
     };
+  }, [steps]);
 
-    // Agregar el listener usando capture phase para capturar antes que otros handlers
-    document.addEventListener('click', clickHandlerRef.current, true);
+  // Se crea una instancia nueva en cada apertura para que el tour pueda repetirse.
+  // Importante: no usar `onDestroyStarted`, porque con ese hook driver.js deja de
+  // cerrarse solo con la X, Escape o el clic en el fondo.
+  const createDriver = (config: Config) => {
+    driverRef.current?.destroy();
+    const instance = driver({
+      ...config,
+      onDestroyed: () => {
+        try {
+          localStorage.setItem('tour-completed', 'true');
+        } catch {
+          // Sin acceso a localStorage (modo privado, etc.): no es crítico
+        }
+        driverRef.current = null;
+      },
+    });
+    driverRef.current = instance;
+    return instance;
+  };
 
-    driverRef.current = driver({
+  const startTour = () => {
+    // Saltear pasos cuyo elemento no está en pantalla: no existe en esta situación
+    // (ej. sin botón de guardar en un examen ya corregido) o está oculto (vista desktop en mobile)
+    const visibleSteps = steps.filter((step) => {
+      const element = document.querySelector<HTMLElement>(step.element);
+      return !!element && element.getClientRects().length > 0;
+    });
+    if (visibleSteps.length === 0) return;
+
+    // Por debajo de lg la ficha lateral se apila sobre el contenido: los popovers
+    // que iban al costado se ubican arriba o abajo para no taparlo
+    const isNarrow = window.matchMedia('(max-width: 1023px)').matches;
+    const resolveSide = (side: TourStep['popover']['side']) =>
+      isNarrow && (side === 'left' || side === 'right') ? 'bottom' : side || 'bottom';
+
+    createDriver({
       showProgress: true,
+      progressText: '{{current}} de {{total}}',
       showButtons: ['next', 'previous', 'close'],
       prevBtnText: 'Atrás',
       nextBtnText: 'Siguiente',
       doneBtnText: 'Terminar',
-      steps: steps.map(step => ({
+      steps: visibleSteps.map(step => ({
         element: step.element,
         popover: {
           title: step.popover.title,
           description: step.popover.description,
-          side: step.popover.side || 'bottom',
+          side: resolveSide(step.popover.side),
           align: step.popover.align || 'start',
         },
       })),
-      onDestroyStarted: () => {
-        // Guardar en localStorage que el tour fue completado
-        localStorage.setItem('tour-completed', 'true');
-      },
-      onDestroyed: () => {
-        // Limpiar la referencia después de que el tour se haya destruido completamente
-        driverRef.current = null;
-        if (clickHandlerRef.current) {
-          document.removeEventListener('click', clickHandlerRef.current, true);
-          clickHandlerRef.current = null;
-        }
-      },
-    });
-
-    return () => {
-      if (driverRef.current) {
-        driverRef.current.destroy();
-        driverRef.current = null;
-      }
-      if (clickHandlerRef.current) {
-        document.removeEventListener('click', clickHandlerRef.current, true);
-        clickHandlerRef.current = null;
-      }
-    };
-  }, [steps]);
-
-  const startTour = () => {
-    if (driverRef.current) {
-      driverRef.current.drive();
-    }
+    }).drive();
   };
 
   const highlightElement = (selector: string) => {
-    if (driverRef.current) {
-      driverRef.current.highlight({
-        element: selector,
-        popover: {
-          title: 'Elemento destacado',
-          description: 'Este es un elemento importante',
-        },
-      });
-    }
+    createDriver({}).highlight({
+      element: selector,
+      popover: {
+        title: 'Elemento destacado',
+        description: 'Este es un elemento importante',
+      },
+    });
   };
 
   return { startTour, highlightElement };
 }
-

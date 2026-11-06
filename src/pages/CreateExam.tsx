@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { usePageHeader } from "@/context/PageHeaderContext";
+import { examFormTourSteps } from "@/config/tourSteps";
+import { CheckCircle2, Circle, CircleHelp, ClipboardCheck, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DetailLayout, ProfileCard, SectionCard, StatGrid } from "@/components/common/DetailLayout";
+import { FormField } from "@/components/common/FormField";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -14,13 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
 import type { Course, Examen, ExamenCreatePayload, TipoPregunta } from "@/types/types";
 import { toast } from "sonner";
-import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 import {
   distributePuntosEqually,
   parsePuntosInput,
@@ -80,6 +83,56 @@ const createEmptyQuestion = (): QuestionForm => ({
   respuestas: [createEmptyOption(), createEmptyOption()],
 });
 
+/** Título de un ajuste con su explicación en un tooltip (ícono "?") */
+function SettingTitle({ children, help }: { children: React.ReactNode; help: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <p className="text-sm font-medium text-gray-900">{children}</p>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* span y no button: está dentro del label del switch; se frena el clic para no cambiarlo */}
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Ayuda: ${help}`}
+              onClick={(e) => e.preventDefault()}
+              className="inline-flex shrink-0 cursor-help rounded-full text-gray-400 transition-colors hover:text-gray-600"
+            >
+              <CircleHelp className="h-4 w-4" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+            {help}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
+/** Errores del contenido de una pregunta (texto y respuestas); los puntos se validan aparte al guardar */
+const getQuestionContentError = (question: QuestionForm): QuestionError => {
+  const error: QuestionError = {};
+  if (!question.texto.trim()) {
+    error.texto = "La pregunta no puede estar vacía";
+  }
+  if (question.tipoPregunta !== "desarrollo") {
+    const filledOptions = question.respuestas.filter((r) => r.texto.trim().length > 0);
+    const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
+    const hasCorrect = question.respuestas.some((r) => r.esCorrecta && r.texto.trim().length > 0);
+
+    if (hasEmptyOption) {
+      error.respuestas = "Todas las respuestas deben tener texto";
+    } else if (filledOptions.length < 2) {
+      error.respuestas = "Cada pregunta debe tener al menos 2 respuestas con texto";
+    } else if (!hasCorrect) {
+      error.respuestas = "Debes marcar al menos una respuesta correcta";
+    }
+  }
+  return error;
+};
+
 const applyEqualPuntos = (questions: QuestionForm[]): QuestionForm[] => {
   const distribution = distributePuntosEqually(questions.length);
   return questions.map((question, index) => ({
@@ -95,6 +148,8 @@ function examToFormState(exam: Examen): {
   requiereCompletarCurso: boolean;
   notaMinima: number;
   publicacionManualDeNota: boolean;
+  intentosMaximos: number;
+  permitirRevision: boolean;
   questions: QuestionForm[];
 } {
   const duracion =
@@ -144,6 +199,11 @@ function examToFormState(exam: Examen): {
         ? exam.notaMinima
         : 70,
     publicacionManualDeNota: exam.publicacionManualDeNota === true,
+    intentosMaximos:
+      typeof exam.intentosMaximos === "number" && exam.intentosMaximos > 0
+        ? exam.intentosMaximos
+        : 1,
+    permitirRevision: exam.permitirRevision !== false,
     questions,
   };
 }
@@ -152,13 +212,15 @@ export default function CreateExam() {
   const navigate = useNavigate();
   const { id: examId } = useParams<{ id: string }>();
   const isEditing = Boolean(examId);
-  const { sidebarWidth } = useSidebarLayout();
   const [title, setTitle] = useState("");
   const [idFormacion, setIdFormacion] = useState("");
   const [duracionMinutos, setDuracionMinutos] = useState(90);
   const [duracionError, setDuracionError] = useState("");
   const [notaMinima, setNotaMinima] = useState(70);
   const [notaMinimaError, setNotaMinimaError] = useState("");
+  const [intentosMaximos, setIntentosMaximos] = useState(1);
+  const [permitirRevision, setPermitirRevision] = useState(true);
+  const [intentosError, setIntentosError] = useState("");
   const [requiereCompletarCurso, setRequiereCompletarCurso] = useState(true);
   const [publicacionManualDeNota, setPublicacionManualDeNota] = useState(false);
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
@@ -216,7 +278,7 @@ export default function CreateExam() {
         setCourses(data);
       } catch (error) {
         console.error("Error al cargar formaciones:", error);
-        toast.error("No se pudieron cargar las formaciones");
+        toast.error("No se pudieron cargar los cursos");
       } finally {
         setLoadingCourses(false);
       }
@@ -237,6 +299,8 @@ export default function CreateExam() {
         setIdFormacion(form.idFormacion);
         setDuracionMinutos(form.duracionMinutos);
         setNotaMinima(form.notaMinima);
+        setIntentosMaximos(form.intentosMaximos);
+        setPermitirRevision(form.permitirRevision);
         setRequiereCompletarCurso(form.requiereCompletarCurso);
         setPublicacionManualDeNota(form.publicacionManualDeNota);
         setQuestions(form.questions);
@@ -275,12 +339,36 @@ export default function CreateExam() {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
   };
 
+  /** Preguntas agregadas en esta edición (todavía sin guardar): se resaltan para distinguirlas */
+  const [newQuestionIds, setNewQuestionIds] = useState<Set<string>>(() => new Set());
+
   const addQuestion = () => {
+    // No se agrega otra pregunta mientras haya alguna anterior sin completar (los puntos se pueden repartir al final)
+    const incomplete = questions
+      .map((question, index) => ({ question, index, error: getQuestionContentError(question) }))
+      .filter(({ error }) => error.texto || error.respuestas);
+    if (incomplete.length > 0) {
+      setQuestionErrors((prev) => {
+        const next = { ...prev };
+        incomplete.forEach(({ question, error }) => {
+          next[question.id] = { ...next[question.id], ...error };
+        });
+        return next;
+      });
+      const first = incomplete[0];
+      toast.error(
+        incomplete.length === 1
+          ? `Completá la pregunta ${first.index + 1} antes de agregar otra`
+          : `Completá las preguntas ${incomplete.map(({ index }) => index + 1).join(", ")} antes de agregar otra`
+      );
+      scrollToFirstError(`question-${first.question.id}`);
+      return;
+    }
+
     scrollToNewQuestion.current = true;
-    setQuestions((prev) => [
-      ...prev,
-      { ...createEmptyQuestion(), puntos: 0 },
-    ]);
+    const question = { ...createEmptyQuestion(), puntos: 0 };
+    setQuestions((prev) => [...prev, question]);
+    setNewQuestionIds((prev) => new Set(prev).add(question.id));
     setPuntosError("");
   };
 
@@ -504,7 +592,7 @@ export default function CreateExam() {
     }
 
     if (!idFormacion) {
-      setFormationError("Debes seleccionar una formación");
+      setFormationError("Debes seleccionar un curso");
       markInvalid("formation");
     }
 
@@ -528,46 +616,29 @@ export default function CreateExam() {
       markInvalid("notaMinima");
     }
 
+    if (
+      !Number.isInteger(intentosMaximos) ||
+      intentosMaximos < 1 ||
+      intentosMaximos > 100
+    ) {
+      setIntentosError("Los intentos deben ser un número entero entre 1 y 100");
+      markInvalid("intentos");
+    }
+
     if (questions.length === 0) {
       setQuestionsError("Debes agregar al menos una pregunta");
       markInvalid("questions");
     }
 
     questions.forEach((question) => {
-      const qError: QuestionError = {};
+      const qError: QuestionError = getQuestionContentError(question);
 
-      if (!question.texto.trim()) {
-        qError.texto = "La pregunta no puede estar vacía";
-        markInvalid(`question-${question.id}`);
-      }
       if (!(question.puntos > 0)) {
         qError.puntos = "La pregunta debe tener más de 0 puntos";
-        markInvalid(`question-${question.id}`);
-      }
-
-      if (question.tipoPregunta !== "desarrollo") {
-        const filledOptions = question.respuestas.filter(
-          (r) => r.texto.trim().length > 0
-        );
-        const hasEmptyOption = question.respuestas.some((r) => !r.texto.trim());
-        const hasCorrect = question.respuestas.some(
-          (r) => r.esCorrecta && r.texto.trim().length > 0
-        );
-
-        if (hasEmptyOption) {
-          qError.respuestas = "Todas las respuestas deben tener texto";
-          markInvalid(`question-${question.id}`);
-        } else if (filledOptions.length < 2) {
-          qError.respuestas =
-            "Cada pregunta debe tener al menos 2 respuestas con texto";
-          markInvalid(`question-${question.id}`);
-        } else if (!hasCorrect) {
-          qError.respuestas = "Debes marcar al menos una respuesta correcta";
-          markInvalid(`question-${question.id}`);
-        }
       }
 
       if (qError.texto || qError.respuestas || qError.puntos) {
+        markInvalid(`question-${question.id}`);
         nextQuestionErrors[question.id] = qError;
       }
     });
@@ -601,6 +672,8 @@ export default function CreateExam() {
       requiereCompletarCurso,
       notaMinima,
       publicacionManualDeNota: publicacionManualDeNota,
+      intentosMaximos,
+      permitirRevision,
       preguntas: buildPreguntasPayload(questions),
     };
 
@@ -648,6 +721,12 @@ export default function CreateExam() {
     }
   };
 
+  usePageHeader({
+    title: isEditing ? "Editar examen" : "Crear examen",
+    tourSteps: examFormTourSteps,
+    breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
+  });
+
   if (loadingCourses || loadingExam) {
     return (
       <InteractiveLoader
@@ -655,7 +734,7 @@ export default function CreateExam() {
         delayedMessage={
           isEditing
             ? "Obteniendo datos del examen"
-            : "Trayendo formaciones disponibles"
+            : "Trayendo cursos disponibles"
         }
       />
     );
@@ -672,445 +751,481 @@ export default function CreateExam() {
     );
   }
 
+  const selectedCourse = courses.find((course) => course.id === idFormacion);
+  const developmentCount = questions.filter((q) => q.tipoPregunta === "desarrollo").length;
+
+  // Toma el valor numérico de un input: vacío = 0 (la validación lo marca), NaN se ignora
+  const numberChange =
+    (setter: (value: number) => void, clearError: () => void) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      if (raw === "") {
+        setter(0);
+        clearError();
+        return;
+      }
+      const value = Number.parseInt(raw, 10);
+      if (!Number.isNaN(value)) {
+        setter(value);
+        clearError();
+      }
+    };
+
+  const aside = (
+    <ProfileCard
+      mobileActionBar
+      media={
+        <span className="grid place-items-center w-11 h-11 shrink-0 rounded-full bg-orange-50 text-orange-600">
+          <ClipboardCheck className="w-5 h-5" />
+        </span>
+      }
+      title={title.trim() || (isEditing ? "Examen sin título" : "Nuevo examen")}
+      subtitle={selectedCourse?.titulo || "Sin curso asignado"}
+      footer={
+        <>
+          <Button type="submit" form="exam-form" size="sm" className="h-8 cursor-pointer" disabled={!canSave}>
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar examen"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-gray-500 cursor-pointer"
+            onClick={() => navigate("/exams")}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+        </>
+      }
+    >
+      <StatGrid
+        stats={[
+          { label: "Preguntas", value: questions.length },
+          {
+            label: "Puntos",
+            value: (
+              <span className={puntosValidos ? undefined : "text-red-600"}>
+                {totalPuntos}/{PUNTOS_TOTAL_EXAMEN}
+              </span>
+            ),
+          },
+          { label: "Desarrollo", value: developmentCount },
+        ]}
+      />
+      {!puntosValidos && (
+        <p className="px-5 pt-3 text-xs text-red-600">
+          Los puntos deben sumar {PUNTOS_TOTAL_EXAMEN} para poder guardar.
+        </p>
+      )}
+    </ProfileCard>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/exams")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver a Exámenes
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{isEditing ? "Editar examen" : "Crear examen"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-6" onSubmit={handleSave}>
-            <div className="space-y-2" ref={setFieldRef("title")}>
-              <Label htmlFor="exam-title">Título del examen</Label>
-              <Input
-                id="exam-title"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (titleError) setTitleError("");
-                }}
-                placeholder="Ej: Evaluación final de Anatomía"
-              />
-              {titleError && <p className="text-sm text-red-600">{titleError}</p>}
+    <DetailLayout aside={aside}>
+      <form id="exam-form" className="space-y-6" onSubmit={handleSave}>
+        <SectionCard tourId="exam-config">
+          <div className="grid gap-4 px-5 py-5 sm:grid-cols-3">
+            <div ref={setFieldRef("title")} className="sm:col-span-3">
+              <FormField id="exam-title" label="Título del examen" error={titleError}>
+                <Input
+                  id="exam-title"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (titleError) setTitleError("");
+                  }}
+                  placeholder="Ej: Evaluación final de Anatomía"
+                  className={titleError ? "border-red-500" : ""}
+                />
+              </FormField>
             </div>
 
-            <div className="space-y-2" ref={setFieldRef("formation")}>
-              <Label>Formación asociada</Label>
-              <Select
-                value={idFormacion}
-                onValueChange={(value) => {
-                  setIdFormacion(value);
-                  if (formationError) setFormationError("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una formación" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.titulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formationError && <p className="text-sm text-red-600">{formationError}</p>}
+            <div ref={setFieldRef("formation")} className="sm:col-span-3">
+              <FormField id="exam-formation" label="Curso asociado" error={formationError}>
+                <SearchableSelect
+                  id="exam-formation"
+                  value={idFormacion}
+                  options={courses.map((course) => ({ value: course.id, label: course.titulo }))}
+                  onChange={(value) => {
+                    setIdFormacion(value);
+                    if (formationError) setFormationError("");
+                  }}
+                  placeholder="Selecciona un curso"
+                  searchPlaceholder="Buscar curso…"
+                  emptyText="Ningún curso coincide con la búsqueda"
+                  invalid={!!formationError}
+                />
+              </FormField>
             </div>
 
-            <div className="space-y-2" ref={setFieldRef("duration")}>
-              <Label htmlFor="exam-duration">Duración del examen (minutos)</Label>
-              <Input
+            <div ref={setFieldRef("duration")}>
+              <FormField
                 id="exam-duration"
-                type="number"
-                min={1}
-                max={480}
-                step={1}
-                value={duracionMinutos === 0 ? "" : duracionMinutos}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") {
-                    setDuracionMinutos(0);
-                    if (duracionError) setDuracionError("");
-                    return;
-                  }
-                  const value = Number.parseInt(raw, 10);
-                  if (!Number.isNaN(value)) {
-                    setDuracionMinutos(value);
-                    if (duracionError) setDuracionError("");
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Valor base: 90 minutos. Podés modificarlo según la evaluación.
-              </p>
-              {duracionError && <p className="text-sm text-red-600">{duracionError}</p>}
+                label="Duración (minutos)"
+                error={duracionError}
+              >
+                <Input
+                  id="exam-duration"
+                  type="number"
+                  min={1}
+                  max={480}
+                  step={1}
+                  value={duracionMinutos === 0 ? "" : duracionMinutos}
+                  onChange={numberChange(setDuracionMinutos, () => duracionError && setDuracionError(""))}
+                />
+              </FormField>
             </div>
 
-            <div className="space-y-2" ref={setFieldRef("notaMinima")}>
-              <Label htmlFor="nota-minima">Nota de aprobación (%)</Label>
-              <Input
+            <div ref={setFieldRef("notaMinima")}>
+              <FormField
                 id="nota-minima"
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={notaMinima === 0 ? "" : notaMinima}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === "") {
-                    setNotaMinima(0);
-                    if (notaMinimaError) setNotaMinimaError("");
-                    return;
-                  }
-                  const value = Number.parseInt(raw, 10);
-                  if (!Number.isNaN(value)) {
-                    setNotaMinima(value);
-                    if (notaMinimaError) setNotaMinimaError("");
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Porcentaje mínimo de aciertos para aprobar. Valor base: 70%.
-              </p>
-              {notaMinimaError && <p className="text-sm text-red-600">{notaMinimaError}</p>}
+                label="Nota de aprobación (%)"
+                error={notaMinimaError}
+              >
+                <Input
+                  id="nota-minima"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={notaMinima === 0 ? "" : notaMinima}
+                  onChange={numberChange(setNotaMinima, () => notaMinimaError && setNotaMinimaError(""))}
+                />
+              </FormField>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="requiere-completar-curso" className="text-base">
-                  Requiere completar el curso
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Si está desactivado, el alumno puede rendir el examen sin haber completado todos los módulos.
-                </p>
-              </div>
+            <div ref={setFieldRef("intentos")}>
+              <FormField
+                id="intentos-maximos"
+                label="Intentos por alumno"
+                error={intentosError}
+              >
+                <Input
+                  id="intentos-maximos"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={intentosMaximos === 0 ? "" : intentosMaximos}
+                  onChange={numberChange(setIntentosMaximos, () => intentosError && setIntentosError(""))}
+                />
+              </FormField>
+            </div>
+          </div>
+
+          <div className="divide-y divide-gray-100 border-t border-gray-100">
+            <label
+              htmlFor="requiere-completar-curso"
+              className="flex cursor-pointer items-center justify-between gap-4 px-5 py-3"
+            >
+              <SettingTitle help="Si está desactivado, el alumno puede rendir sin haber completado todos los módulos.">
+                Requiere completar el curso
+              </SettingTitle>
               <Switch
                 id="requiere-completar-curso"
                 checked={requiereCompletarCurso}
                 onCheckedChange={setRequiereCompletarCurso}
               />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="publicacion-manual" className="text-base">
-                  Publicación manual de nota
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  {tieneDesarrollo
+            </label>
+            <label
+              htmlFor="publicacion-manual"
+              className={`flex items-center justify-between gap-4 px-5 py-3 ${tieneDesarrollo ? "" : "cursor-pointer"}`}
+            >
+              <SettingTitle
+                help={
+                  tieneDesarrollo
                     ? "No disponible para exámenes con preguntas de desarrollo."
-                    : "Si está activado, el alumno no verá su nota hasta que el administrador la publique manualmente."}
-                </p>
-              </div>
+                    : "El alumno no verá su nota hasta que un administrador la publique."
+                }
+              >
+                Publicación manual de nota
+              </SettingTitle>
               <Switch
                 id="publicacion-manual"
                 checked={publicacionManualDeNota}
                 onCheckedChange={setPublicacionManualDeNota}
                 disabled={tieneDesarrollo}
               />
+            </label>
+            <label
+              htmlFor="permitir-revision"
+              className="flex cursor-pointer items-center justify-between gap-4 px-5 py-3"
+            >
+              <SettingTitle help='El alumno puede ver sus respuestas corregidas cuando aprueba o usa todos sus intentos. Podés habilitársela a un alumno puntual desde "Intentos".'>
+                Permitir revisión del examen
+              </SettingTitle>
+              <Switch
+                id="permitir-revision"
+                checked={permitirRevision}
+                onCheckedChange={setPermitirRevision}
+              />
+            </label>
+          </div>
+        </SectionCard>
+
+        {/* Preguntas: sección propia, separada de la configuración, con una tarjeta por pregunta */}
+        <div ref={setFieldRef("questions")} data-tour="exam-questions" className="space-y-3 pt-4">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200 px-1 pb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Preguntas</h2>
+              <p className="text-sm text-gray-500">
+                {questions.length} pregunta{questions.length !== 1 ? "s" : ""}
+              </p>
             </div>
+            <div className="flex items-center gap-2" ref={setFieldRef("puntos-total")}>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+                  puntosValidos ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                }`}
+              >
+                {totalPuntos} / {PUNTOS_TOTAL_EXAMEN} pts
+              </span>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-gray-600" onClick={redistributePuntos}>
+                Distribuir equitativamente
+              </Button>
+            </div>
+          </div>
 
-            <div className="space-y-4" ref={setFieldRef("questions")}>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <Label className="text-base">Preguntas</Label>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <div ref={setFieldRef("puntos-total")}>
-                    <Badge variant={puntosValidos ? "default" : "destructive"}>
-                      Total puntos: {totalPuntos} / {PUNTOS_TOTAL_EXAMEN}
-                    </Badge>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={redistributePuntos}
-                  >
-                    Distribuir equitativamente
-                  </Button>
-                </div>
+            {(questionsError || puntosError) && (
+              <div className="space-y-1 px-1">
+                {questionsError && <p className="text-xs text-red-600">{questionsError}</p>}
+                {puntosError && <p className="text-xs text-red-600">{puntosError}</p>}
               </div>
-              {questionsError && (
-                <p className="text-sm text-red-600">{questionsError}</p>
-              )}
-              {puntosError && (
-                <p className="text-sm text-red-600">{puntosError}</p>
-              )}
+            )}
 
-              {questions.map((question, index) => (
-                <Card
+            <div className="space-y-4">
+              {questions.map((question, index) => {
+                const isNew = isEditing && newQuestionIds.has(question.id);
+                return (
+                <div
                   key={question.id}
                   ref={setQuestionCardRef(question.id, index === questions.length - 1)}
+                  className={`overflow-hidden rounded-xl border bg-white shadow-sm ${
+                    isNew ? "border-orange-300 ring-2 ring-orange-100" : "border-gray-200"
+                  }`}
                 >
-                  <CardHeader className="pb-2 space-y-2">
-                    <CardTitle className="text-base">Pregunta {index + 1}</CardTitle>
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Label htmlFor={`puntos-${question.id}`} className="text-sm shrink-0">
-                          Puntos
-                        </Label>
-                        <Input
-                          id={`puntos-${question.id}`}
-                          type="text"
-                          inputMode="decimal"
-                          className="w-16 sm:w-20 h-8"
-                          value={
-                            puntosDraft[question.id] ?? String(question.puntos)
-                          }
-                          onChange={(e) =>
-                            updateQuestionPuntos(question.id, e.target.value)
-                          }
-                          onBlur={() => commitQuestionPuntos(question.id)}
-                        />
-                      </div>
+                  {/* Encabezado: número, tipo, puntos y eliminar */}
+                  <div
+                    className={`flex flex-wrap items-center gap-2 border-b px-4 py-2.5 sm:px-5 ${
+                      isNew ? "border-orange-100 bg-orange-50/70" : "border-gray-100 bg-gray-50/80"
+                    }`}
+                  >
+                    <span
+                      className={`grid place-items-center w-7 h-7 shrink-0 rounded-full text-xs font-semibold ${
+                        isNew ? "bg-orange-500 text-white" : "bg-gray-900 text-white"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    {isNew && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+                        Nueva
+                      </span>
+                    )}
+                    <Select
+                      value={question.tipoPregunta}
+                      onValueChange={(value) =>
+                        changeQuestionTipo(question.id, value === "desarrollo" ? "desarrollo" : "opcion_multiple")
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-auto min-w-[11rem] text-sm" aria-label="Tipo de respuesta">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="opcion_multiple">Opción múltiple</SelectItem>
+                        <SelectItem value="desarrollo">Desarrollo (texto libre)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <Label htmlFor={`puntos-${question.id}`} className="text-xs text-gray-500">
+                        Puntos
+                      </Label>
+                      <Input
+                        id={`puntos-${question.id}`}
+                        type="text"
+                        inputMode="decimal"
+                        className="h-8 w-16 text-right tabular-nums"
+                        value={puntosDraft[question.id] ?? String(question.puntos)}
+                        onChange={(e) => updateQuestionPuntos(question.id, e.target.value)}
+                        onBlur={() => commitQuestionPuntos(question.id)}
+                      />
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
-                        className="shrink-0 h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        size="icon"
+                        className="h-8 w-8 text-gray-400 hover:bg-red-50 hover:text-red-600"
                         onClick={() => removeQuestion(question.id)}
                         disabled={questions.length === 1}
+                        title="Eliminar pregunta"
+                        aria-label={`Eliminar pregunta ${index + 1}`}
                       >
-                        <Trash2 className="w-4 h-4 sm:mr-1" />
-                        <span className="hidden sm:inline">Eliminar</span>
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                    {questionErrors[question.id]?.puntos && (
-                      <p className="text-sm text-red-600 break-words">
-                        {questionErrors[question.id]?.puntos}
-                      </p>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Tipo de respuesta</Label>
-                      <Select
-                        value={question.tipoPregunta}
-                        onValueChange={(value) =>
-                          changeQuestionTipo(
-                            question.id,
-                            value === "desarrollo" ? "desarrollo" : "opcion_multiple"
-                          )
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona el tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="opcion_multiple">
-                            Opción múltiple
-                          </SelectItem>
-                          <SelectItem value="desarrollo">
-                            Desarrollo (texto libre)
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  </div>
+                  {questionErrors[question.id]?.puntos && (
+                    <p className="px-4 pt-3 text-xs text-red-600 break-words sm:px-5">{questionErrors[question.id]?.puntos}</p>
+                  )}
 
-                    <div className="space-y-2">
-                      <Label>Texto de la pregunta</Label>
+                  <div className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
+                    <FormField
+                      id={`texto-${question.id}`}
+                      label="Texto de la pregunta"
+                      error={questionErrors[question.id]?.texto}
+                    >
                       <Textarea
+                        id={`texto-${question.id}`}
                         value={question.texto}
                         onChange={(e) => {
-                          updateQuestion(question.id, (q) => ({
-                            ...q,
-                            texto: e.target.value,
-                          }));
+                          updateQuestion(question.id, (q) => ({ ...q, texto: e.target.value }));
                           clearQuestionError(question.id, "texto");
                         }}
                         placeholder="Escribe la pregunta"
+                        rows={2}
                       />
-                      {questionErrors[question.id]?.texto && (
-                        <p className="text-sm text-red-600">{questionErrors[question.id]?.texto}</p>
-                      )}
-                    </div>
+                    </FormField>
 
-                    <div className="space-y-2">
-                      <Label>Imagen de la pregunta (opcional)</Label>
-                      <p className="text-xs text-muted-foreground">
-                        El alumno verá esta imagen al rendir. JPG, PNG, WEBP o GIF · máx. 5 MB.
-                      </p>
-                      <Input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="cursor-pointer"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          if (file && file.size > 5 * 1024 * 1024) {
-                            toast.error("La imagen no puede superar 5 MB");
-                            e.target.value = "";
-                            return;
-                          }
-                          setQuestionImage(question.id, file);
-                          e.target.value = "";
-                        }}
-                      />
-                      {question.imagenPreview && (
-                        <div className="flex flex-wrap items-start gap-3 pt-1">
+                    <FormField
+                      id={`imagen-${question.id}`}
+                      label="Imagen (opcional)"
+                      icon={<ImagePlus />}
+                      required={false}
+                      hint="El alumno la verá al rendir. JPG, PNG, WEBP o GIF · máx. 5 MB."
+                    >
+                      {question.imagenPreview ? (
+                        <div className="flex flex-wrap items-start gap-3">
                           <img
                             src={question.imagenPreview}
                             alt={`Vista previa pregunta ${index + 1}`}
-                            className="h-28 max-w-full rounded-md border object-contain bg-muted/20"
+                            className="h-24 max-w-full rounded-md border bg-gray-50 object-contain"
                           />
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5">
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
+                              className="h-8"
                               onClick={() => setQuestionImage(question.id, null)}
                             >
-                              <Trash2 className="w-4 h-4 mr-1" />
+                              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                               Quitar imagen
                             </Button>
                             {question.imagenFile && (
-                              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                                <ImagePlus className="w-3.5 h-3.5" />
-                                Se subirá al guardar
-                              </span>
+                              <span className="text-xs text-gray-500">Se subirá al guardar</span>
                             )}
                           </div>
                         </div>
+                      ) : (
+                        <Input
+                          id={`imagen-${question.id}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="cursor-pointer text-sm"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            if (file && file.size > 5 * 1024 * 1024) {
+                              toast.error("La imagen no puede superar 5 MB");
+                              e.target.value = "";
+                              return;
+                            }
+                            setQuestionImage(question.id, file);
+                            e.target.value = "";
+                          }}
+                        />
                       )}
-                    </div>
+                    </FormField>
 
                     {question.tipoPregunta === "desarrollo" ? (
-                      <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3 space-y-1">
-                        <p className="text-sm font-medium text-foreground">
-                          Respuesta de desarrollo
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          El alumno responderá con un campo de texto libre. Esta
-                          pregunta no se corrige automáticamente: el examen
-                          quedará en pendiente de corrección.
-                        </p>
-                      </div>
+                      <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-500">
+                        El alumno responderá con texto libre. Esta pregunta no se corrige
+                        automáticamente: el examen quedará pendiente de corrección.
+                      </p>
                     ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <Label className="shrink-0">Respuestas</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0 h-8"
-                          onClick={() => addOption(question.id)}
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Agregar
-                        </Button>
-                      </div>
-
-                      {question.respuestas.map((option, optionIndex) => (
-                        <div
-                          key={option.id}
-                          className="flex items-center gap-1.5 sm:gap-2 min-w-0"
-                        >
-                          <Input
-                            className="min-w-0 flex-1 h-9"
-                            value={option.texto}
-                            onChange={(e) => {
-                              updateQuestion(question.id, (q) => ({
-                                ...q,
-                                respuestas: q.respuestas.map((r) =>
-                                  r.id === option.id ? { ...r, texto: e.target.value } : r
-                                ),
-                              }));
-                              clearQuestionError(question.id, "respuestas");
-                            }}
-                            placeholder={`Respuesta ${optionIndex + 1}`}
-                          />
-                          <Button
-                            type="button"
-                            variant={option.esCorrecta ? "default" : "outline"}
-                            size="sm"
-                            className="shrink-0 h-9 px-2 sm:px-3"
-                            onClick={() => toggleCorrectOption(question.id, option.id)}
-                            title={option.esCorrecta ? "Respuesta correcta" : "Marcar como correcta"}
-                          >
-                            {option.esCorrecta ? (
-                              <CheckCircle2 className="w-4 h-4 sm:mr-1.5" />
-                            ) : (
-                              <Circle className="w-4 h-4 sm:mr-1.5" />
-                            )}
-                            <span className="hidden sm:inline">
-                              {option.esCorrecta ? "Correcta" : "Marcar"}
-                            </span>
-                          </Button>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-gray-600">
+                            Respuestas <span className="font-normal text-gray-400">· marcá la correcta</span>
+                          </p>
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
-                            className="shrink-0 h-9 w-9"
-                            onClick={() => removeOption(question.id, option.id)}
-                            disabled={question.respuestas.length <= 2}
-                            title="Eliminar respuesta"
+                            size="sm"
+                            className="h-7 text-xs text-gray-600"
+                            onClick={() => addOption(question.id)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Agregar respuesta
                           </Button>
                         </div>
-                      ))}
 
-                      <div className="hidden sm:flex flex-wrap gap-2">
-                        {question.respuestas.map((option) => (
-                          <Badge
-                            key={option.id}
-                            variant={option.esCorrecta ? "default" : "secondary"}
-                            className="cursor-pointer"
-                            onClick={() => toggleCorrectOption(question.id, option.id)}
-                          >
-                            {option.texto.trim() || "Respuesta sin texto"}
-                          </Badge>
+                        {question.respuestas.map((option, optionIndex) => (
+                          <div key={option.id} className="flex items-center gap-1.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => toggleCorrectOption(question.id, option.id)}
+                              className={`grid place-items-center w-8 h-8 shrink-0 rounded-md transition-colors cursor-pointer ${
+                                option.esCorrecta
+                                  ? "text-green-600 hover:bg-green-50"
+                                  : "text-gray-300 hover:bg-gray-100 hover:text-gray-500"
+                              }`}
+                              title={option.esCorrecta ? "Respuesta correcta" : "Marcar como correcta"}
+                              aria-label={option.esCorrecta ? "Respuesta correcta" : "Marcar como correcta"}
+                              aria-pressed={option.esCorrecta}
+                            >
+                              {option.esCorrecta ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                            </button>
+                            <Input
+                              className={`h-9 min-w-0 flex-1 ${option.esCorrecta ? "border-green-200 bg-green-50/40" : ""}`}
+                              value={option.texto}
+                              onChange={(e) => {
+                                updateQuestion(question.id, (q) => ({
+                                  ...q,
+                                  respuestas: q.respuestas.map((r) =>
+                                    r.id === option.id ? { ...r, texto: e.target.value } : r
+                                  ),
+                                }));
+                                clearQuestionError(question.id, "respuestas");
+                              }}
+                              placeholder={`Respuesta ${optionIndex + 1}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                              onClick={() => removeOption(question.id, option.id)}
+                              disabled={question.respuestas.length <= 2}
+                              title="Eliminar respuesta"
+                              aria-label={`Eliminar respuesta ${optionIndex + 1}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         ))}
+
+                        {questionErrors[question.id]?.respuestas && (
+                          <p className="text-xs text-red-600">{questionErrors[question.id]?.respuestas}</p>
+                        )}
                       </div>
-
-                      {questionErrors[question.id]?.respuestas && (
-                        <p className="text-sm text-red-600">
-                          {questionErrors[question.id]?.respuestas}
-                        </p>
-                      )}
-                    </div>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                </div>
+                );
+              })}
             </div>
 
-            <div
-              role="toolbar"
-              aria-label="Acciones de preguntas"
-              className="fixed z-40 bottom-4 -translate-x-1/2 sm:bottom-6 max-w-[calc(100vw-2rem)] transition-[left] duration-300"
-              style={{ left: `calc(50vw + ${sidebarWidth / 2}px)` }}
+            <button
+              type="button"
+              onClick={addQuestion}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-300 bg-white/60 py-4 text-sm font-medium text-gray-600 hover:border-orange-300 hover:bg-orange-50/50 hover:text-orange-700 transition-colors cursor-pointer"
             >
-              <div className="rounded-xl border border-border bg-background/95 backdrop-blur-sm shadow-lg p-2">
-                <Button type="button" onClick={addQuestion} className="shadow-sm w-full sm:w-auto justify-center">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar pregunta
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pb-24 sm:pb-20">
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/exams")}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={!canSave} className="w-full sm:w-auto">
-                <Save className="w-4 h-4 mr-2" />
-                {saving
-                  ? "Guardando..."
-                  : isEditing
-                    ? "Guardar cambios"
-                    : "Guardar examen"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+              <Plus className="w-4 h-4" />
+              Agregar pregunta
+            </button>
+        </div>
+      </form>
+    </DetailLayout>
   );
 }

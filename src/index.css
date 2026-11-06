@@ -119,6 +119,17 @@
   }
 }
 
+/* Superficies compartidas del admin (tablas, fichas, paneles) */
+@layer components {
+  .admin-card {
+    @apply rounded-xl border border-gray-200/70 bg-white;
+  }
+
+  .admin-button {
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-gray-900 px-4 text-sm font-medium text-white transition-colors hover:bg-gray-800 cursor-pointer;
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -127,6 +138,149 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Toasts (Sonner): tarjeta blanca sutil con icono en círculo tenue */
+.toaster[data-sonner-toaster] {
+  --normal-bg: var(--popover);
+  --normal-text: var(--popover-foreground);
+  --normal-border: oklch(0.145 0 0 / 7%);
+  --border-radius: 14px;
+  --width: 360px;
+  font-family: inherit;
+}
+
+.toaster [data-sonner-toast][data-styled="true"] {
+  padding: 12px 14px;
+  gap: 12px;
+  font-size: 13px;
+  box-shadow:
+    0 1px 2px oklch(0.145 0 0 / 4%),
+    0 10px 30px -10px oklch(0.145 0 0 / 18%);
+}
+
+.toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.toaster [data-sonner-toast][data-styled="true"] [data-title] {
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--popover-foreground);
+}
+
+.toaster [data-sonner-toast][data-styled="true"] [data-description] {
+  margin-top: 2px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  color: var(--toast-accent);
+  background: color-mix(in oklch, var(--toast-accent) 12%, transparent);
+}
+
+.toast-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.25;
+}
+
+.toast-icon[data-kind="success"] { --toast-accent: oklch(0.6 0.15 155); }
+.toast-icon[data-kind="error"] { --toast-accent: var(--destructive); }
+.toast-icon[data-kind="warning"] { --toast-accent: oklch(0.7 0.16 65); }
+.toast-icon[data-kind="info"] { --toast-accent: oklch(0.58 0.15 250); }
+.toast-icon[data-kind="loading"] { --toast-accent: var(--muted-foreground); }
+
+/* Loader: velo oscuro difuminado + tarjeta con el logo, halo naranja y barra indeterminada.
+   El fade-in arranca con un pequeño delay para que las cargas rápidas no parpadeen. */
+.loader-overlay {
+  animation: loader-fade-in 300ms ease-out 120ms both;
+}
+
+.loader-card {
+  animation: loader-card-in 400ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.loader-halo {
+  background: radial-gradient(closest-side, rgb(249 96 21 / 0.45), rgb(249 154 42 / 0.15) 60%, transparent);
+  filter: blur(24px);
+  animation: loader-breathe 3s ease-in-out infinite;
+}
+
+.loader-logo {
+  animation: loader-float 3s ease-in-out infinite;
+}
+
+/* Brillo recortado con la forma del logo */
+.loader-logo-shine {
+  -webkit-mask: url("/logoNegro.png") center / 100% 100% no-repeat;
+  mask: url("/logoNegro.png") center / 100% 100% no-repeat;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.75) 50%, transparent 65%);
+  background-size: 300% 100%;
+  animation: loader-shine 2.4s ease-in-out infinite;
+}
+
+.loader-bar {
+  background: linear-gradient(90deg, #f96015, #f99a2a);
+  animation: loader-slide 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.loader-delayed {
+  animation: loader-fade-in 400ms ease-out both;
+}
+
+@keyframes loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes loader-card-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes loader-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes loader-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes loader-shine {
+  0% { background-position: 100% 0; }
+  60%, 100% { background-position: 0% 0; }
+}
+
+@keyframes loader-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-overlay,
+  .loader-card,
+  .loader-delayed {
+    animation-duration: 1ms;
+  }
+  .loader-halo,
+  .loader-logo,
+  .loader-logo-shine {
+    animation: none;
+  }
+  .loader-bar {
+    animation-duration: 3s;
   }
 }
 

@@ -1,31 +1,39 @@
 // src/pages/ProductDetail.tsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { usePageHeader } from '@/context/PageHeaderContext';
+import { productDetailTourSteps } from '@/config/tourSteps';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PencilIcon } from 'lucide-react';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
+import { IconAction } from '@/components/ui/icon-action';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { formatCurrency } from '@/utils/currency';
 import {
-  ArrowLeft,
-  Clock,
   BookOpen,
-  Image as ImageIcon,
-  Calendar,
-  FileText,
-  ExternalLink,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
+  CalendarDays,
+  ChevronRight,
   DollarSign,
-  CircleDot,
+  ExternalLink,
+  Eye,
+  FileText,
+  Loader2,
+  Pencil,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
 import type { Course, Subject, Module } from '@/types/types';
 import { formatDictadoDateForDisplay } from '@/utils/courseDates';
 import ModulesList from '@/components/subject/ModulesList';
-import ModulesModal from '@/components/subject/ModulesModal';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
+import {
+  DetailLayout,
+  InfoList,
+  InfoRow,
+  ProfileCard,
+  SectionCard,
+  SectionEmpty,
+  StatGrid,
+  StatusPill,
+} from '@/components/common/DetailLayout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
@@ -42,12 +50,16 @@ const SquareImagePreview = ({ src }: { src: string }) => {
   );
 };
 
+const formatUpdatedAt = (value?: string) =>
+  value
+    ? new Date(value).toLocaleDateString('es-AR', { year: 'numeric', month: 'short', day: 'numeric' })
+    : null;
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [curso, setCurso] = useState<Course | null>(null);
-  const [materias, setMaterias] = useState<Subject[]>([]); 
+  const [materias, setMaterias] = useState<Subject[]>([]);
   const [modulosPorMateria, setModulosPorMateria] = useState<Record<string, Module[]>>({});
   const [modulosHabilitadosEstadoPorMateria, setModulosHabilitadosEstadoPorMateria] = useState<Record<string, Record<string, boolean>>>({});
   const [loadingModulos, setLoadingModulos] = useState<Record<string, boolean>>({});
@@ -56,9 +68,6 @@ const ProductDetail = () => {
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewImageOpen, setPreviewImageOpen] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
-  const [editingModuleMateriaId, setEditingModuleMateriaId] = useState<string | null>(null);
-  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [confirmDeleteModuleId, setConfirmDeleteModuleId] = useState<string | null>(null);
   const [confirmDeleteMateriaId, setConfirmDeleteMateriaId] = useState<string | null>(null);
   const [isDeleteModuleModalOpen, setIsDeleteModuleModalOpen] = useState(false);
@@ -145,10 +154,12 @@ const ProductDetail = () => {
     });
   };
 
+  // La edición del módulo se hace en su propia página y vuelve a este curso al guardar
   const handleEditModule = (module: Module, materiaId: string) => {
-    setEditingModule(module);
-    setEditingModuleMateriaId(materiaId);
-    setIsModuleModalOpen(true);
+    navigate(
+      `/subjects/${encodeURIComponent(materiaId)}/modules/${encodeURIComponent(module.id)}/edit`,
+      { state: { returnTo: `/products/${encodeURIComponent(id || '')}` } }
+    );
   };
 
   const handleDeleteModuleClick = (moduleId: string, materiaId: string) => {
@@ -191,47 +202,11 @@ const ProductDetail = () => {
     }
   };
 
-  const handleCancelModuleModal = () => {
-    setIsModuleModalOpen(false);
-    setEditingModule(null);
-    setEditingModuleMateriaId(null);
-  };
-
-  const handleModuleUpdated = async (moduleData: Module): Promise<void> => {
-    try {
-      await CoursesAPI.updateModule(moduleData.id, {
-        id: moduleData.id,
-        titulo: moduleData.titulo,
-        descripcion: moduleData.descripcion,
-        id_materia: moduleData.id_materia,
-        tipo_contenido: moduleData.tipo_contenido,
-        bibliografia: moduleData.bibliografia,
-        url_miniatura: moduleData.url_miniatura,
-        url_archivo: moduleData.url_archivo,
-        url_video: moduleData.url_video,
-        nombres_archivos: moduleData.nombres_archivos || "",
-        nombres_videos: moduleData.nombres_videos || "",
-      });
-
-      const materiaId = editingModuleMateriaId || moduleData.id_materia;
-      if (materiaId) {
-        setModulosPorMateria(prev => ({
-          ...prev,
-          [materiaId]: (prev[materiaId] || []).map(m =>
-            m.id === moduleData.id ? { ...m, ...moduleData } : m
-          ),
-        }));
-      }
-
-      toast.success('Módulo actualizado con éxito');
-      setEditingModule(null);
-      setEditingModuleMateriaId(null);
-      setIsModuleModalOpen(false);
-    } catch (e) {
-      console.error('Error al actualizar módulo:', e);
-      throw e as Error;
-    }
-  };
+  usePageHeader({
+    title: curso?.titulo,
+    tourSteps: productDetailTourSteps,
+    breadcrumbs: [{ label: "Cursos", to: "/products" }],
+  });
 
   if (loading) return (
     <InteractiveLoader
@@ -243,334 +218,162 @@ const ProductDetail = () => {
   if (error) return <div className="p-6 text-red-500">❌ {error}</div>;
   if (!curso) return <div className="p-6">No se encontró el curso</div>;
 
-  return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center min-w-0 flex-1">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="cursor-pointer w-full sm:w-auto shrink-0">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words min-w-0">{curso.titulo}</h1>
-        </div>
+  const coverSrc = curso.image || (curso as Course & { imagen?: string }).imagen;
+  const isActive = curso.estado === 'activo';
+  const totalModules = materias.reduce((sum, m) => sum + (m.modulos?.length ?? 0), 0);
+  const documents = [
+    { label: 'Plan de estudios', url: curso.planDeEstudiosUrl, updated: curso.planDeEstudiosActualizado },
+    { label: 'Fechas de exámenes', url: curso.fechasDeExamenesUrl, updated: curso.fechasDeExamenesActualizado },
+  ].filter((doc) => doc.url);
+
+  const aside = (
+    <ProfileCard
+      cover={
+        coverSrc && (
+          <button
+            type="button"
+            onClick={() => setPreviewImageOpen(true)}
+            className="group relative block aspect-[16/10] w-full overflow-hidden bg-gray-100 cursor-pointer"
+            aria-label="Ver portada en tamaño completo"
+          >
+            <img src={coverSrc} alt={curso.titulo} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+          </button>
+        )
+      }
+      title={curso.titulo}
+      subtitle="Curso"
+      badge={<StatusPill active={isActive} />}
+      footer={
         <Button
           variant="outline"
-          className="cursor-pointer w-full sm:w-auto shrink-0"
+          size="sm"
+          className="h-8 cursor-pointer"
           onClick={() => navigate(`/products/${encodeURIComponent(curso.id)}/edit`)}
         >
-          <PencilIcon className="w-4 h-4 mr-2" />
-          Editar
+          <Pencil className="w-3.5 h-3.5 mr-1.5" />
+          Editar curso
         </Button>
-      </div>
-
-      {/* Grid Layout: Imagen y Descripción lado a lado */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna izquierda: Imagen de portada (más pequeña) */}
-        <div className="lg:col-span-1">
-          {(curso.image || (curso as any).imagen) && (
-            <Card className="h-fit">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center text-lg">
-                  <ImageIcon className="w-4 h-4 mr-2 text-gray-600" />
-                  Portada
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div 
-                  className="relative w-full aspect-square overflow-hidden rounded-lg border bg-gray-50 cursor-pointer hover:opacity-90 transition-opacity group"
-                  onClick={() => setPreviewImageOpen(true)}
-                >
-                  <img
-                    src={curso.image || (curso as any).imagen || '/placeholder.svg'}
-                    alt={curso.titulo}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2">
-                      <ImageIcon className="w-5 h-5 text-gray-700" />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">Haz clic para ver en tamaño completo</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Columna derecha: Descripción */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
-                Descripción
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 whitespace-pre-line leading-relaxed">{curso.descripcion || "Sin descripción"}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Clock className="w-5 h-5 mr-2 text-gray-600" />
-            Detalles del curso
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Precio */}
-            <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex-shrink-0 mt-0.5">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Precio</p>
-                <p className="text-lg font-semibold text-gray-900">{formatCurrency(curso.precio)}</p>
-              </div>
-            </div>
-
-            {/* Estado */}
-            <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex-shrink-0 mt-0.5">
-                <CircleDot className={`w-5 h-5 ${
-                  curso.estado === 'activo' ? 'text-green-600' : 'text-red-600'
-                }`} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">Estado</p>
-                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                  curso.estado === 'activo' 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-red-100 text-red-800 border border-red-200'
-                }`}>
-                  {curso.estado}
-                </span>
-              </div>
-            </div>
-            
-            {/* Período de dictado */}
-            {(curso.fechaInicioDictado || curso.fechaFinDictado) && (
-              <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex-shrink-0 mt-0.5">
-                  <Calendar className="w-5 h-5 text-orange-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500 mb-2">Período de dictado</p>
-                  {curso.fechaInicioDictado && (
-                    <p className="text-sm text-gray-700 mb-1">
-                      <span className="font-medium">Inicio:</span>{' '}
-                      {formatDictadoDateForDisplay(curso.fechaInicioDictado)}
-                    </p>
-                  )}
-                  {curso.fechaFinDictado && (
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">Fin:</span>{' '}
-                      {formatDictadoDateForDisplay(curso.fechaFinDictado)}
-                    </p>
-                  )}
-                </div>
-              </div>
+      }
+    >
+      <InfoList>
+        <InfoRow icon={<DollarSign />} label="Precio">
+          <span className="tabular-nums">{formatCurrency(curso.precio)}</span>
+        </InfoRow>
+        {(curso.fechaInicioDictado || curso.fechaFinDictado) && (
+          <InfoRow icon={<CalendarDays />} label="Dictado">
+            {curso.fechaInicioDictado ? formatDictadoDateForDisplay(curso.fechaInicioDictado) : '—'}
+            {' → '}
+            {curso.fechaFinDictado ? formatDictadoDateForDisplay(curso.fechaFinDictado) : '—'}
+          </InfoRow>
+        )}
+        {documents.map((doc) => (
+          <InfoRow key={doc.label} icon={<FileText />} label={doc.label}>
+            <a
+              href={doc.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-gray-900 hover:text-blue-600 hover:underline"
+            >
+              Ver documento
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            {doc.updated && (
+              <span className="ml-1.5 text-xs text-gray-400">· {formatUpdatedAt(doc.updated)}</span>
             )}
-          </div>
+          </InfoRow>
+        ))}
+      </InfoList>
+      <StatGrid
+        stats={[
+          { label: 'Materias', value: curso.materias?.length ?? 0 },
+          { label: 'Módulos', value: loadingMaterias ? '…' : totalModules },
+        ]}
+      />
+    </ProfileCard>
+  );
 
-          {curso.materias && curso.materias.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <CardTitle className="flex items-center mb-4 text-xl">
-                <BookOpen className="w-5 h-5 mr-2 text-gray-600" />
-                Materias ({curso.materias.length})
-              </CardTitle>
-              
-              {loadingMaterias ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin mr-2" />
-                  <p className="text-gray-500">Cargando materias...</p>
-                </div>
-              ) : materias.length > 0 ? (
-                <div className="space-y-4">
-                  {materias.map((materia) => {
-                    const numModulos = materia.modulos?.length || 0;
-                    const modulosCargados = modulosPorMateria[materia.id];
-                    const cargandoModulos = loadingModulos[materia.id];
-                    const isExpanded = expandedMaterias.has(materia.id);
-                    
-                    return (
-                      <Card key={materia.id}>
-                        <div className="px-4 sm:px-6 py-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-lg text-gray-900 mb-1 break-words">{materia.nombre}</h4>
-                              <p className="text-sm text-gray-500">
-                                {numModulos > 0 
-                                  ? `${numModulos} ${numModulos === 1 ? 'módulo' : 'módulos'}`
-                                  : 'Sin módulos'
-                                }
-                              </p>
-                            </div>
-                            {numModulos > 0 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleMateria(materia.id, materia.modulos)}
-                                className="w-full sm:w-auto sm:ml-4 shrink-0"
-                              >
-                                {isExpanded ? (
-                                  <>
-                                    <ChevronUp className="w-4 h-4 mr-1" />
-                                    Ocultar
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronDown className="w-4 h-4 mr-1" />
-                                    Ver módulos
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                          </div>
+  return (
+    <TooltipProvider delayDuration={300}>
+    <DetailLayout aside={aside}>
+      <SectionCard title="Descripción">
+        <p className="whitespace-pre-line px-5 py-4 text-sm leading-relaxed text-gray-700">
+          {curso.descripcion || <span className="text-gray-400">Sin descripción</span>}
+        </p>
+      </SectionCard>
+
+      <SectionCard
+        title="Materias"
+        description="Desplegá una materia para ver y gestionar sus módulos"
+      >
+        {loadingMaterias ? (
+          <SectionEmpty icon={<Loader2 className="animate-spin" />}>Cargando materias…</SectionEmpty>
+        ) : !curso.materias?.length ? (
+          <SectionEmpty icon={<BookOpen />}>Este curso todavía no tiene materias.</SectionEmpty>
+        ) : materias.length === 0 ? (
+          <SectionEmpty icon={<BookOpen />}>No se pudieron cargar las materias.</SectionEmpty>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {materias.map((materia) => {
+              const numModulos = materia.modulos?.length || 0;
+              const modulosCargados = modulosPorMateria[materia.id];
+              const isExpanded = expandedMaterias.has(materia.id);
+
+              return (
+                <li key={materia.id}>
+                  <div
+                    className={`flex items-center gap-3 px-5 py-2.5 transition-colors ${
+                      numModulos > 0 ? 'cursor-pointer hover:bg-gray-50' : ''
+                    }`}
+                    onClick={numModulos > 0 ? () => toggleMateria(materia.id, materia.modulos) : undefined}
+                    aria-expanded={numModulos > 0 ? isExpanded : undefined}
+                  >
+                    <ChevronRight
+                      className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''} ${
+                        numModulos > 0 ? '' : 'invisible'
+                      }`}
+                    />
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{materia.nombre}</p>
+                    <span className="text-xs text-gray-400">
+                      {numModulos > 0 ? `${numModulos} ${numModulos === 1 ? 'módulo' : 'módulos'}` : 'Sin módulos'}
+                    </span>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <IconAction
+                        label="Ver materia"
+                        onClick={() => navigate(`/subjects/${encodeURIComponent(materia.id)}`)}
+                      >
+                        <Eye />
+                      </IconAction>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="px-5 pb-4 pl-12">
+                      {loadingModulos[materia.id] || !modulosCargados ? (
+                        <div className="flex items-center gap-2 py-3 text-xs text-gray-500">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Cargando módulos…
                         </div>
-                        
-                        {isExpanded && (
-                          <div className="px-6 pb-6 border-t border-gray-200 pt-4">
-                            {cargandoModulos ? (
-                              <div className="flex items-center justify-center py-6">
-                                <Loader2 className="w-5 h-5 text-gray-400 animate-spin mr-2" />
-                                <p className="text-sm text-gray-500">Cargando módulos...</p>
-                              </div>
-                            ) : modulosCargados ? (
-                              <ModulesList 
-                                modules={modulosCargados} 
-                                materiaId={materia.id}
-                                defaultEnabledByModule={modulosHabilitadosEstadoPorMateria[materia.id] ?? {}}
-                                onEdit={(module) => handleEditModule(module, materia.id)}
-                                onDelete={(moduleId) => handleDeleteModuleClick(moduleId, materia.id)}
-                                onToggleSuccess={async () => {
-                                  const estado = await CoursesAPI.getModulosHabilitadosEstado(materia.id);
-                                  setModulosHabilitadosEstadoPorMateria(prev => ({ ...prev, [materia.id]: estado }));
-                                }}
-                              />
-                            ) : (
-                              <p className="text-sm text-gray-500 text-center py-4">
-                                Cargando módulos...
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </Card>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-gray-500">No se pudieron cargar las materias</p>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {(curso.planDeEstudiosUrl || curso.fechasDeExamenesUrl) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileText className="w-5 h-5 mr-2 text-gray-600" />
-              Documentos del Curso
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {curso.planDeEstudiosUrl && (
-                <div className="p-5 border-2 border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-white hover:border-blue-300 transition-colors">
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <FileText className="w-5 h-5 text-red-600" />
-                      </div>
-                      <h4 className="font-semibold text-lg text-gray-900">Plan de Estudios</h4>
+                      ) : (
+                        <ModulesList
+                          modules={modulosCargados}
+                          materiaId={materia.id}
+                          defaultEnabledByModule={modulosHabilitadosEstadoPorMateria[materia.id] ?? {}}
+                          onEdit={(module) => handleEditModule(module, materia.id)}
+                          onDelete={(moduleId) => handleDeleteModuleClick(moduleId, materia.id)}
+                          onToggleSuccess={async () => {
+                            const estado = await CoursesAPI.getModulosHabilitadosEstado(materia.id);
+                            setModulosHabilitadosEstadoPorMateria(prev => ({ ...prev, [materia.id]: estado }));
+                          }}
+                        />
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mb-3 flex-1">
-                      Documento con todos los temas que abarca el curso
-                    </p>
-                    {curso.planDeEstudiosActualizado && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1 mb-3">
-                        <Clock className="w-3 h-3" />
-                        Actualizado: {new Date(curso.planDeEstudiosActualizado).toLocaleDateString('es-AR', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="cursor-pointer w-full mt-auto"
-                    >
-                      <a
-                        href={curso.planDeEstudiosUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Ver documento
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {curso.fechasDeExamenesUrl && (
-                <div className="p-5 border-2 border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-white hover:border-blue-300 transition-colors">
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <FileText className="w-5 h-5 text-red-600" />
-                      </div>
-                      <h4 className="font-semibold text-lg text-gray-900">Fechas de Exámenes</h4>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3 flex-1">
-                      Documento con fechas y temas a evaluar
-                    </p>
-                    {curso.fechasDeExamenesActualizado && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1 mb-3">
-                        <Clock className="w-3 h-3" />
-                        Actualizado: {new Date(curso.fechasDeExamenesActualizado).toLocaleDateString('es-AR', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className="cursor-pointer w-full mt-auto"
-                    >
-                      <a
-                        href={curso.fechasDeExamenesUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Ver documento
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SectionCard>
 
       {/* Modal de vista previa de portada */}
       <Dialog open={previewImageOpen} onOpenChange={setPreviewImageOpen}>
@@ -581,21 +384,13 @@ const ProductDetail = () => {
           <div className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
             <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden p-4">
               <div className="w-full max-w-[700px] aspect-square max-h-[calc(90vh-140px)]">
-                <SquareImagePreview src={curso.image || (curso as any).imagen || '/placeholder.svg'} />
+                <SquareImagePreview src={coverSrc || '/placeholder.svg'} />
               </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <ModulesModal
-        isOpen={isModuleModalOpen}
-        onCancel={handleCancelModuleModal}
-        onModuleCreated={async () => ({ id: '' })}
-        courseId={editingModuleMateriaId}
-        editingModule={editingModule}
-        onModuleUpdated={handleModuleUpdated}
-      />
 
       <ConfirmDeleteModal
         isOpen={isDeleteModuleModalOpen}
@@ -610,7 +405,8 @@ const ProductDetail = () => {
         }
         id={confirmDeleteModuleId || ''}
       />
-    </div>
+    </DetailLayout>
+    </TooltipProvider>
   );
 };
 

@@ -1,147 +1,215 @@
 // src/pages/admin/Dashboard.tsx
-import { useEffect, useState } from 'react';
-import { DashboardStatsComponent } from '@/components/admin/DashboardStats';
-import { ProductCard } from '@/components/product/ProductCard';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpen, ClipboardCheck, ClipboardPen, Users } from 'lucide-react';
+import { DashboardStatsComponent, type StatCardData } from '@/components/admin/DashboardStats';
+import {
+  CourseSchedulePanel,
+  HardestExamsPanel,
+  PendingCorrectionsPanel,
+  PerformancePanel,
+  RecentActivityPanel,
+} from '@/components/admin/DashboardPanels';
 import { CoursesAPI } from '@/service/courses';
-import type { DashboardStats } from '@/types/types';
+import { ExamsAPI } from '@/service/exams';
+import { CompletedExamsAPI } from '@/service/completedExams';
+import type { Course, Examen, ExamenRealizado } from '@/types/types';
 import {
   countStudents,
   fetchAllStudentsFromApi,
 } from '@/utils/studentsListClient';
+import { normalizePaginatedResponse } from '@/utils/pagination';
+import {
+  computeExamPerformance,
+  getCourseSchedules,
+  lowestApprovalExams,
+  sortByMostRecent,
+} from '@/utils/dashboardMetrics';
+import { parseTimestampSeconds } from '@/utils/formatTimestamp';
 import { InteractiveLoader } from '@/components/ui/InteractiveLoader';
-import { TourButton } from '@/components/tour/TourButton';
+import { usePageHeader } from '@/context/PageHeaderContext';
 import { dashboardTourSteps } from '@/config/tourSteps';
 
+const PAGE_SIZE = 100;
+/** Tope de páginas de exámenes corregidos para calcular métricas (hasta 1000 registros) */
+const MAX_COMPLETED_PAGES = 10;
+const PENDING_PREVIEW = 5;
+const RECENT_PREVIEW = 6;
+
+type ExamData = {
+  exams: Examen[];
+  examsTotal: number;
+  pending: ExamenRealizado[];
+  pendingTotal: number;
+  completed: ExamenRealizado[];
+};
+
+async function fetchExamData(): Promise<ExamData> {
+  const [examsRes, pendingPage, firstCompleted] = await Promise.all([
+    ExamsAPI.getAll({ page: 1, limit: PAGE_SIZE }),
+    CompletedExamsAPI.getAll({ estado: 'pendiente_correccion', page: 1, limit: PAGE_SIZE }),
+    CompletedExamsAPI.getAll({ estado: 'completado', page: 1, limit: PAGE_SIZE }),
+  ]);
+
+  const extraPages = Math.min(firstCompleted.pagination.totalPages, MAX_COMPLETED_PAGES);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(extraPages - 1, 0) }, (_, i) =>
+      CompletedExamsAPI.getAll({ estado: 'completado', page: i + 2, limit: PAGE_SIZE })
+    )
+  );
+
+  const exams = normalizePaginatedResponse<Examen>(examsRes, 1, PAGE_SIZE);
+  return {
+    exams: exams.data,
+    examsTotal: exams.pagination.total,
+    pending: pendingPage.data,
+    pendingTotal: pendingPage.pagination.total,
+    completed: [...firstCompleted.data, ...rest.flatMap((page) => page.data)],
+  };
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    totalProducts: 0,
-    totalRevenue: 0,
-    activeUsers: 0,
-    totalStudents: 0,
-    popularProducts: []
-  });
-  const [recentProducts, setRecentProducts] = useState<any[]>([]);
+  const [students, setStudents] = useState({ total: 0, active: 0 });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [examData, setExamData] = useState<ExamData | null>(null);
   const [loading, setLoading] = useState(true);
+  usePageHeader({ title: 'Panel general', tourSteps: dashboardTourSteps });
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      try {
-        setLoading(true);
+      setLoading(true);
 
-        // Obtener todos los usuarios (respuesta paginada) y contar solo estudiantes
-        const allUsers = await fetchAllStudentsFromApi();
-        const { total: studentsCount, active: activeStudentsCount } =
-          countStudents(allUsers);
+      // Los exámenes no deben bloquear el resto del panel si su API falla
+      const [studentsResult, coursesResult, examsResult] = await Promise.allSettled([
+        fetchAllStudentsFromApi(),
+        CoursesAPI.getAllList(),
+        fetchExamData(),
+      ]);
 
-        // Obtener cursos
-        const courses = await CoursesAPI.getAllList();
-        const coursesCount = courses.length;
-
-        // Obtener los últimos 4 cursos
-        const latestCourses = courses.slice(0, 4);
-
-        // Actualizar stats
-        setStats({
-          totalUsers: studentsCount,
-          totalProducts: coursesCount,
-          totalRevenue: 0,
-          activeUsers: activeStudentsCount,
-          totalStudents: studentsCount,
-          popularProducts: latestCourses.slice(0, 5)
-        });
-
-        setRecentProducts(latestCourses);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
+      if (studentsResult.status === 'fulfilled') {
+        setStudents(countStudents(studentsResult.value));
+      } else {
+        console.error('Error loading students:', studentsResult.reason);
       }
+      if (coursesResult.status === 'fulfilled') {
+        setCourses(coursesResult.value);
+      } else {
+        console.error('Error loading courses:', coursesResult.reason);
+      }
+      if (examsResult.status === 'fulfilled') {
+        setExamData(examsResult.value);
+      } else {
+        console.error('Error loading exams:', examsResult.reason);
+      }
+
+      setLoading(false);
     };
 
     loadDashboardData();
   }, []);
 
+  const schedules = useMemo(() => getCourseSchedules(courses), [courses]);
+  const performance = useMemo(
+    () => (examData ? computeExamPerformance([...examData.completed, ...examData.pending]) : null),
+    [examData]
+  );
+  const hardestExams = useMemo(
+    () => (examData ? lowestApprovalExams(examData.completed) : []),
+    [examData]
+  );
+  const recentActivity = useMemo(
+    () =>
+      examData
+        ? sortByMostRecent([...examData.completed, ...examData.pending]).slice(0, RECENT_PREVIEW)
+        : [],
+    [examData]
+  );
+  // Primero los que llevan más tiempo esperando
+  const pendingPreview = useMemo(
+    () =>
+      examData
+        ? [...examData.pending]
+            .sort(
+              (a, b) =>
+                parseTimestampSeconds(a.fechaRealizacion) - parseTimestampSeconds(b.fechaRealizacion)
+            )
+            .slice(0, PENDING_PREVIEW)
+        : [],
+    [examData]
+  );
+
   if (loading) {
     return (
       <InteractiveLoader
-        initialMessage="Cargando dashboard"
+        initialMessage="Cargando panel general"
         delayedMessage="Conectándose con el servidor, esto puede tomar unos minutos"
       />
     );
   }
 
+  const inProgress = schedules.filter((s) => s.status === 'en_dictado').length;
+  const enabledExams = examData?.exams.filter((e) => e.habilitado !== false).length ?? 0;
+  const pendingTotal = examData?.pendingTotal ?? 0;
+
+  const cards: StatCardData[] = [
+    {
+      label: 'Estudiantes',
+      value: students.total.toLocaleString('es-AR'),
+      hint: `${students.active.toLocaleString('es-AR')} activos`,
+      icon: Users,
+      tone: 'blue',
+      href: '/students',
+    },
+    {
+      label: 'Cursos',
+      value: courses.length.toString(),
+      hint: inProgress > 0 ? `${inProgress} en dictado` : 'Ninguno en dictado',
+      icon: BookOpen,
+      tone: 'violet',
+      href: '/products',
+    },
+    {
+      label: 'Exámenes',
+      value: examData ? examData.examsTotal.toString() : '—',
+      hint: examData ? `${enabledExams} habilitados` : 'No disponible',
+      icon: ClipboardCheck,
+      tone: 'orange',
+      href: '/exams',
+    },
+    {
+      label: 'Por corregir',
+      value: examData ? pendingTotal.toString() : '—',
+      hint: !examData
+        ? 'No disponible'
+        : pendingTotal > 0
+          ? 'Esperan tu corrección'
+          : 'Todo al día',
+      icon: ClipboardPen,
+      tone: 'amber',
+      href: '/exams/completed',
+      highlight: pendingTotal > 0,
+    },
+  ];
+
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-gray-100">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-          <p className="text-gray-500 text-base">
-            Resumen general de tu plataforma
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-right sm:text-left">
-          <TourButton steps={dashboardTourSteps} />
-          <div className="hidden sm:block w-px h-8 bg-gray-200"></div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Última actualización</p>
-            <p className="text-sm font-semibold text-gray-700 mt-0.5">{new Date().toLocaleDateString('es-AR', { 
-              day: 'numeric', 
-              month: 'long', 
-              year: 'numeric' 
-            })}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
+    <div className="space-y-4 sm:space-y-6">
       <div data-tour="dashboard-stats">
-        <DashboardStatsComponent stats={stats} />
+        <DashboardStatsComponent cards={cards} />
       </div>
 
-      {/* Recent Products */}
-      <div className="space-y-6" data-tour="recent-courses">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Últimos Cursos</h2>
-            <p className="text-sm text-gray-500 mt-1">Cursos agregados recientemente</p>
-          </div>
-          <a 
-            href="/products" 
-            className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors duration-200 group w-full sm:w-auto py-2 sm:py-0 border border-blue-100 rounded-lg sm:border-0"
-          >
-            Ver todos
-            <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-          </a>
-        </div>
-        
-        {recentProducts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentProducts.map((product, index) => (
-              <div
-                key={product.id}
-                style={{ 
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'fadeInUp 0.5s ease-out forwards',
-                  opacity: 0
-                }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl border border-gray-200/50">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200/50 mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <p className="text-gray-500 font-medium">No hay cursos disponibles</p>
-            <p className="text-sm text-gray-400 mt-1">Agrega tu primer curso para comenzar</p>
-          </div>
-        )}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+        <PendingCorrectionsPanel
+          rows={pendingPreview}
+          total={pendingTotal}
+          unavailable={!examData}
+          className="lg:col-span-2"
+        />
+        <PerformancePanel performance={performance} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+        <RecentActivityPanel rows={recentActivity} />
+        <HardestExamsPanel exams={hardestExams} />
+        <CourseSchedulePanel schedules={schedules} />
       </div>
     </div>
   );
