@@ -247,15 +247,6 @@
   color: #fff;
 }
 
-/* Bordó de marca: sobre fondo oscuro necesita más luz */
-.dark .text-\[\#7a1a3a\] {
-  color: oklch(0.75 0.13 5);
-}
-
-.dark .bg-\[\#7a1a3a\]\/10 {
-  background-color: oklch(0.75 0.13 5 / 15%);
-}
-
 .dark .loader-logo-shine {
   -webkit-mask-image: url("/logoBlanco.png");
   mask-image: url("/logoBlanco.png");

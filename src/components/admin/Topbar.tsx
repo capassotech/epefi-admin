@@ -89,7 +89,7 @@ export function AdminTopbar({ onOpenMobileMenu }: AdminTopbarProps) {
           )}
           aria-label="Ir a mi perfil"
         >
-          <span className="grid place-items-center w-7 h-7 rounded-full bg-[#7a1a3a]/10 text-[#7a1a3a] text-[11px] font-semibold">
+          <span className="grid place-items-center w-7 h-7 rounded-full bg-[#f96015]/10 text-orange-700 text-[11px] font-semibold">
             {initials}
           </span>
           <span className="hidden sm:block max-w-[180px] truncate text-gray-600 group-hover:text-gray-900 transition-colors">
