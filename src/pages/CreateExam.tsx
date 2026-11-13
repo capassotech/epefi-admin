@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { usePageHeader } from "@/context/PageHeaderContext";
 import { examFormTourSteps } from "@/config/tourSteps";
-import { CheckCircle2, Circle, CircleHelp, ClipboardCheck, ImagePlus, Plus, Save, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  CircleHelp,
+  ClipboardCheck,
+  Copy,
+  FileInput,
+  ImagePlus,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -19,9 +31,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { InteractiveLoader } from "@/components/ui/InteractiveLoader";
 import { CoursesAPI } from "@/service/courses";
 import { ExamsAPI } from "@/service/exams";
+import { normalizePaginatedResponse } from "@/utils/pagination";
 import type { Course, Examen, ExamenCreatePayload, TipoPregunta } from "@/types/types";
 import { toast } from "sonner";
 import {
@@ -208,9 +234,33 @@ function examToFormState(exam: Examen): {
   };
 }
 
+/** Clona el estado del formulario con IDs nuevos (para no reutilizar ids del original). */
+function examToCloneFormState(exam: Examen, options?: { titleSuffix?: string }) {
+  const form = examToFormState(exam);
+  const suffix = options?.titleSuffix?.trim();
+  return {
+    ...form,
+    title:
+      suffix && form.title.trim()
+        ? `${form.title.trim()}${suffix}`
+        : form.title,
+    questions: form.questions.map((q) => ({
+      ...q,
+      id: makeId(),
+      imagenFile: null as File | null,
+      respuestas: q.respuestas.map((r) => ({
+        ...r,
+        id: makeId(),
+      })),
+    })),
+  };
+}
+
 export default function CreateExam() {
   const navigate = useNavigate();
   const { id: examId } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const cloneFromId = (!examId && searchParams.get("from")?.trim()) || "";
   const isEditing = Boolean(examId);
   const [title, setTitle] = useState("");
   const [idFormacion, setIdFormacion] = useState("");
@@ -226,15 +276,21 @@ export default function CreateExam() {
   const [questions, setQuestions] = useState<QuestionForm[]>([createEmptyQuestion()]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
-  const [loadingExam, setLoadingExam] = useState(isEditing);
+  const [loadingExam, setLoadingExam] = useState(isEditing || Boolean(cloneFromId));
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [existingExams, setExistingExams] = useState<Examen[]>([]);
+  const [loadingExistingExams, setLoadingExistingExams] = useState(false);
+  const [preloadOpen, setPreloadOpen] = useState(false);
+  const [preloadingId, setPreloadingId] = useState<string | null>(null);
   const [titleError, setTitleError] = useState("");
   const [formationError, setFormationError] = useState("");
   const [questionsError, setQuestionsError] = useState("");
   const [questionErrors, setQuestionErrors] = useState<Record<string, QuestionError>>({});
   const [puntosError, setPuntosError] = useState("");
   const [puntosDraft, setPuntosDraft] = useState<Record<string, string>>({});
+  /** Preguntas agregadas en esta edición (todavía sin guardar): se resaltan para distinguirlas */
+  const [newQuestionIds, setNewQuestionIds] = useState<Set<string>>(() => new Set());
   const lastQuestionRef = useRef<HTMLDivElement | null>(null);
   const scrollToNewQuestion = useRef(false);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -270,6 +326,38 @@ export default function CreateExam() {
     });
   }, []);
 
+  const clearFormErrors = useCallback(() => {
+    setTitleError("");
+    setFormationError("");
+    setDuracionError("");
+    setNotaMinimaError("");
+    setIntentosError("");
+    setQuestionsError("");
+    setPuntosError("");
+    setQuestionErrors({});
+    setPuntosDraft({});
+    setNewQuestionIds(new Set());
+  }, []);
+
+  const applyExamToForm = useCallback(
+    (exam: Examen, options?: { asCopy?: boolean }) => {
+      const form = examToCloneFormState(exam, {
+        titleSuffix: options?.asCopy ? " (copia)" : undefined,
+      });
+      setTitle(form.title);
+      setIdFormacion(form.idFormacion);
+      setDuracionMinutos(form.duracionMinutos);
+      setNotaMinima(form.notaMinima);
+      setIntentosMaximos(form.intentosMaximos);
+      setPermitirRevision(form.permitirRevision);
+      setRequiereCompletarCurso(form.requiereCompletarCurso);
+      setPublicacionManualDeNota(form.publicacionManualDeNota);
+      setQuestions(form.questions);
+      clearFormErrors();
+    },
+    [clearFormErrors]
+  );
+
   useEffect(() => {
     const loadCourses = async () => {
       try {
@@ -285,6 +373,29 @@ export default function CreateExam() {
     };
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (isEditing) return;
+
+    const loadExistingExams = async () => {
+      try {
+        setLoadingExistingExams(true);
+        const res = await ExamsAPI.getAll({
+          sortBy: "titulo",
+          sortOrder: "asc",
+        });
+        const paginated = normalizePaginatedResponse<Examen>(res, 1, 1000);
+        setExistingExams(paginated.data);
+      } catch (error) {
+        console.error("Error al cargar exámenes para precargar:", error);
+        setExistingExams([]);
+      } finally {
+        setLoadingExistingExams(false);
+      }
+    };
+
+    loadExistingExams();
+  }, [isEditing]);
 
   useEffect(() => {
     if (!examId) return;
@@ -318,6 +429,70 @@ export default function CreateExam() {
     loadExam();
   }, [examId]);
 
+  useEffect(() => {
+    if (isEditing || !cloneFromId) return;
+
+    let cancelled = false;
+    const loadCloneSource = async () => {
+      try {
+        setLoadingExam(true);
+        setLoadError("");
+        const exam = await ExamsAPI.getById(cloneFromId);
+        if (cancelled) return;
+        applyExamToForm(exam, { asCopy: true });
+        toast.success("Examen precargado. Revisá y guardá para crear la copia.");
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("from");
+            return next;
+          },
+          { replace: true }
+        );
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Error al clonar examen:", error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "No se pudo precargar el examen a clonar";
+        toast.error(message);
+      } finally {
+        if (!cancelled) setLoadingExam(false);
+      }
+    };
+
+    void loadCloneSource();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyExamToForm, cloneFromId, isEditing, setSearchParams]);
+
+  const handlePreloadFromExam = async (sourceId: string) => {
+    if (!sourceId || preloadingId) return;
+    setPreloadingId(sourceId);
+    try {
+      const exam = await ExamsAPI.getById(sourceId);
+      applyExamToForm(exam);
+      setPreloadOpen(false);
+      toast.success("Datos precargados. Ajustá lo que necesites y guardá.");
+    } catch (error) {
+      console.error("Error al precargar examen:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron precargar los datos del examen"
+      );
+    } finally {
+      setPreloadingId(null);
+    }
+  };
+
+  const handleCloneExam = () => {
+    if (!examId) return;
+    navigate(`/exams/create?from=${encodeURIComponent(examId)}`);
+  };
+
   const canSave = useMemo(
     () => !saving && !loadingCourses && !loadingExam,
     [saving, loadingCourses, loadingExam]
@@ -338,9 +513,6 @@ export default function CreateExam() {
   const updateQuestion = (questionId: string, updater: (q: QuestionForm) => QuestionForm) => {
     setQuestions((prev) => prev.map((q) => (q.id === questionId ? updater(q) : q)));
   };
-
-  /** Preguntas agregadas en esta edición (todavía sin guardar): se resaltan para distinguirlas */
-  const [newQuestionIds, setNewQuestionIds] = useState<Set<string>>(() => new Set());
 
   const addQuestion = () => {
     // No se agrega otra pregunta mientras haya alguna anterior sin completar (los puntos se pueden repartir al final)
@@ -727,6 +899,32 @@ export default function CreateExam() {
     breadcrumbs: [{ label: "Exámenes", to: "/exams" }],
   });
 
+  const selectedCourse = courses.find((course) => course.id === idFormacion);
+  const developmentCount = questions.filter((q) => q.tipoPregunta === "desarrollo").length;
+  const coursesById = useMemo(
+    () =>
+      courses.reduce<Record<string, Course>>((acc, course) => {
+        acc[course.id] = course;
+        return acc;
+      }, {}),
+    [courses]
+  );
+  const preloadOptions = useMemo(
+    () =>
+      existingExams.map((exam) => {
+        const formation =
+          coursesById[exam.idFormacion]?.titulo || exam.idFormacion || "";
+        const titulo = exam.titulo?.trim() || "Examen sin título";
+        return {
+          id: exam.id,
+          label: titulo,
+          searchValue: `${titulo} ${formation} ${exam.id}`,
+          formation,
+        };
+      }),
+    [coursesById, existingExams]
+  );
+
   if (loadingCourses || loadingExam) {
     return (
       <InteractiveLoader
@@ -750,9 +948,6 @@ export default function CreateExam() {
       </div>
     );
   }
-
-  const selectedCourse = courses.find((course) => course.id === idFormacion);
-  const developmentCount = questions.filter((q) => q.tipoPregunta === "desarrollo").length;
 
   // Toma el valor numérico de un input: vacío = 0 (la validación lo marca), NaN se ignora
   const numberChange =
@@ -787,6 +982,19 @@ export default function CreateExam() {
             <Save className="w-3.5 h-3.5 mr-1.5" />
             {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar examen"}
           </Button>
+          {isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 cursor-pointer"
+              onClick={handleCloneExam}
+              disabled={saving || loadingExam}
+            >
+              <Copy className="w-3.5 h-3.5 mr-1.5" />
+              Clonar examen
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -825,6 +1033,66 @@ export default function CreateExam() {
   return (
     <DetailLayout aside={aside}>
       <form id="exam-form" className="space-y-6" onSubmit={handleSave}>
+        {!isEditing && (
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <Popover open={preloadOpen} onOpenChange={setPreloadOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-gray-500 hover:text-gray-800 cursor-pointer"
+                  disabled={saving || loadingExistingExams || Boolean(preloadingId)}
+                >
+                  {preloadingId || loadingExistingExams ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <FileInput className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Precargar desde un examen existente
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(100vw-2rem,22rem)] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar examen…" />
+                  <CommandList>
+                    <CommandEmpty>
+                      {loadingExistingExams
+                        ? "Cargando exámenes…"
+                        : "No hay exámenes para precargar"}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {preloadOptions.map((option) => (
+                        <CommandItem
+                          key={option.id}
+                          value={option.searchValue}
+                          disabled={Boolean(preloadingId)}
+                          onSelect={() => void handlePreloadFromExam(option.id)}
+                          className="cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{option.label}</p>
+                            {option.formation ? (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {option.formation}
+                              </p>
+                            ) : null}
+                          </div>
+                          {preloadingId === option.id ? (
+                            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-60" />
+                          ) : null}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-gray-400">
+              Opcional · útil si el examen es casi igual a otro
+            </span>
+          </div>
+        )}
         <SectionCard tourId="exam-config">
           <div className="grid gap-4 px-5 py-5 sm:grid-cols-3">
             <div ref={setFieldRef("title")} className="sm:col-span-3">
