@@ -46,5 +46,10 @@ Las reglas generales de UI están en `../CLAUDE.md`.
 - El `onSubmit` de EditProduct conserva las materias actuales del curso. `?tab=materias` abre directamente el paso de materias.
 - `SubjectModal` usa el estilo compacto: header chico, FormField/Input y footer gris.
 
+## Errores de video — `src/pages/VideoErrors.tsx`
+- Ruta `/video-errors`, en el menú lateral. Lista los videos que los alumnos no pudieron reproducir (`src/service/videoErrors.ts`).
+- Cada fila muestra el material, el curso, las fallas, los alumnos y la causa principal: Archivo (códigos 3/4), Conexión (2) o Sin datos. Se despliega para ver las últimas fallas con el alumno y el dispositivo (`describeDevice` lee el user agent).
+- Acciones: abrir el video y marcar como resuelto (con confirmación; borra el registro).
+
 ## Ideas ofrecidas, no implementadas
 - Que crear una materia nueva desde un curso también espere a "Guardar cambios".

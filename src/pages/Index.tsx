@@ -23,6 +23,7 @@ import CreateExam from "./CreateExam";
 import ExamAttempts from "./ExamAttempts";
 import CompletedExams from "./CompletedExams";
 import CompletedExamDetail from "./CompletedExamDetail";
+import VideoErrors from "./VideoErrors";
 
 const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -60,6 +61,7 @@ const Index = () => {
           <Route path="/exams/completed/:id" element={<CompletedExamDetail />} />
           <Route path="/exams/:id/intentos" element={<ExamAttempts />} />
           <Route path="/exams/:id/edit" element={<CreateExam />} />
+          <Route path="/video-errors" element={<VideoErrors />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
