@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { BookOpen, Users, Calendar, X, ClipboardCheck, PanelLeftOpen, PanelLeftClose, Moon, Sun } from "lucide-react";
+import { BookOpen, Users, Calendar, X, ClipboardCheck, PanelLeftOpen, PanelLeftClose, Moon, Sun, VideoOff } from "lucide-react";
 import { useSidebarLayout } from "@/context/SidebarLayoutContext";
 import { useTheme } from "@/context/ThemeContext";
 import { BrandLogo } from "@/components/common/BrandLogo";
@@ -33,6 +33,11 @@ const navigation = [
     name: "Examenes",
     href: "/exams",
     icon: ClipboardCheck,
+  },
+  {
+    name: "Errores de video",
+    href: "/video-errors",
+    icon: VideoOff,
   },
 ];
 
