@@ -48,8 +48,9 @@ Las reglas generales de UI están en `../CLAUDE.md`.
 
 ## Errores de video — `src/pages/VideoErrors.tsx`
 - Ruta `/video-errors`, en el menú lateral. Lista los videos que los alumnos no pudieron reproducir (`src/service/videoErrors.ts`).
-- Cada fila muestra el material, el curso, las fallas, los alumnos y la causa principal: Archivo (códigos 3/4), Conexión (2) o Sin datos. Se despliega para ver las últimas fallas con el alumno y el dispositivo (`describeDevice` lee el user agent).
-- Acciones: abrir el video y marcar como resuelto (con confirmación; borra el registro).
+- Tiles arriba (Videos / Archivo / Conexión / Alumnos); los de causa filtran la lista. Búsqueda por video, curso o email, orden Recientes / Más fallas y botón actualizar.
+- Cada fila muestra el material, el curso, alumnos, tiempo relativo, fallas y la causa principal: Archivo (códigos 3/4), Conexión (2) o Sin datos. Se despliega con animación: recomendación según la causa, acciones (Probar video, Copiar link, Marcar resuelto), dispositivos agrupados y las últimas fallas (`describeDevice` lee el user agent).
+- "Marcar resuelto" no pide confirmación: oculta la fila y muestra un toast con **Deshacer** durante 5 s; recién después borra el registro (o al salir de la página).
 
 ## Ideas ofrecidas, no implementadas
 - Que crear una materia nueva desde un curso también espere a "Guardar cambios".
