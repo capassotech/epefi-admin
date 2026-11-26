@@ -263,7 +263,8 @@ export default function CreateExam() {
   const cloneFromId = (!examId && searchParams.get("from")?.trim()) || "";
   const isEditing = Boolean(examId);
   const [title, setTitle] = useState("");
-  const [idFormacion, setIdFormacion] = useState("");
+  const preselectedFormacion = (!examId && !cloneFromId && searchParams.get("idFormacion")?.trim()) || "";
+  const [idFormacion, setIdFormacion] = useState(preselectedFormacion);
   const [duracionMinutos, setDuracionMinutos] = useState(90);
   const [duracionError, setDuracionError] = useState("");
   const [notaMinima, setNotaMinima] = useState(70);

@@ -12,15 +12,20 @@ import {
   BookOpen,
   CalendarDays,
   ChevronRight,
+  ClipboardList,
   DollarSign,
+  Edit2,
   ExternalLink,
   Eye,
   FileText,
   Loader2,
   Pencil,
+  Plus,
+  Users,
 } from 'lucide-react';
 import { CoursesAPI } from '@/service/courses';
-import type { Course, Subject, Module } from '@/types/types';
+import { ExamsAPI } from '@/service/exams';
+import type { Course, Examen, Subject, Module } from '@/types/types';
 import { formatDictadoDateForDisplay } from '@/utils/courseDates';
 import ModulesList from '@/components/subject/ModulesList';
 import ConfirmDeleteModal from '@/components/product/ConfirmDeleteModal';
@@ -72,6 +77,8 @@ const ProductDetail = () => {
   const [confirmDeleteMateriaId, setConfirmDeleteMateriaId] = useState<string | null>(null);
   const [isDeleteModuleModalOpen, setIsDeleteModuleModalOpen] = useState(false);
   const [deleteModuleLoading, setDeleteModuleLoading] = useState(false);
+  const [examenes, setExamenes] = useState<Examen[]>([]);
+  const [loadingExamenes, setLoadingExamenes] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -114,6 +121,23 @@ const ProductDetail = () => {
     };
 
     fetchData();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchExamenes = async () => {
+      setLoadingExamenes(true);
+      try {
+        const res = await ExamsAPI.getAll({ idFormacion: id, limit: 100 });
+        const data: Examen[] = Array.isArray(res) ? res : (res?.data ?? []);
+        setExamenes(data);
+      } catch (error) {
+        console.error('Error al cargar exámenes del curso:', error);
+      } finally {
+        setLoadingExamenes(false);
+      }
+    };
+    fetchExamenes();
   }, [id]);
 
   // Función para cargar módulos de una materia
@@ -287,6 +311,7 @@ const ProductDetail = () => {
         stats={[
           { label: 'Materias', value: curso.materias?.length ?? 0 },
           { label: 'Módulos', value: loadingMaterias ? '…' : totalModules },
+          { label: 'Exámenes', value: loadingExamenes ? '…' : examenes.length },
         ]}
       />
     </ProfileCard>
@@ -368,6 +393,63 @@ const ProductDetail = () => {
                       )}
                     </div>
                   )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </SectionCard>
+
+      <SectionCard
+        title="Exámenes"
+        description="Exámenes asignados a este curso"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => navigate(`/exams/create?idFormacion=${encodeURIComponent(id || '')}`)}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Crear examen
+          </Button>
+        }
+      >
+        {loadingExamenes ? (
+          <SectionEmpty icon={<Loader2 className="animate-spin" />}>Cargando exámenes…</SectionEmpty>
+        ) : examenes.length === 0 ? (
+          <SectionEmpty icon={<ClipboardList />}>
+            Este curso todavía no tiene exámenes.
+          </SectionEmpty>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {examenes.map((examen) => {
+              const isActive = examen.habilitado !== false;
+              return (
+                <li key={examen.id} className="flex items-center gap-3 px-5 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {examen.titulo || 'Sin título'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {examen.preguntas?.length ?? 0} preguntas
+                      {!isActive && ' · Deshabilitado'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <IconAction
+                      label="Editar examen"
+                      onClick={() => navigate(`/exams/${encodeURIComponent(examen.id)}/edit`)}
+                    >
+                      <Edit2 />
+                    </IconAction>
+                    <IconAction
+                      label="Ver intentos por alumno"
+                      onClick={() => navigate(`/exams/${encodeURIComponent(examen.id)}/intentos`)}
+                    >
+                      <Users />
+                    </IconAction>
+                  </div>
                 </li>
               );
             })}
